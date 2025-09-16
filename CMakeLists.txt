@@ -33,3 +33,14 @@ target_include_directories(juiceloader PRIVATE
     ${INCLUDES}/jvm/win32
     ${INCLUDES}/JuiceLoader)
 target_link_libraries(juiceloader PRIVATE jvm)
+
+# libinjector
+link_directories("$ENV{JAVA_HOME}/lib")
+add_library(libinjector SHARED ${SRC}/libinjector.c)
+target_include_directories(libinjector PRIVATE 
+    ${INCLUDES}/ReflectiveDLLInjection  
+    ${INCLUDES}/jvm
+    ${INCLUDES}/jvm/win32
+    ${INCLUDES}/JuiceLoader)
+target_link_libraries(libinjector PRIVATE jvm)
+target_link_libraries(libinjector PRIVATE ReflectiveDLLInjection)
