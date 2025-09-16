@@ -1,0 +1,14 @@
+{
+    "version": 3,
+    "configurePresets": [
+      {
+        "name": "ninja-release",
+        "generator": "Ninja",
+        "binaryDir": "${sourceDir}/build",
+        "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "Release"
+        }
+      }
+    ]
+  }
+  
