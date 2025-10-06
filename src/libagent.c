@@ -4,6 +4,7 @@
 #include "stdio.h"
 #include "jni.h"
 #include "jvmti.h"
+#include "InjectParameters.h"
 
 #define WIN_X64
 extern HINSTANCE hAppInstance;
@@ -11,13 +12,19 @@ extern HINSTANCE hAppInstance;
 DWORD WINAPI ThreadProc(LPVOID lpParam) {
     printf("libagent: New thread created\n");
 
-    // Get environment variable JuiceAgent_Dir
-    printf("libagent: Get Env JuiceAgent_Dir");
-    const char* dir = getenv("JuiceAgent_Dir");
-    printf("libagent: JuiceAgent_Dir: %s\n", dir);
+    InjectParameters *param = (InjectParameters*)lpParam;
+    if (!param) {
+        printf("libagent: ThreadProc got NULL param\n");
+        return 1;
+    }
+
+    printf("libagent: ThreadProc got param: %s\n", param->loaderDir);
+
+    const char* dir = param->loaderDir;
+    printf("libagent: LoaderDir: %s\n", dir);
     if (dir == NULL) {
-        printf("libagent: JuiceAgent_Dir is not set\n");
-        MessageBoxA(NULL, "JuiceAgent_Dir is not set", "Error", MB_OK);
+        printf("libagent: LoaderDir is not set\n");
+        MessageBoxA(NULL, "LoaderDir is not set", "Error", MB_OK);
         return 1;
     }
 
@@ -76,7 +83,9 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
     jmethodID mid = (*env)->GetStaticMethodID(env, cls, "init", "(Ljava/lang/String;)V");
     (*env)->CallStaticVoidMethod(env, cls, mid, (*env)->NewStringUTF(env, dir));
     printf("done\n");
-    
+
+    free(param);
+
     return 0;
 }
 
@@ -91,9 +100,33 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
         case DLL_PROCESS_ATTACH:
             hAppInstance = hinstDLL;
             printf("libagent: DLL_PROCESS_ATTACH\n");
-            HANDLE hThread = CreateThread(NULL, 0, ThreadProc, NULL, 0, NULL);
-            if (hThread)
-                CloseHandle(hThread);
+
+            DisableThreadLibraryCalls(hinstDLL);
+
+            if (lpReserved != NULL) {
+                InjectParameters *remoteParm = (InjectParameters*)lpReserved;
+
+                InjectParameters *localParm = (InjectParameters*)malloc(sizeof(InjectParameters));
+                if (localParm == NULL) {
+                    printf("libagent: malloc failed for InjectParameters\n");
+                    break;
+                }
+
+                memset(localParm, 0, sizeof(InjectParameters));
+
+                strncpy(localParm->loaderDir, remoteParm->loaderDir, sizeof(localParm->loaderDir) - 1);
+                localParm->loaderDir[sizeof(localParm->loaderDir)-1] = '\0';
+
+                printf("libagent: Loader Dir = %s\n", localParm->loaderDir);
+
+                HANDLE hThread = CreateThread(NULL, 0, ThreadProc, localParm, 0, NULL);
+                if (hThread) {
+                    CloseHandle(hThread);
+                } else {
+                    printf("libagent: CreateThread failed %lu\n", GetLastError());
+                    free(localParm);
+                }
+            }
             break;
             
         case DLL_PROCESS_DETACH:

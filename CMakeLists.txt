@@ -17,11 +17,15 @@ add_library(ReflectiveDLLInjection STATIC
 
 # libagent
 link_directories("$ENV{JAVA_HOME}/lib")
-add_library(agent SHARED ${SRC}/libagent.c)
+add_library(agent SHARED 
+    ${SRC}/libagent.c 
+    ${INCLUDES}/ReflectiveDLLInjection/ReflectiveLoader.c)
 target_include_directories(agent PRIVATE 
     ${INCLUDES}/ReflectiveDLLInjection
     ${INCLUDES}/jvm
-    ${INCLUDES}/jvm/win32)
+    ${INCLUDES}/jvm/win32
+    ${INCLUDES}/JuiceLoader)
+target_compile_definitions(agent PRIVATE REFLECTIVEDLLINJECTION_VIA_LOADREMOTELIBRARYR)
 target_link_libraries(agent PRIVATE ReflectiveDLLInjection)
 target_link_libraries(agent PRIVATE jvm)
 
@@ -36,11 +40,11 @@ target_link_libraries(juiceloader PRIVATE jvm)
 
 # libinjector
 link_directories("$ENV{JAVA_HOME}/lib")
-add_library(libinjector SHARED ${SRC}/libinjector.c)
-target_include_directories(libinjector PRIVATE 
+add_library(injector SHARED ${SRC}/libinjector.c )
+target_include_directories(injector PRIVATE 
     ${INCLUDES}/ReflectiveDLLInjection  
     ${INCLUDES}/jvm
     ${INCLUDES}/jvm/win32
     ${INCLUDES}/JuiceLoader)
-target_link_libraries(libinjector PRIVATE jvm)
-target_link_libraries(libinjector PRIVATE ReflectiveDLLInjection)
+target_link_libraries(injector PRIVATE jvm)
+target_link_libraries(injector PRIVATE ReflectiveDLLInjection)
