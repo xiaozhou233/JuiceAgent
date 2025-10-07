@@ -15,7 +15,9 @@ set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/includes)
 # library - ReflectiveDLLInjection
 add_subdirectory(${INCLUDES}/ReflectiveDLLInjection)
 
+include(cmake/JuiceModule.cmake)
+
 # modules
-add_subdirectory(src/core)
-add_subdirectory(src/loader)
-add_subdirectory(src/injector)
+add_juice_module(agent)
+add_juice_module(juiceloader)
+add_juice_module(injector)
