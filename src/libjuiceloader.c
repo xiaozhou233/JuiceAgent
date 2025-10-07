@@ -232,3 +232,24 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_red
     printf("Done!\n");
     return JNI_TRUE;
 }
+
+JNIEXPORT jobjectArray JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_getLoadedClasses
+  (JNIEnv *env, jobject obj) {
+        jint count = 0;
+    jclass* classes = NULL;
+
+    jvmtiError err = (*JuiceLoaderNative.jvmti)->GetLoadedClasses(JuiceLoaderNative.jvmti, &count, &classes);
+    if (err != JVMTI_ERROR_NONE || count == 0) {
+        return (*env)->NewObjectArray(env, 0, (*env)->FindClass(env, "java/lang/Class"), NULL);
+    }
+
+    jclass classClass = (*env)->FindClass(env, "java/lang/Class");
+    jobjectArray result = (*env)->NewObjectArray(env, count, classClass, NULL);
+
+    for (int i = 0; i < count; i++) {
+        (*env)->SetObjectArrayElement(env, result, i, classes[i]);
+    }
+
+    (*JuiceLoaderNative.jvmti)->Deallocate(JuiceLoaderNative.jvmti, (unsigned char*)classes);
+    return result;
+  }
