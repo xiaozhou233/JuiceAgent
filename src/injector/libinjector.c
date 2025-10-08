@@ -1,119 +1,16 @@
 // injector_debug.c
-#include "windows.h"
+#include "InjectorUtils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "LoadLibraryR.h"
 #include "InjectorNative.h"
 #include "InjectParameters.h"
+#include "log.c"
 
 #define WIN_X64
-#define BREAK_WITH_ERROR( e ) { printf("[-] %s. Error=%lu\n", e, GetLastError()); break; }
+#define BREAK_WITH_ERROR( e ) { log_error("[-] %s. Error=%l", e, GetLastError()); break; }
 
-/* Helpers: parse PE header to get Machine and check for ReflectiveLoader export */
-
-/* return IMAGE_FILE_MACHINE_* value or 0 on error */
-static WORD get_pe_machine(LPVOID buffer, DWORD length) {
-    if (!buffer || length < sizeof(IMAGE_DOS_HEADER)) return 0;
-    PIMAGE_DOS_HEADER dos = (PIMAGE_DOS_HEADER)buffer;
-    if (dos->e_magic != IMAGE_DOS_SIGNATURE) return 0;
-    if ((DWORD)dos->e_lfanew + sizeof(IMAGE_NT_HEADERS) > length) return 0;
-    PIMAGE_NT_HEADERS nt = (PIMAGE_NT_HEADERS)((BYTE*)buffer + dos->e_lfanew);
-    if (nt->Signature != IMAGE_NT_SIGNATURE) return 0;
-    return nt->FileHeader.Machine;
-}
-
-/* return TRUE if export table contains "ReflectiveLoader" */
-static BOOL has_reflective_loader_export(LPVOID buffer, DWORD length) {
-    if (!buffer || length < sizeof(IMAGE_DOS_HEADER)) return FALSE;
-    PIMAGE_DOS_HEADER dos = (PIMAGE_DOS_HEADER)buffer;
-    if (dos->e_magic != IMAGE_DOS_SIGNATURE) return FALSE;
-    PIMAGE_NT_HEADERS nt = (PIMAGE_NT_HEADERS)((BYTE*)buffer + dos->e_lfanew);
-    if (nt->Signature != IMAGE_NT_SIGNATURE) return FALSE;
-
-    DWORD exportRVA = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
-    DWORD exportSize = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].Size;
-    if (!exportRVA || exportSize == 0) return FALSE;
-
-    // Need to convert RVA -> raw offset: iterate sections
-    PIMAGE_SECTION_HEADER section = IMAGE_FIRST_SECTION(nt);
-    WORD numberOfSections = nt->FileHeader.NumberOfSections;
-    DWORD exportOffset = 0;
-    for (WORD i = 0; i < numberOfSections; ++i) {
-        DWORD va = section[i].VirtualAddress;
-        DWORD vs = section[i].Misc.VirtualSize;
-        DWORD ptr = section[i].PointerToRawData;
-        DWORD size = section[i].SizeOfRawData;
-        if (exportRVA >= va && exportRVA < va + vs) {
-            exportOffset = ptr + (exportRVA - va);
-            break;
-        }
-    }
-    if (!exportOffset) return FALSE;
-    if ((DWORD)exportOffset + sizeof(IMAGE_EXPORT_DIRECTORY) > length) return FALSE;
-
-    PIMAGE_EXPORT_DIRECTORY exp = (PIMAGE_EXPORT_DIRECTORY)((BYTE*)buffer + exportOffset);
-    if (exp->NumberOfNames == 0) return FALSE;
-
-    // locate arrays
-    DWORD addrOfNamesRVA = exp->AddressOfNames;
-    DWORD addrOfNameOrdinalsRVA = exp->AddressOfNameOrdinals;
-    if (!addrOfNamesRVA || !addrOfNameOrdinalsRVA) return FALSE;
-
-    // find raw offsets for these arrays
-    DWORD namesOffset = 0;
-    DWORD ordinalsOffset = 0;
-    for (WORD i = 0; i < numberOfSections; ++i) {
-        DWORD va = section[i].VirtualAddress;
-        DWORD vs = section[i].Misc.VirtualSize;
-        DWORD ptr = section[i].PointerToRawData;
-        if (addrOfNamesRVA >= va && addrOfNamesRVA < va + vs) {
-            namesOffset = ptr + (addrOfNamesRVA - va);
-        }
-        if (addrOfNameOrdinalsRVA >= va && addrOfNameOrdinalsRVA < va + vs) {
-            ordinalsOffset = ptr + (addrOfNameOrdinalsRVA - va);
-        }
-    }
-    if (!namesOffset || !ordinalsOffset) return FALSE;
-    if ((DWORD)namesOffset + exp->NumberOfNames * sizeof(DWORD) > length) return FALSE;
-    if ((DWORD)ordinalsOffset + exp->NumberOfNames * sizeof(WORD) > length) return FALSE;
-
-    // iterate names
-    for (DWORD i = 0; i < exp->NumberOfNames; ++i) {
-        DWORD nameRVA = *(DWORD*)((BYTE*)buffer + namesOffset + i * sizeof(DWORD));
-        // convert nameRVA to raw offset
-        DWORD nameOffset = 0;
-        for (WORD s = 0; s < numberOfSections; ++s) {
-            DWORD va = section[s].VirtualAddress;
-            DWORD vs = section[s].Misc.VirtualSize;
-            DWORD ptr = section[s].PointerToRawData;
-            if (nameRVA >= va && nameRVA < va + vs) {
-                nameOffset = ptr + (nameRVA - va);
-                break;
-            }
-        }
-        if (!nameOffset) continue;
-        if ((DWORD)nameOffset >= length) continue;
-        char *name = (char*)((BYTE*)buffer + nameOffset);
-        // safe compare - ensure string is within buffer
-        size_t maxlen = length - nameOffset;
-        if (strncasecmp(name, "ReflectiveLoader", maxlen) == 0) return TRUE;
-    }
-    return FALSE;
-}
-
-/* Pretty-print machine */
-static const char* machine_to_str(WORD machine) {
-    switch(machine) {
-        case IMAGE_FILE_MACHINE_I386: return "x86 (IMAGE_FILE_MACHINE_I386)";
-        case IMAGE_FILE_MACHINE_AMD64: return "x64 (IMAGE_FILE_MACHINE_AMD64)";
-        case IMAGE_FILE_MACHINE_ARM: return "ARM";
-        case IMAGE_FILE_MACHINE_ARM64: return "ARM64";
-        default: return "Unknown";
-    }
-}
-
-/* Debug-enhanced inject */
 int inject(int pid, char *path, InjectParameters *params){
     HANDLE hFile          = NULL;
     HANDLE hRemoteThread  = NULL;
@@ -127,11 +24,17 @@ int inject(int pid, char *path, InjectParameters *params){
     TOKEN_PRIVILEGES priv = {0};
     BOOL bSuccess         = FALSE;
 
-    printf("[*] Injector process pointer size = %zu bytes\n", sizeof(void*));
+    log_set_level(LOG_DEBUG);
+    log_is_log_filename(false);
+    log_is_log_line(false);
+    log_is_log_time(false);
+
+    log_debug("Injector process pointer size = %zu bytes", sizeof(void*));
+    
 
     do {
         if (!params) {
-            printf("[-] params is NULL\n");
+            log_error("Invalid parameters");
             BREAK_WITH_ERROR("Invalid parameters");
         }
 
@@ -142,13 +45,13 @@ int inject(int pid, char *path, InjectParameters *params){
 		/* Debug helper: print the path being opened and its absolute path */
 		char fullPath[MAX_PATH] = {0};
 		if (GetFullPathNameA(path, MAX_PATH, fullPath, NULL) != 0) {
-			printf("[*] Injector will open DLL path: %s\n", fullPath);
+            log_debug("Injector GetFullPathNameA success: %s", fullPath);
 		} else {
-			printf("[*] Injector GetFullPathNameA failed: %lu\n", GetLastError());
+            log_error("[*] Injector GetFullPathNameA failed: %lu", GetLastError());
 		}
 
 		/* Before CreateFileA, print which file we are about to open */
-		printf("[*] About to open DLL: %s\n", path);
+        log_debug("[*] About to open DLL: %s", path);
 
 		/* after ReadFile (or after loading into lpBuffer), verify exports again on the buffer we actually read */
 
@@ -167,11 +70,11 @@ int inject(int pid, char *path, InjectParameters *params){
 
         /* print machine type of DLL buffer */
         WORD dllMachine = get_pe_machine(lpBuffer, dwLength);
-        printf("[*] DLL PE machine: %s (0x%04x)\n", machine_to_str(dllMachine), dllMachine);
+        log_debug("[*] DLL PE machine: %s (0x%04x)", machine_to_str(dllMachine), dllMachine);
 
         /* check if DLL has ReflectiveLoader export */
         BOOL hasRL = has_reflective_loader_export(lpBuffer, dwLength);
-        printf("[*] DLL has ReflectiveLoader export: %s\n", hasRL ? "YES" : "NO");
+        log_debug("[*] DLL has ReflectiveLoader export: %s", hasRL ? "YES" : "NO");
 
         /* enable SeDebugPrivilege (best-effort) */
         if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken)) {
@@ -191,30 +94,30 @@ int inject(int pid, char *path, InjectParameters *params){
         /* detect target architecture */
         BOOL targetIsWow64 = FALSE;
         if (!IsWow64Process(hProcess, &targetIsWow64)) {
-            printf("[!] IsWow64Process failed: %lu\n", GetLastError());
+            log_error("IsWow64Process failed");
         } else {
-            printf("[*] Is target process wow64 = %d (TRUE means 32-bit process on 64-bit OS)\n", targetIsWow64);
+            log_info("Is target process wow64 = %d (TRUE means 32-bit process on 64-bit OS)", targetIsWow64);
         }
 
         /* compare architectures */
 #if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
-        printf("[*] Injector compiled as: x64\n");
+        log_info("Injector compiled as: x64");
 #else
-        printf("[*] Injector compiled as: x86\n");
+        log_info("Injector compiled as: x86");
 #endif
 
         if (dllMachine == IMAGE_FILE_MACHINE_AMD64) {
-            printf("[*] DLL is x64\n");
+            log_info("[*] DLL is x64");
 #if !defined(_M_X64) && !defined(__x86_64__)
-            printf("[-] MISMATCH: injector is 32-bit but DLL is x64. This will fail.\n");
+            log_warn("[-] MISMATCH: injector is 32-bit but DLL is x64. This will fail.");
 #endif
         } else if (dllMachine == IMAGE_FILE_MACHINE_I386) {
-            printf("[*] DLL is x86\n");
+            log_info("[*] DLL is x86");
 #if defined(_M_X64) || defined(__x86_64__)
-            printf("[-] MISMATCH: injector is 64-bit but DLL is x86. This will fail.\n");
+            log_warn("[-] MISMATCH: injector is 64-bit but DLL is x86. This will fail.");
 #endif
         } else {
-            printf("[!] Unknown DLL machine type; proceed with caution\n");
+            log_error("Unknown DLL machine type; proceed with caution");
         }
 
         /* allocate remote memory for InjectParameters */
@@ -222,7 +125,7 @@ int inject(int pid, char *path, InjectParameters *params){
         if (!lpRemoteParam)
             BREAK_WITH_ERROR("VirtualAllocEx for remote param failed");
 
-        printf("[*] remote param addr = %p\n", lpRemoteParam);
+        log_debug("remote param addr = %p", lpRemoteParam);
 
         /* write params to remote memory */
         SIZE_T written = 0;
@@ -234,9 +137,9 @@ int inject(int pid, char *path, InjectParameters *params){
             InjectParameters verify;
             SIZE_T read = 0;
             if (ReadProcessMemory(hProcess, lpRemoteParam, &verify, sizeof(InjectParameters), &read)) {
-                printf("[*] Read back remote param, loaderDir=%.*s\n", (int)sizeof(verify.loaderDir), verify.loaderDir);
+                log_debug("[*] Read back remote param, loaderDir=%.*s", (int)sizeof(verify.loaderDir), verify.loaderDir);
             } else {
-                printf("[-] ReadProcessMemory failed: %lu\n", GetLastError());
+                log_error("[-] ReadProcessMemory failed: %lu", GetLastError());
             }
         }
 
@@ -244,21 +147,20 @@ int inject(int pid, char *path, InjectParameters *params){
         hRemoteThread = LoadRemoteLibraryR(hProcess, lpBuffer, dwLength, lpRemoteParam);
         if (!hRemoteThread) {
             /* library didn't set last error; print hint info we gathered */
-            printf("[-] LoadRemoteLibraryR returned NULL. GetLastError=%lu\n", GetLastError());
-            printf("[-] Diagnostic summary: dllMachine=0x%04x, hasReflectiveLoader=%d, targetIsWow64=%d\n",
+            log_error("[-] LoadRemoteLibraryR returned NULL. GetLastError=%lu", GetLastError());
+            log_error("[-] Diagnostic summary: dllMachine=0x%04x, hasReflectiveLoader=%d, targetIsWow64=%d",
                    dllMachine, hasRL ? 1 : 0, targetIsWow64 ? 1 : 0);
             BREAK_WITH_ERROR("LoadRemoteLibraryR returned NULL");
         }
 
-        printf("[+] DLL injected: '%s' into PID %d, remote param at %p\n", path, dwProcessId, lpRemoteParam);
-
+        log_info("[+] DLL injected: '%s' into PID %d, remote param at %p", path, dwProcessId, lpRemoteParam);
         /* wait for reflective loader thread to complete */
         WaitForSingleObject(hRemoteThread, INFINITE);
 
         /* get remote thread exit code */
         DWORD exitCode = 0;
         if (GetExitCodeThread(hRemoteThread, &exitCode))
-            printf("[+] Remote thread exit code: %lu\n", exitCode);
+            log_info("[+] Remote thread exit code: %lu", exitCode);
 
         bSuccess = TRUE;
 

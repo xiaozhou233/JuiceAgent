@@ -86,9 +86,11 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
 
     // Invoke init(dir)
     log_info("[%s] invoking loader init()...", LOGNAME);
+    log_info("\n============ Loader Info ============\n");
     jclass cls = (*env)->FindClass(env, "cn/xiaozhou233/juiceloader/JuiceLoader");
     jmethodID mid = (*env)->GetStaticMethodID(env, cls, "init", "(Ljava/lang/String;)V");
     (*env)->CallStaticVoidMethod(env, cls, mid, (*env)->NewStringUTF(env, dir));
+    log_info("\n============ Loader Info =============\n");
     log_info("[%s] invoked. ", LOGNAME);
     log_info("[%s] done. cleaning up...", LOGNAME);
 
