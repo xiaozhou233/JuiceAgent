@@ -12,8 +12,9 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 # includes
 set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/includes)
 
-# library - ReflectiveDLLInjection
+# libraries
 add_subdirectory(${INCLUDES}/ReflectiveDLLInjection)
+add_subdirectory(${INCLUDES}/log.c)
 
 include(cmake/JuiceModule.cmake)
 

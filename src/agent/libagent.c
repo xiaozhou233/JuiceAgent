@@ -5,38 +5,43 @@
 #include "jni.h"
 #include "jvmti.h"
 #include "InjectParameters.h"
+#include "log.h"
 
 #define WIN_X64
 extern HINSTANCE hAppInstance;
 
-DWORD WINAPI ThreadProc(LPVOID lpParam) {
-    printf("libagent: New thread created\n");
+#define LOGNAME "libagent"
 
+DWORD WINAPI ThreadProc(LPVOID lpParam) {
+    log_trace("[%s] New thread started.", LOGNAME);
+
+    /// ======== Check Environment ======== ///
     InjectParameters *param = (InjectParameters*)lpParam;
     if (!param) {
-        printf("libagent: ThreadProc got NULL param\n");
+        log_error("[%s] ThreadProc got NULL param", LOGNAME);
         return 1;
     }
 
-    printf("libagent: ThreadProc got param: %s\n", param->loaderDir);
+    log_info("[%s] ThreadProc got param: %s", LOGNAME, param->loaderDir);
 
     const char* dir = param->loaderDir;
-    printf("libagent: LoaderDir: %s\n", dir);
+    log_info("[%s] LoaderDir: %s", LOGNAME, dir);
     if (dir == NULL) {
-        printf("libagent: LoaderDir is not set\n");
+        log_error("[%s] LoaderDir is not set", LOGNAME);
         MessageBoxA(NULL, "LoaderDir is not set", "Error", MB_OK);
         return 1;
     }
 
     // Check JuiceLoader.jar
-    printf("libagent: Check JuiceLoader.jar");
+    log_trace("[%s] Checking JuiceLoader.jar", LOGNAME);
     char path[MAX_PATH];
     sprintf(path, "%s\\JuiceLoader.jar", dir);
     if (access(path, 0) == -1) {
-        printf("libagent: JuiceLoader.jar not found\n");
+        log_error("[%s] JuiceLoader.jar not found", LOGNAME);
         MessageBoxA(NULL, "JuiceLoader.jar not found", "Error", MB_OK);
         return 1;
     }
+    /// ======== Check Environment ======== ///
     
     // Init vars
     JavaVM *jvm;
@@ -44,48 +49,53 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
 
     // Get JavaVM
     if (JNI_GetCreatedJavaVMs(&jvm, 1, NULL) != JNI_OK || !jvm) {
-        printf("DllMain: JNI_GetCreatedJavaVMs failed\n");
+        log_error("[%s] JNI_GetCreatedJavaVMs failed", LOGNAME);
         MessageBoxA(NULL, "JNI_GetCreatedJavaVMs failed", "Error", MB_OK);
     } else {
-        printf("DllMain: JNI_GetCreatedJavaVMs success\n");
+        log_trace("[%s] JNI_GetCreatedJavaVMs success", LOGNAME);
     }
 
     // Get JNIEnv
     if ((*jvm)->AttachCurrentThread(jvm, (void **)&env, NULL) != JNI_OK) {
+        log_error("[%s] AttachCurrentThread failed", LOGNAME);
         MessageBoxA(NULL, "Failed to attach current thread to JVM!", "Error", MB_ICONERROR);
         return 1;
     } else {
-        printf("DllMain: AttachCurrentThread success\n");
+        log_trace("[%s] AttachCurrentThread success", LOGNAME);
     }
 
     // Debug: JVM version
     jint version = (*env)->GetVersion(env);
-    printf("JVM version: 0x%x\n", version);
+    log_trace("[%s] JVM version: 0x%x", LOGNAME, version);
 
     // Init and enable jvmti
-    printf("libagent: enabling jvmti\n");
     jvmtiEnv *jvmti;
     jint res = (*jvm)->GetEnv(jvm, (void**)&jvmti, JVMTI_VERSION_1_2);
     if (res != JNI_OK || jvmti == NULL) {
-        printf("libagent: GetEnv failed\n");
+        log_error("[%s] GetEnv failed", LOGNAME);
         return 1;
     } else {
-        printf("libagent: GetEnv success\n");
+        log_trace("[%s] GetEnv success", LOGNAME);
     }
+    log_info("[%s] enabled jvmti", LOGNAME);
 
     // Inject jars
-    printf("libagent: injecting jars...\n");
+    log_info("[%s] injecting loader jar...", LOGNAME);
     (*jvmti)->AddToBootstrapClassLoaderSearch(jvmti, path);
+    log_info("[%s] injected loader jar", LOGNAME);
 
     // Invoke init(dir)
-    printf("libagent: invoking init()...\n");
+    log_info("[%s] invoking loader init()...", LOGNAME);
     jclass cls = (*env)->FindClass(env, "cn/xiaozhou233/juiceloader/JuiceLoader");
     jmethodID mid = (*env)->GetStaticMethodID(env, cls, "init", "(Ljava/lang/String;)V");
     (*env)->CallStaticVoidMethod(env, cls, mid, (*env)->NewStringUTF(env, dir));
-    printf("done\n");
+    log_info("[%s] invoked. ", LOGNAME);
+    log_info("[%s] done. cleaning up...", LOGNAME);
 
     free(param);
+    (*jvm)->DetachCurrentThread(jvm);
 
+    log_info("[%s] exit.", LOGNAME);
     return 0;
 }
 
@@ -99,7 +109,12 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
 
         case DLL_PROCESS_ATTACH:
             hAppInstance = hinstDLL;
-            printf("libagent: DLL_PROCESS_ATTACH\n");
+
+            log_set_level(LOG_TRACE);
+            log_is_log_filename(false);
+            log_is_log_line(false);
+            log_is_log_time(false);
+            log_info("[%s] DLL_PROCESS_ATTACH", LOGNAME);
 
             DisableThreadLibraryCalls(hinstDLL);
 
@@ -108,7 +123,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
 
                 InjectParameters *localParm = (InjectParameters*)malloc(sizeof(InjectParameters));
                 if (localParm == NULL) {
-                    printf("libagent: malloc failed for InjectParameters\n");
+                    log_error("[%s] malloc failed for InjectParameters", LOGNAME);
                     break;
                 }
 
@@ -117,20 +132,22 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
                 strncpy(localParm->loaderDir, remoteParm->loaderDir, sizeof(localParm->loaderDir) - 1);
                 localParm->loaderDir[sizeof(localParm->loaderDir)-1] = '\0';
 
-                printf("libagent: Loader Dir = %s\n", localParm->loaderDir);
+                log_info("[%s] DllMain got Loader Dir = %s", LOGNAME, localParm->loaderDir);
 
                 HANDLE hThread = CreateThread(NULL, 0, ThreadProc, localParm, 0, NULL);
                 if (hThread) {
                     CloseHandle(hThread);
                 } else {
-                    printf("libagent: CreateThread failed %lu\n", GetLastError());
+                    log_error("[%s] CreateThread failed %lu", LOGNAME, GetLastError());
                     free(localParm);
                 }
+            } else {
+                log_error("[%s] RemoteParm is NULL!", LOGNAME);
             }
             break;
             
         case DLL_PROCESS_DETACH:
-            printf("libagent: DLL_PROCESS_DETACH\n");
+            log_info("[%s] DLL_PROCESS_DETACH", LOGNAME);
             break;
         case DLL_THREAD_ATTACH:
         case DLL_THREAD_DETACH:

@@ -20,6 +20,7 @@ function(add_juice_module NAME)
         ${CMAKE_SOURCE_DIR}/includes/jvm/win32
         ${CMAKE_SOURCE_DIR}/includes/JuiceLoader
         ${CMAKE_SOURCE_DIR}/includes/ReflectiveDLLInjection
+        ${CMAKE_SOURCE_DIR}/includes/log.c
         "${CMAKE_SOURCE_DIR}/src/${NAME}/utils"
         "${CMAKE_SOURCE_DIR}/src/${NAME}/include"
     )
@@ -27,6 +28,7 @@ function(add_juice_module NAME)
     # Link common libraries
     target_link_libraries(${NAME} PRIVATE
         ReflectiveDLLInjection
+        log.c
         jvm
     )
 
