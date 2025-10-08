@@ -15,13 +15,6 @@ extern "C" {
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_orangex_injector_InjectorNative_inject
   (JNIEnv *, jobject, jint, jstring, jstring);
 
-/*
- * Class:     cn_xiaozhou233_juiceloader_JuiceLoaderNative
- * Method:    getLoadedClasses
- * Signature: ()[Ljava/lang/Class;
- */
-JNIEXPORT jobjectArray JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_getLoadedClasses
-  (JNIEnv *, jobject);
 
 #ifdef __cplusplus
 }

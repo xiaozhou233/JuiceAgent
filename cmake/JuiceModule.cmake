@@ -18,7 +18,7 @@ function(add_juice_module NAME)
         ${CMAKE_SOURCE_DIR}/includes
         ${CMAKE_SOURCE_DIR}/includes/jvm
         ${CMAKE_SOURCE_DIR}/includes/jvm/win32
-        ${CMAKE_SOURCE_DIR}/includes/JuiceLoader
+        ${CMAKE_SOURCE_DIR}/includes/JuiceAgent
         ${CMAKE_SOURCE_DIR}/includes/ReflectiveDLLInjection
         ${CMAKE_SOURCE_DIR}/includes/log.c
         "${CMAKE_SOURCE_DIR}/src/${NAME}/utils"

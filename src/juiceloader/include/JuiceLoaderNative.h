@@ -39,6 +39,14 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_red
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_redefineClass__Ljava_lang_String_2_3BI
   (JNIEnv *, jobject, jstring, jbyteArray, jint);
 
+/*
+ * Class:     cn_xiaozhou233_juiceloader_JuiceLoaderNative
+ * Method:    getLoadedClasses
+ * Signature: ()[Ljava/lang/Class;
+ */
+JNIEXPORT jobjectArray JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_getLoadedClasses
+  (JNIEnv *, jobject);
+
 #ifdef __cplusplus
 }
 #endif
