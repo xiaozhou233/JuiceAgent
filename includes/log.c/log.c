@@ -22,7 +22,11 @@
 
 /*
  * Modified by xiaozhou233 (2025), based on work by rxi (MIT License).
- * 
+ * - Add log setting
+ *   - log time switch
+ *   - log level switch
+ *   - log filename switch
+ *   - log line number switch
 */
 
 #include "log.h"
