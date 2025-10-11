@@ -1,101 +1,66 @@
 #include "windows.h"
 #include "JuiceLoaderNative.h"
 #include "jvmti.h"
+#include "log.h"
+#include "JuiceLoaderUtils.h"
+#include "JuiceLoader.h"
 
-struct _JuiceLoaderNative {
-    JavaVM *jvm;
-    jvmtiEnv *jvmti;
-    JNIEnv *env;
-} JuiceLoaderNative;
-
+#define LOG_PREFIX "[JuiceLoader]"
 static void check_jvmti_error(jvmtiEnv *j, jvmtiError err, const char *msg) {
     if (err != JVMTI_ERROR_NONE) {
         char *errname = NULL;
         (*j)->GetErrorName(j, err, &errname);
-        fprintf(stderr, "JVMTI ERROR: %s: %d (%s)\n", msg, err, (errname==NULL?"Unknown":errname));
+        log_error("JVMTI ERROR: %s: %d (%s)", msg, err, (errname==NULL?"Unknown":errname));
     }
-}
-
-/* Helper: get method full name: ClassName.methodName(signature) */
-static char* get_method_fullname(jvmtiEnv *j, JNIEnv *env, jthread thread, jmethodID method) {
-    char *mname = NULL, *msig = NULL, *mgeneric = NULL;
-    jclass declaring = NULL;
-    char *cls_sig = NULL;
-    char *result = NULL;
-
-    jvmtiError err;
-
-    err = (*j)->GetMethodName(j, method, &mname, &msig, &mgeneric);
-    if (err != JVMTI_ERROR_NONE) goto cleanup;
-
-    err = (*j)->GetMethodDeclaringClass(j, method, &declaring);
-    if (err != JVMTI_ERROR_NONE) goto cleanup;
-
-    err = (*j)->GetClassSignature(j, declaring, &cls_sig, NULL);
-    if (err != JVMTI_ERROR_NONE) goto cleanup;
-
-    /* cls_sig is like "Lcom/example/MyClass;" -> make it human-friendly */
-    size_t len = strlen(cls_sig) + strlen(mname) + strlen(msig) + 4;
-    result = (char*)malloc(len);
-    if (result) {
-        /* remove leading L and trailing ; from class signature if present */
-        char *cls_nice = cls_sig;
-        if (cls_sig[0] == 'L') cls_nice = cls_sig + 1;
-        size_t cls_len = strlen(cls_nice);
-        if (cls_nice[cls_len - 1] == ';') cls_nice[cls_len - 1] = '\0';
-        snprintf(result, len, "%s.%s%s", cls_nice, mname, msig);
-    }
-
-cleanup:
-    if (mname) (*j)->Deallocate(j, (unsigned char*)mname);
-    if (msig) (*j)->Deallocate(j, (unsigned char*)msig);
-    if (mgeneric) (*j)->Deallocate(j, (unsigned char*)mgeneric);
-    if (cls_sig) (*j)->Deallocate(j, (unsigned char*)cls_sig);
-    return result;
 }
 
 /* Method entry callback */
 static void JNICALL callbackMethodEntry(jvmtiEnv *j, JNIEnv *env, jthread thread, jmethodID method) {
     char *fullname = get_method_fullname(j, env, thread, method);
     if (fullname) {
-        printf("ENTER: %s\n", fullname);
+        log_info("ENTER: %s", fullname);
         free(fullname);
     } else {
-        printf("ENTER: <unknown method>\n");
+        log_warn("ENTER: <unknown method>");
     }
 }
 
 
 int setup(JNIEnv *env) {
-    printf("setup!\n");
+    log_is_log_filename(false);
+    log_is_log_line(false);
+    log_is_log_time(false);
+    log_set_level(LOG_DEBUG);
+
+    log_info("%s setup!", LOG_PREFIX);
     {// Get JavaVM
     if (JNI_GetCreatedJavaVMs(&JuiceLoaderNative.jvm, 1, NULL) != JNI_OK || !JuiceLoaderNative.jvm) {
-        printf("libjuiceloader: JNI_GetCreatedJavaVMs failed\n");
+        log_error("%s JNI_GetCreatedJavaVMs failed", LOG_PREFIX);
         return 1;
     } else {
-        printf("libjuiceloader: JNI_GetCreatedJavaVMs success\n");
+        log_info("%s JNI_GetCreatedJavaVMs success", LOG_PREFIX);
     }
 
     // Get JNIEnv
     if ((*JuiceLoaderNative.jvm)->AttachCurrentThread(JuiceLoaderNative.jvm, (void **)&JuiceLoaderNative.env, NULL) != JNI_OK) {
-        printf("libjuiceloader: AttachCurrentThread failed\n");
+        log_error("%s AttachCurrentThread failed", LOG_PREFIX);
         return 1;
     } else {
-        printf("libjuiceloader: AttachCurrentThread success\n");
+        log_info("%s AttachCurrentThread success", LOG_PREFIX);
     }
 
     // Debug: JVM version
     jint version = (*JuiceLoaderNative.env)->GetVersion(JuiceLoaderNative.env);
-    printf("JVM version: 0x%x\n", version);
+    log_debug("%s JVM version: 0x%x", LOG_PREFIX, version);
 
-    printf("libagent: enabling jvmti\n");
     jint res = (*JuiceLoaderNative.jvm)->GetEnv(JuiceLoaderNative.jvm, (void**)&JuiceLoaderNative.jvmti, JVMTI_VERSION_1_2);
     if (res != JNI_OK || JuiceLoaderNative.jvmti == NULL) {
-        printf("libagent: GetEnv failed\n");
+        log_error("%s GetEnv failed", LOG_PREFIX);
         return 1;
     } else {
-        printf("libagent: GetEnv success\n");
+        log_info("%s GetEnv success", LOG_PREFIX);
     }}
+    log_info("%s Enabled JVMTI.");
     
     jvmtiError err;
 //    jvmtiEventCallbacks callbacks;
@@ -128,7 +93,7 @@ int setup(JNIEnv *env) {
 */
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_init
   (JNIEnv *env, jobject obj) {
-    printf("JNI Func Init Invoke!\n");
+    log_info("%s JNI Func Init Invoke!");
     if(setup(env) == 0) {
         return JNI_TRUE;
     }
@@ -141,15 +106,15 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_ini
 */
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_injectJar
   (JNIEnv *env, jobject obj, jstring path) {
-    printf("JNI Func InjectJar Invoke!\n");
+    log_info("%s JNI Func InjectJar Invoke!", LOG_PREFIX);
     jvmtiError err;
     if(JuiceLoaderNative.jvmti == NULL) {
-        printf("JVM not init!\n");
+        log_error("%s JVM not init!", LOG_PREFIX);
         return JNI_FALSE;
     }
 
     const char *pathStr = (*env)->GetStringUTFChars(env, path, NULL);
-    printf("InjectJar: %s\n", pathStr);
+    log_info("%s InjectJar: %s", LOG_PREFIX, pathStr);
 
     err = (*JuiceLoaderNative.jvmti)->AddToBootstrapClassLoaderSearch(JuiceLoaderNative.jvmti, pathStr);
     check_jvmti_error(JuiceLoaderNative.jvmti, err, "AddToBootstrapClassLoaderSearch");
@@ -162,15 +127,15 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_inj
 */
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_redefineClass__Ljava_lang_Class_2_3BI
   (JNIEnv *env, jobject obj, jclass clazz, jbyteArray bytecodes, jint len) {
-    printf("JNI Func RedefineClass Invoke!\n");
+    log_info("%s JNI Func RedefineClass Invoke!", LOG_PREFIX);
     jvmtiError err;
 
     if (JuiceLoaderNative.jvmti == NULL) {
-        printf("JVM not init!\n");
+        log_error("%s JVM not init!", LOG_PREFIX);
         return JNI_FALSE;
     }
 
-    printf("Creating class definition...\n");
+    log_info("%s Creating class definition...", LOG_PREFIX);
     jbyte* buf = (*env)->GetByteArrayElements(env, bytecodes, NULL);  // get raw bytes
 
     jvmtiClassDefinition defs[1];
@@ -178,13 +143,13 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_red
     defs[0].class_byte_count = len;
     defs[0].class_bytes = (const unsigned char*) buf;
 
-    printf("Redefining class...\n");
+    log_info("%s Redefining class...", LOG_PREFIX);
     err = (*JuiceLoaderNative.jvmti)->RedefineClasses(JuiceLoaderNative.jvmti, 1, defs);
     check_jvmti_error(JuiceLoaderNative.jvmti, err, "RedefineClasses");
 
     (*env)->ReleaseByteArrayElements(env, bytecodes, buf, JNI_ABORT); // do not copy back, just release
 
-    printf("Done!\n");
+    log_info("%s RedefineClass Done!", LOG_PREFIX);
     return JNI_TRUE;
 }
 
@@ -195,23 +160,23 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_red
 */
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_redefineClass__Ljava_lang_String_2_3BI
   (JNIEnv *env, jobject obj, jstring classname, jbyteArray bytecodes, jint len) {
-    printf("JNI Func RedefineClass Invoke!\n");
+    log_info("%s RedefineClass Invoke!", LOG_PREFIX);
     jvmtiError err;
 
     if (JuiceLoaderNative.jvmti == NULL) {
-        printf("JVM not init!\n");
+        log_error("%s JVM not init!", LOG_PREFIX);
         return JNI_FALSE;
     }
 
     // --- 获取 class 名称 ---
     const char* cname = (*env)->GetStringUTFChars(env, classname, NULL);
-    printf("Finding class: %s\n", cname);
+    log_debug("%s Finding class: %s", LOG_PREFIX, cname);
 
     jclass clazz = (*env)->FindClass(env, cname);
     (*env)->ReleaseStringUTFChars(env, classname, cname);  // 正确释放
 
     if (clazz == NULL) {
-        printf("Class not found!\n");
+        log_error("%s Class not found!", LOG_PREFIX);
         return JNI_FALSE;
     }
 
@@ -223,13 +188,13 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_red
     defs[0].class_byte_count = len;
     defs[0].class_bytes = (const unsigned char*) buf;
 
-    printf("Redefining class...\n");
+    log_info("%s Redefining class...", LOG_PREFIX);
     err = (*JuiceLoaderNative.jvmti)->RedefineClasses(JuiceLoaderNative.jvmti, 1, defs);
     check_jvmti_error(JuiceLoaderNative.jvmti, err, "RedefineClasses");
 
     (*env)->ReleaseByteArrayElements(env, bytecodes, buf, JNI_ABORT);  // 用之前的 buf
 
-    printf("Done!\n");
+    log_info("%s Done!", LOG_PREFIX);
     return JNI_TRUE;
 }
 
