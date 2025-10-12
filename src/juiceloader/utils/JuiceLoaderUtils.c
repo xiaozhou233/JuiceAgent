@@ -1,4 +1,5 @@
 #include "JuiceLoaderUtils.h"
+#include "windows.h"
 
 /* Helper: get method full name: ClassName.methodName(signature) */
 char* get_method_fullname(jvmtiEnv *j, JNIEnv *env, jthread thread, jmethodID method) {
