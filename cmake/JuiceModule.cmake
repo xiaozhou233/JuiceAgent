@@ -23,6 +23,7 @@ function(add_juice_module NAME)
         ${CMAKE_SOURCE_DIR}/includes/log.c
         "${CMAKE_SOURCE_DIR}/src/${NAME}/utils"
         "${CMAKE_SOURCE_DIR}/src/${NAME}/include"
+        "${CMAKE_SOURCE_DIR}/src/utils"
     )
 
     # Link common libraries
@@ -30,6 +31,7 @@ function(add_juice_module NAME)
         ReflectiveDLLInjection
         log.c
         jvm
+        utils
     )
 
     add_subdirectory("${CMAKE_SOURCE_DIR}/src/${NAME}")
