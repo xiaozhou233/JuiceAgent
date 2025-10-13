@@ -13,7 +13,7 @@ extern "C" {
  * Signature: (ILjava/lang/String;)Z
  */
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_orangex_injector_InjectorNative_inject
-  (JNIEnv *, jobject, jint, jstring, jstring);
+  (JNIEnv *, jobject, jint, jstring, jstring, jstring, jstring);
 
 
 #ifdef __cplusplus
