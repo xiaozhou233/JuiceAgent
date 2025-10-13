@@ -7,6 +7,7 @@
 
 typedef struct InjectParameters{
     char JuiceLoaderJarPath[INJECT_PATH_MAX];
+    char BootstrapApiPath[INJECT_PATH_MAX];
     // Optional: 
     char JuiceLoaderLibPath[INJECT_PATH_MAX];
     // Optional:

@@ -223,12 +223,13 @@ int inject_pid(int pid){
 
 /* JNI interface */
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_orangex_injector_InjectorNative_inject
-  (JNIEnv *env, jobject obj, jint pid,jstring jAgentPth, jstring jJuiceLoaderJarPath, jstring jJuiceLoaderLibPath, jstring jEntryJarPath) {
+  (JNIEnv *env, jobject obj, jint pid,jstring jAgentPth, jstring jJuiceLoaderJarPath, jstring jJuiceLoaderLibPath, jstring jEntryJarPath, jstring jBootStrapApiPath) {
 
     const char* localAgentPath = (*env)->GetStringUTFChars(env, jAgentPth, NULL);
     const char* localLoaderJar = (*env)->GetStringUTFChars(env, jJuiceLoaderJarPath, NULL);
     const char* localLoaderLib = (*env)->GetStringUTFChars(env, jJuiceLoaderLibPath, NULL);
     const char* localEntryJar  = (*env)->GetStringUTFChars(env, jEntryJarPath, NULL);
+    const char* bootstrapApiPath  = (*env)->GetStringUTFChars(env, jBootStrapApiPath, NULL);
 
     InjectParameters params;
     memset(&params, 0, sizeof(params));
@@ -236,6 +237,7 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_orangex_injector_InjectorNative_i
     strncpy(params.JuiceLoaderJarPath, localLoaderJar ? localLoaderJar : "", sizeof(params.JuiceLoaderJarPath)-1);
     strncpy(params.JuiceLoaderLibPath, localLoaderLib ? localLoaderLib : "", sizeof(params.JuiceLoaderLibPath)-1);
     strncpy(params.EntryJarPath,      localEntryJar  ? localEntryJar  : "", sizeof(params.EntryJarPath)-1);
+    strncpy(params.BootstrapApiPath,  bootstrapApiPath  ? bootstrapApiPath  : "", sizeof(params.BootstrapApiPath)-1);
 
     int ret = inject(pid, (char*)localAgentPath, &params);
 
@@ -243,6 +245,7 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_orangex_injector_InjectorNative_i
     if (localLoaderJar) (*env)->ReleaseStringUTFChars(env, jJuiceLoaderJarPath, localLoaderJar);
     if (localLoaderLib) (*env)->ReleaseStringUTFChars(env, jJuiceLoaderLibPath, localLoaderLib);
     if (localEntryJar)  (*env)->ReleaseStringUTFChars(env, jEntryJarPath, localEntryJar);
+    if (bootstrapApiPath)  (*env)->ReleaseStringUTFChars(env, jBootStrapApiPath, bootstrapApiPath);
 
     return (ret == 0) ? JNI_TRUE : JNI_FALSE;
 }

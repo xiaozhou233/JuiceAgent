@@ -23,15 +23,30 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
         return 1;
     }
 
-    log_info("%s ThreadProc got param: \nJuiceLoaderJarPath: %s\nJuiceLoaderLibPath: %s\nEntryJarPath: %s", LOG_PREFIX,
+    log_info("%s ThreadProc got param: \nJuiceLoaderJarPath: %s\nJuiceLoaderLibPath: %s\nEntryJarPath: %s\nBootstrapApiPath: %s", LOG_PREFIX,
               param->JuiceLoaderJarPath,
               param->JuiceLoaderLibPath,
-              param->EntryJarPath);
+              param->EntryJarPath,
+              param->BootstrapApiPath);
+
+    const char* bootstrapApiJar = param->BootstrapApiPath;
+    if (bootstrapApiJar == NULL) {
+        log_error("%s BootstrapApiPath is not set", LOG_PREFIX);
+        MessageBoxA(NULL, "BootstrapApiPath is not set", "Error", MB_OK);
+        return 1;
+    }
+
+    log_trace("%s Checking bootstrap-api.jar", LOG_PREFIX);
+    if (access(bootstrapApiJar, 0) == -1) {
+        log_error("%s bootstrap-api.jar not found", LOG_PREFIX);
+        MessageBoxA(NULL, "bootstrap-api.jar not found", "Error", MB_OK);
+        return 1;
+    }
 
     const char* loaderJar = param->JuiceLoaderJarPath;
     if (loaderJar == NULL) {
-        log_error("%s LoaderDir is not set", LOG_PREFIX);
-        MessageBoxA(NULL, "LoaderDir is not set", "Error", MB_OK);
+        log_error("%s JuiceLoaderJarPath is not set", LOG_PREFIX);
+        MessageBoxA(NULL, "JuiceLoaderJarPath is not set", "Error", MB_OK);
         return 1;
     }
 
@@ -81,6 +96,10 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
     log_info("%s Enabled jvmti", LOG_PREFIX);
 
     // Inject jars
+    log_info("%s injecting bootstrap-api jar...", LOG_PREFIX);
+    (*jvmti)->AddToBootstrapClassLoaderSearch(jvmti, bootstrapApiJar);
+    log_info("%s injected bootstrap-api jar", LOG_PREFIX);
+    
     log_info("%s injecting loader jar...", LOG_PREFIX);
     (*jvmti)->AddToBootstrapClassLoaderSearch(jvmti, loaderJar);
     log_info("%s injected loader jar", LOG_PREFIX);
@@ -143,11 +162,13 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
                 safe_copy(localParm->JuiceLoaderJarPath, remoteParm->JuiceLoaderJarPath, sizeof(localParm->JuiceLoaderJarPath));
                 safe_copy(localParm->JuiceLoaderLibPath, remoteParm->JuiceLoaderLibPath, sizeof(localParm->JuiceLoaderLibPath));
                 safe_copy(localParm->EntryJarPath, remoteParm->EntryJarPath, sizeof(localParm->EntryJarPath));
+                safe_copy(localParm->BootstrapApiPath, remoteParm->BootstrapApiPath, sizeof(localParm->BootstrapApiPath));
 
-                log_info("%s DllMain got param: \nJuiceLoaderJarPath: %s\nJuiceLoaderLibPath: %s\nEntryJarPath: %s", LOG_PREFIX,
+                log_info("%s DllMain got param: \nJuiceLoaderJarPath: %s\nJuiceLoaderLibPath: %s\nEntryJarPath: %s\nBootstrapApiPath: %s", LOG_PREFIX,
                     localParm->JuiceLoaderJarPath,
                     localParm->JuiceLoaderLibPath,
-                    localParm->EntryJarPath);
+                    localParm->EntryJarPath,
+                    localParm->BootstrapApiPath);
 
                 HANDLE hThread = CreateThread(NULL, 0, ThreadProc, localParm, 0, NULL);
                 if (hThread) {
