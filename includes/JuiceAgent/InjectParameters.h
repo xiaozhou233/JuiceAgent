@@ -7,4 +7,13 @@ typedef struct InjectParameters{
     char loaderDir[MAX_PATH];
 } InjectParameters;
 
+/*
+typedef struct InjectParameters{
+    char *JuiceLoaderJarPath;
+    // Optional: 
+    char *JuiceLoaderLibPath;
+    // Optional:
+    char *EntryJarPath;
+} InjectParameters;
+*/
 #endif

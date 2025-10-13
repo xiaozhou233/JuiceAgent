@@ -1,6 +1,13 @@
 # src/utils/CMakeLists.txt
 
 add_library(utils STATIC
-    test.c)
+    JVMUtils.c)
 
-target_include_directories(utils PUBLIC ${CMAKE_CURRENT_LIST_DIR})
+target_include_directories(utils PUBLIC 
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/includes
+    ${CMAKE_SOURCE_DIR}/includes/jvm
+    ${CMAKE_SOURCE_DIR}/includes/jvm/win32)
+
+target_link_libraries(utils PRIVATE
+    jvm)

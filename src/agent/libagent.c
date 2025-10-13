@@ -6,6 +6,7 @@
 #include "jvmti.h"
 #include "InjectParameters.h"
 #include "log.h"
+#include "GlobalUtils.h"
 
 #define WIN_X64
 extern HINSTANCE hAppInstance;
@@ -44,38 +45,38 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
     /// ======== Check Environment ======== ///
     
     // Init vars
-    JavaVM *jvm;
-    JNIEnv *env;
-
-    // Get JavaVM
-    if (JNI_GetCreatedJavaVMs(&jvm, 1, NULL) != JNI_OK || !jvm) {
-        log_error("[%s] JNI_GetCreatedJavaVMs failed", LOGNAME);
-        MessageBoxA(NULL, "JNI_GetCreatedJavaVMs failed", "Error", MB_OK);
-    } else {
-        log_trace("[%s] JNI_GetCreatedJavaVMs success", LOGNAME);
-    }
-
-    // Get JNIEnv
-    if ((*jvm)->AttachCurrentThread(jvm, (void **)&env, NULL) != JNI_OK) {
-        log_error("[%s] AttachCurrentThread failed", LOGNAME);
-        MessageBoxA(NULL, "Failed to attach current thread to JVM!", "Error", MB_ICONERROR);
+    jint result = JNI_ERR;
+    JavaVM *jvm = NULL;
+    
+    result = GetCreatedJVM(&jvm);
+    if (result != JNI_OK) {
+        log_error("[%s] Failed to get JVM (%d)", LOGNAME, result);
+        MessageBoxA(NULL, "Failed to get JVM", "Error", MB_OK);
         return 1;
-    } else {
-        log_trace("[%s] AttachCurrentThread success", LOGNAME);
     }
+    log_info("[%s] Got JVM", LOGNAME);
+
+    JNIEnv *env = NULL;
+    result = GetJNIEnv(jvm, &env);
+    if (result != JNI_OK) {
+        log_error("[%s] Failed to get JNIEnv (%d)", LOGNAME, result);
+        MessageBoxA(NULL, "Failed to get JNIEnv", "Error", MB_OK);
+        return 1;
+    } 
+    log_info("[%s] Got JNIEnv", LOGNAME);
+    
 
     // Debug: JVM version
     jint version = (*env)->GetVersion(env);
     log_trace("[%s] JVM version: 0x%x", LOGNAME, version);
 
     // Init and enable jvmti
-    jvmtiEnv *jvmti;
-    jint res = (*jvm)->GetEnv(jvm, (void**)&jvmti, JVMTI_VERSION_1_2);
-    if (res != JNI_OK || jvmti == NULL) {
-        log_error("[%s] GetEnv failed", LOGNAME);
+    jvmtiEnv *jvmti = NULL;
+    result = GetJVMTI(jvm, &jvmti);
+    if (result != JNI_OK) {
+        log_error("[%s] Failed to get JVMTI (%d)", LOGNAME, result);
+        MessageBoxA(NULL, "Failed to get JVMTI", "Error", MB_OK);
         return 1;
-    } else {
-        log_trace("[%s] GetEnv success", LOGNAME);
     }
     log_info("[%s] enabled jvmti", LOGNAME);
 
