@@ -189,23 +189,34 @@ int inject(int pid, char *path, InjectParameters *params){
 
 /* wrapper using HOME */
 int inject_pid(int pid){
-    const char* home = getenv("HOME");
-    if (!home) return -1;
+        const char* home = getenv("HOME");
+    if (!home) {
+        home = getenv("USERPROFILE");
+        if (!home) 
+            return -1;
+        
+    }
 
-    char dir[MAX_PATH];
+    char dir[INJECT_PATH_MAX];
     snprintf(dir, sizeof(dir), "%s\\JuiceAgent\\", home);
 
-    char path[MAX_PATH];
+    char path[INJECT_PATH_MAX];
     snprintf(path, sizeof(path), "%s\\libagent.dll", dir);
 
-    char loaderJarPath[MAX_PATH];
+    char loaderJarPath[INJECT_PATH_MAX];
     snprintf(loaderJarPath, sizeof(loaderJarPath), "%s\\JuiceLoader.jar", dir);
 
     InjectParameters params;
     memset(&params, 0, sizeof(params));
-    params.JuiceLoaderJarPath = loaderJarPath;
-    params.JuiceLoaderLibPath = "";
-    params.EntryJarPath = "";
+    
+    strncpy(params.JuiceLoaderJarPath, loaderJarPath, sizeof(params.JuiceLoaderJarPath) - 1);
+    params.JuiceLoaderJarPath[sizeof(params.JuiceLoaderJarPath) - 1] = '\0';
+
+    strncpy(params.JuiceLoaderLibPath, "", sizeof(params.JuiceLoaderLibPath) - 1);
+    params.JuiceLoaderLibPath[sizeof(params.JuiceLoaderLibPath) - 1] = '\0';
+
+    strncpy(params.EntryJarPath, "", sizeof(params.EntryJarPath) - 1);
+    params.EntryJarPath[sizeof(params.EntryJarPath) - 1] = '\0';
 
     return inject(pid, path, &params);
 }
@@ -214,24 +225,24 @@ int inject_pid(int pid){
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_orangex_injector_InjectorNative_inject
   (JNIEnv *env, jobject obj, jint pid,jstring jAgentPth, jstring jJuiceLoaderJarPath, jstring jJuiceLoaderLibPath, jstring jEntryJarPath) {
 
-    const char* JuiceAgentPath = (*env)->GetStringUTFChars(env, jAgentPth, 0);
-    const char* JuiceLoaderJarPath = (*env)->GetStringUTFChars(env, jJuiceLoaderJarPath, 0);
-    const char* JuiceLoaderLibPath = (*env)->GetStringUTFChars(env, jJuiceLoaderLibPath, 0);
-    const char* EntryJarPath = (*env)->GetStringUTFChars(env, jEntryJarPath, 0);
+    const char* localAgentPath = (*env)->GetStringUTFChars(env, jAgentPth, NULL);
+    const char* localLoaderJar = (*env)->GetStringUTFChars(env, jJuiceLoaderJarPath, NULL);
+    const char* localLoaderLib = (*env)->GetStringUTFChars(env, jJuiceLoaderLibPath, NULL);
+    const char* localEntryJar  = (*env)->GetStringUTFChars(env, jEntryJarPath, NULL);
 
     InjectParameters params;
     memset(&params, 0, sizeof(params));
     
-    params.JuiceLoaderJarPath = (char*)JuiceLoaderJarPath;
-    params.JuiceLoaderLibPath = (char*)JuiceLoaderLibPath;
-    params.EntryJarPath = (char*)EntryJarPath;
+    strncpy(params.JuiceLoaderJarPath, localLoaderJar ? localLoaderJar : "", sizeof(params.JuiceLoaderJarPath)-1);
+    strncpy(params.JuiceLoaderLibPath, localLoaderLib ? localLoaderLib : "", sizeof(params.JuiceLoaderLibPath)-1);
+    strncpy(params.EntryJarPath,      localEntryJar  ? localEntryJar  : "", sizeof(params.EntryJarPath)-1);
 
-    int ret = inject(pid, (char*)JuiceAgentPath, &params);
+    int ret = inject(pid, (char*)localAgentPath, &params);
 
-    (*env)->ReleaseStringUTFChars(env, jAgentPth, JuiceAgentPath);
-    (*env)->ReleaseStringUTFChars(env, jJuiceLoaderJarPath, JuiceLoaderJarPath);
-    (*env)->ReleaseStringUTFChars(env, jJuiceLoaderLibPath, JuiceLoaderLibPath);
-    (*env)->ReleaseStringUTFChars(env, jEntryJarPath, EntryJarPath);
+    if (localAgentPath) (*env)->ReleaseStringUTFChars(env, jAgentPth, localAgentPath);
+    if (localLoaderJar) (*env)->ReleaseStringUTFChars(env, jJuiceLoaderJarPath, localLoaderJar);
+    if (localLoaderLib) (*env)->ReleaseStringUTFChars(env, jJuiceLoaderLibPath, localLoaderLib);
+    if (localEntryJar)  (*env)->ReleaseStringUTFChars(env, jEntryJarPath, localEntryJar);
 
     return (ret == 0) ? JNI_TRUE : JNI_FALSE;
 }

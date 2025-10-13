@@ -3,12 +3,14 @@
 
 #include <windows.h>
 
+#define INJECT_PATH_MAX 4096
+
 typedef struct InjectParameters{
-    char *JuiceLoaderJarPath;
+    char JuiceLoaderJarPath[INJECT_PATH_MAX];
     // Optional: 
-    char *JuiceLoaderLibPath;
+    char JuiceLoaderLibPath[INJECT_PATH_MAX];
     // Optional:
-    char *EntryJarPath;
+    char EntryJarPath[INJECT_PATH_MAX];
 } InjectParameters;
 
 #endif
