@@ -15,6 +15,7 @@ set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/includes)
 # libraries
 add_subdirectory(${INCLUDES}/ReflectiveDLLInjection)
 add_subdirectory(${INCLUDES}/log.c)
+add_subdirectory(${INCLUDES}/tomlc17)
 add_subdirectory(src/utils)
 
 include(cmake/JuiceModule.cmake)
