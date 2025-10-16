@@ -137,7 +137,7 @@ int inject(int pid, char *path, InjectParameters *params){
             InjectParameters verify;
             SIZE_T read = 0;
             if (ReadProcessMemory(hProcess, lpRemoteParam, &verify, sizeof(InjectParameters), &read)) {
-                log_debug("[*] Read back remote param, JuiceLoaderJarPath=%.*s", (int)sizeof(verify.JuiceLoaderJarPath), verify.JuiceLoaderJarPath);
+                log_debug("[*] Read back remote param, ConfigPath=%.*s", (int)sizeof(verify.ConfigPath), verify.ConfigPath);
             } else {
                 log_error("[-] ReadProcessMemory failed: %lu", GetLastError());
             }
@@ -187,65 +187,44 @@ int inject(int pid, char *path, InjectParameters *params){
     return bSuccess ? 0 : -1;
 }
 
-/* wrapper using HOME */
-int inject_pid(int pid){
-        const char* home = getenv("HOME");
-    if (!home) {
-        home = getenv("USERPROFILE");
-        if (!home) 
-            return -1;
-        
-    }
+/*
+* JNI Function: inject(int pid)
+* Note: 
+*/
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_inject__ILjava_lang_String_2
+  (JNIEnv *env, jobject obj, jint pid, jstring path) {
+    // Injection Path
+    const char* InjectionDLL = (*env)->GetStringUTFChars(env, path, NULL);
 
-    char dir[INJECT_PATH_MAX];
-    snprintf(dir, sizeof(dir), "%s\\JuiceAgent\\", home);
-
-    char path[INJECT_PATH_MAX];
-    snprintf(path, sizeof(path), "%s\\libagent.dll", dir);
-
-    char loaderJarPath[INJECT_PATH_MAX];
-    snprintf(loaderJarPath, sizeof(loaderJarPath), "%s\\JuiceLoader.jar", dir);
-
-    InjectParameters params;
-    memset(&params, 0, sizeof(params));
-    
-    strncpy(params.JuiceLoaderJarPath, loaderJarPath, sizeof(params.JuiceLoaderJarPath) - 1);
-    params.JuiceLoaderJarPath[sizeof(params.JuiceLoaderJarPath) - 1] = '\0';
-
-    strncpy(params.JuiceLoaderLibPath, "", sizeof(params.JuiceLoaderLibPath) - 1);
-    params.JuiceLoaderLibPath[sizeof(params.JuiceLoaderLibPath) - 1] = '\0';
-
-    strncpy(params.EntryJarPath, "", sizeof(params.EntryJarPath) - 1);
-    params.EntryJarPath[sizeof(params.EntryJarPath) - 1] = '\0';
-
-    return inject(pid, path, &params);
+    int ret = inject(pid, InjectionDLL, NULL);
+    (*env)->ReleaseStringUTFChars(env, path, InjectionDLL);
+    return (ret == 0) ? JNI_TRUE : JNI_FALSE;
 }
 
-/* JNI interface */
-JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_orangex_injector_InjectorNative_inject
-  (JNIEnv *env, jobject obj, jint pid,jstring jAgentPth, jstring jJuiceLoaderJarPath, jstring jJuiceLoaderLibPath, jstring jEntryJarPath, jstring jBootStrapApiPath) {
 
-    const char* localAgentPath = (*env)->GetStringUTFChars(env, jAgentPth, NULL);
-    const char* localLoaderJar = (*env)->GetStringUTFChars(env, jJuiceLoaderJarPath, NULL);
-    const char* localLoaderLib = (*env)->GetStringUTFChars(env, jJuiceLoaderLibPath, NULL);
-    const char* localEntryJar  = (*env)->GetStringUTFChars(env, jEntryJarPath, NULL);
-    const char* bootstrapApiPath  = (*env)->GetStringUTFChars(env, jBootStrapApiPath, NULL);
+/*
+* JNI Function: inject(int pid, String path)
+* Param pid: target process id
+* Param path: path of inject dll
+* Param configPath: path of config file (toml)
+*/
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_inject__ILjava_lang_String_2Ljava_lang_String_2
+  (JNIEnv *env, jobject obj, jint pid , jstring path, jstring configPath){
+    // Injection Path
+    const char* InjectionDLL = (*env)->GetStringUTFChars(env, path, NULL);
+    // Config Path
+    const char* ConfigPath = (*env)->GetStringUTFChars(env, configPath, NULL);
 
     InjectParameters params;
     memset(&params, 0, sizeof(params));
-    
-    strncpy(params.JuiceLoaderJarPath, localLoaderJar ? localLoaderJar : "", sizeof(params.JuiceLoaderJarPath)-1);
-    strncpy(params.JuiceLoaderLibPath, localLoaderLib ? localLoaderLib : "", sizeof(params.JuiceLoaderLibPath)-1);
-    strncpy(params.EntryJarPath,      localEntryJar  ? localEntryJar  : "", sizeof(params.EntryJarPath)-1);
-    strncpy(params.BootstrapApiPath,  bootstrapApiPath  ? bootstrapApiPath  : "", sizeof(params.BootstrapApiPath)-1);
 
-    int ret = inject(pid, (char*)localAgentPath, &params);
+    strncpy(params.ConfigPath, ConfigPath ? ConfigPath : "", sizeof(params.ConfigPath)-1);
 
-    if (localAgentPath) (*env)->ReleaseStringUTFChars(env, jAgentPth, localAgentPath);
-    if (localLoaderJar) (*env)->ReleaseStringUTFChars(env, jJuiceLoaderJarPath, localLoaderJar);
-    if (localLoaderLib) (*env)->ReleaseStringUTFChars(env, jJuiceLoaderLibPath, localLoaderLib);
-    if (localEntryJar)  (*env)->ReleaseStringUTFChars(env, jEntryJarPath, localEntryJar);
-    if (bootstrapApiPath)  (*env)->ReleaseStringUTFChars(env, jBootStrapApiPath, bootstrapApiPath);
+    int ret = inject(pid, (char*)InjectionDLL, &params);
+
+    // Clean up
+    (*env)->ReleaseStringUTFChars(env, path, InjectionDLL);
+    (*env)->ReleaseStringUTFChars(env, configPath, ConfigPath);
 
     return (ret == 0) ? JNI_TRUE : JNI_FALSE;
 }

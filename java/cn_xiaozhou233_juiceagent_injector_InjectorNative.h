@@ -10,18 +10,18 @@ extern "C" {
 /*
  * Class:     cn_xiaozhou233_juiceagent_injector_InjectorNative
  * Method:    inject
- * Signature: (I)Z
- */
-JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_inject__I
-  (JNIEnv *, jobject, jint);
-
-/*
- * Class:     cn_xiaozhou233_juiceagent_injector_InjectorNative
- * Method:    inject
  * Signature: (ILjava/lang/String;)Z
  */
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_inject__ILjava_lang_String_2
   (JNIEnv *, jobject, jint, jstring);
+
+/*
+ * Class:     cn_xiaozhou233_juiceagent_injector_InjectorNative
+ * Method:    inject
+ * Signature: (ILjava/lang/String;Ljava/lang/String;)Z
+ */
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_inject__ILjava_lang_String_2Ljava_lang_String_2
+  (JNIEnv *, jobject, jint, jstring, jstring);
 
 #ifdef __cplusplus
 }

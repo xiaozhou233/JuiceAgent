@@ -23,11 +23,7 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
         return 1;
     }
 
-    log_info("%s ThreadProc got param: \nJuiceLoaderJarPath: %s\nJuiceLoaderLibPath: %s\nEntryJarPath: %s\nBootstrapApiPath: %s", LOG_PREFIX,
-              param->JuiceLoaderJarPath,
-              param->JuiceLoaderLibPath,
-              param->EntryJarPath,
-              param->BootstrapApiPath);
+    log_info("%s ThreadProc got param: ConfigPath: %s", LOG_PREFIX, param->ConfigPath);
 
     const char* bootstrapApiJar = param->BootstrapApiPath;
     if (bootstrapApiJar == NULL) {
@@ -147,41 +143,44 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
             log_info("%s DLL_PROCESS_ATTACH", LOG_PREFIX);
 
             DisableThreadLibraryCalls(hinstDLL);
+            
+            InjectParameters *localParm = (InjectParameters*)malloc(sizeof(InjectParameters));
+            if (localParm == NULL) {
+                log_error("%s malloc failed for InjectParameters", LOG_PREFIX);
+                break;
+            }
+            memset(localParm, 0, sizeof(InjectParameters));
 
             if (lpReserved != NULL) {
                 InjectParameters *remoteParm = (InjectParameters*)lpReserved;
 
-                InjectParameters *localParm = (InjectParameters*)malloc(sizeof(InjectParameters));
-                if (localParm == NULL) {
-                    log_error("%s malloc failed for InjectParameters", LOG_PREFIX);
-                    break;
-                }
-
-                memset(localParm, 0, sizeof(InjectParameters));
-
-                safe_copy(localParm->JuiceLoaderJarPath, remoteParm->JuiceLoaderJarPath, sizeof(localParm->JuiceLoaderJarPath));
-                safe_copy(localParm->JuiceLoaderLibPath, remoteParm->JuiceLoaderLibPath, sizeof(localParm->JuiceLoaderLibPath));
-                safe_copy(localParm->EntryJarPath, remoteParm->EntryJarPath, sizeof(localParm->EntryJarPath));
-                safe_copy(localParm->BootstrapApiPath, remoteParm->BootstrapApiPath, sizeof(localParm->BootstrapApiPath));
-
-                log_info("%s DllMain got param: \nJuiceLoaderJarPath: %s\nJuiceLoaderLibPath: %s\nEntryJarPath: %s\nBootstrapApiPath: %s", LOG_PREFIX,
-                    localParm->JuiceLoaderJarPath,
-                    localParm->JuiceLoaderLibPath,
-                    localParm->EntryJarPath,
-                    localParm->BootstrapApiPath);
-
-                HANDLE hThread = CreateThread(NULL, 0, ThreadProc, localParm, 0, NULL);
-                if (hThread) {
-                    CloseHandle(hThread);
-                } else {
-                    log_error("%s CreateThread failed %lu", LOG_PREFIX, GetLastError());
-                    free(localParm);
-                }
+                safe_copy(localParm->ConfigPath, remoteParm->ConfigPath, sizeof(localParm->ConfigPath));
             } else {
-                log_error("%s RemoteParm is NULL!", LOG_PREFIX);
+                log_info("%s RemoteParm is NULL!", LOG_PREFIX);
+
+                char DllDir[INJECT_PATH_MAX] = {0};
+
+                if (GetModuleFileNameA(hinstDLL, DllDir, MAX_PATH) != 0) {
+                    PathRemoveFileSpecA(DllDir);
+                    log_info("%s path: %s", LOG_PREFIX, DllDir);
+                } else {
+                    log_error("GetModuleFileName failed, error=%lu\n", GetLastError());
+                    return -1;
+                }
+                safe_copy(localParm->ConfigPath, DllDir, sizeof(localParm->ConfigPath));
             }
+
+            log_info("%s ConfigPath: %s", LOG_PREFIX, localParm->ConfigPath);
+
+            HANDLE hThread = CreateThread(NULL, 0, ThreadProc, localParm, 0, NULL);
+            if (hThread) {
+                CloseHandle(hThread);
+            } else {
+                log_error("%s CreateThread failed %lu", LOG_PREFIX, GetLastError());
+                free(localParm);
+            }
+
             break;
-            
         case DLL_PROCESS_DETACH:
             log_info("%s DLL_PROCESS_DETACH", LOG_PREFIX);
             break;
