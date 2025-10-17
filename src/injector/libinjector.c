@@ -137,7 +137,7 @@ int inject(int pid, char *path, InjectParameters *params){
             InjectParameters verify;
             SIZE_T read = 0;
             if (ReadProcessMemory(hProcess, lpRemoteParam, &verify, sizeof(InjectParameters), &read)) {
-                log_debug("[*] Read back remote param, ConfigPath=%.*s", (int)sizeof(verify.ConfigPath), verify.ConfigPath);
+                log_debug("[*] Read back remote param, ConfigDir=%.*s", (int)sizeof(verify.ConfigDir), verify.ConfigDir);
             } else {
                 log_error("[-] ReadProcessMemory failed: %lu", GetLastError());
             }
@@ -196,7 +196,7 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNativ
     // Injection Path
     const char* InjectionDLL = (*env)->GetStringUTFChars(env, path, NULL);
 
-    int ret = inject(pid, InjectionDLL, NULL);
+    int ret = inject(pid, (char*)InjectionDLL, NULL);
     (*env)->ReleaseStringUTFChars(env, path, InjectionDLL);
     return (ret == 0) ? JNI_TRUE : JNI_FALSE;
 }
@@ -206,25 +206,25 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNativ
 * JNI Function: inject(int pid, String path)
 * Param pid: target process id
 * Param path: path of inject dll
-* Param configPath: path of config file (toml)
+* Param configDir: path of config file (toml)
 */
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_inject__ILjava_lang_String_2Ljava_lang_String_2
-  (JNIEnv *env, jobject obj, jint pid , jstring path, jstring configPath){
+  (JNIEnv *env, jobject obj, jint pid , jstring path, jstring configDir){
     // Injection Path
     const char* InjectionDLL = (*env)->GetStringUTFChars(env, path, NULL);
     // Config Path
-    const char* ConfigPath = (*env)->GetStringUTFChars(env, configPath, NULL);
+    const char* ConfigDir = (*env)->GetStringUTFChars(env, configDir, NULL);
 
     InjectParameters params;
     memset(&params, 0, sizeof(params));
 
-    strncpy(params.ConfigPath, ConfigPath ? ConfigPath : "", sizeof(params.ConfigPath)-1);
+    strncpy(params.ConfigDir, ConfigDir ? ConfigDir : "", sizeof(params.ConfigDir)-1);
 
     int ret = inject(pid, (char*)InjectionDLL, &params);
 
     // Clean up
     (*env)->ReleaseStringUTFChars(env, path, InjectionDLL);
-    (*env)->ReleaseStringUTFChars(env, configPath, ConfigPath);
+    (*env)->ReleaseStringUTFChars(env, configDir, ConfigDir);
 
     return (ret == 0) ? JNI_TRUE : JNI_FALSE;
 }

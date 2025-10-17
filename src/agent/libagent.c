@@ -7,14 +7,120 @@
 #include "InjectParameters.h"
 #include "log.h"
 #include "GlobalUtils.h"
+#include "shlwapi.h"
+#include "tomlc17.h"
 
 #define WIN_X64
 extern HINSTANCE hAppInstance;
 
 #define LOG_PREFIX "[JuiceAgent]"
 
+struct _InjectionInfo {
+    char BootstrapAPIPath[INJECT_PATH_MAX];
+    char JuiceLoaderJarPath[INJECT_PATH_MAX];
+    char JuiceLoaderLibPath[INJECT_PATH_MAX];
+    char EntryJarPath[INJECT_PATH_MAX];
+    char EntryClass[INJECT_PATH_MAX];
+    char EntryMethod[INJECT_PATH_MAX];
+} InjectionInfo;
+
+void safe_copy(char *dest, const char *src, size_t dest_size) {
+    if (!dest || dest_size == 0) return;
+    strncpy(dest, src, dest_size - 1);
+    dest[dest_size - 1] = '\0';
+}
+
+static bool ReadInjectionInfo(toml_result_t result, InjectParameters* params) {
+    toml_datum_t InjectionTree = toml_seek(result.toptab, "Injection");
+
+    // ======= BootstrapAPIPath =======
+    toml_datum_t BootstrapAPIPath = toml_seek(InjectionTree, "BootstrapAPIPath");
+    char BootstrapAPIPathStr[INJECT_PATH_MAX];
+    if (BootstrapAPIPath.type != TOML_STRING) {
+        log_error("%s BootstrapAPIPath is not a string.", LOG_PREFIX);
+        return false;
+    }
+    if (BootstrapAPIPath.u.s == NULL || strlen(BootstrapAPIPath.u.s) == 0) {
+        sprintf(BootstrapAPIPathStr, "%s\\bootstrap-api.jar", params->ConfigDir);
+    } else {
+        sprintf(BootstrapAPIPathStr, "%s", BootstrapAPIPath.u.s);
+    }
+    safe_copy(InjectionInfo.BootstrapAPIPath, BootstrapAPIPathStr, INJECT_PATH_MAX);
+    // ======= BootstrapAPIPath =======
+
+    // ======= JuiceLoaderJarPath =======
+    toml_datum_t JuiceLoaderJarPath = toml_seek(InjectionTree, "JuiceLoaderJarPath");
+    char JuiceLoaderJarPathStr[INJECT_PATH_MAX];
+    if (JuiceLoaderJarPath.type != TOML_STRING) {
+        log_error("%s JuiceLoaderJarPath is not a string.", LOG_PREFIX);
+        return false;
+    }
+    if (JuiceLoaderJarPath.u.s == NULL || strlen(JuiceLoaderJarPath.u.s) == 0) {
+        sprintf(JuiceLoaderJarPathStr, "%s\\JuiceLoader.jar", params->ConfigDir);
+    } else {
+        sprintf(JuiceLoaderJarPathStr, "%s", JuiceLoaderJarPath.u.s);
+    }
+    safe_copy(InjectionInfo.JuiceLoaderJarPath, JuiceLoaderJarPathStr, INJECT_PATH_MAX);
+    // ======= JuiceLoaderJarPath =======
+
+    // ======= JuiceLoaderLibPath =======
+    toml_datum_t JuiceLoaderLibPath = toml_seek(InjectionTree, "JuiceLoaderLibPath");
+    char JuiceLoaderLibPathStr[INJECT_PATH_MAX];
+    if (JuiceLoaderLibPath.type != TOML_STRING) {
+        log_error("%s JuiceLoaderLibPath is not a string.", LOG_PREFIX);
+        return false;
+    }
+    if (JuiceLoaderLibPath.u.s == NULL || strlen(JuiceLoaderLibPath.u.s) == 0) {
+        sprintf(JuiceLoaderLibPathStr, "%s\\libjuiceloader.dll", params->ConfigDir);
+    } else {
+        sprintf(JuiceLoaderLibPathStr, "%s", JuiceLoaderLibPath.u.s);
+    }
+    safe_copy(InjectionInfo.JuiceLoaderLibPath, JuiceLoaderLibPathStr, INJECT_PATH_MAX);
+    // ======= JuiceLoaderLibPath =======
+
+    // ======= Entry =======
+    toml_datum_t EntryJarPath = toml_seek(InjectionTree, "EntryJarPath");
+    char EntryJarPathStr[INJECT_PATH_MAX];
+    if (EntryJarPath.type != TOML_STRING) {
+        log_error("%s EntryJarPath is not a string.", LOG_PREFIX);
+        return false;
+    }
+    if (EntryJarPath.u.s == NULL || strlen(EntryJarPath.u.s) == 0) {
+        sprintf(EntryJarPathStr, "%s\\entry.jar", params->ConfigDir);
+    } else {
+        sprintf(EntryJarPathStr, "%s", EntryJarPath.u.s);
+    }
+    safe_copy(InjectionInfo.EntryJarPath, EntryJarPathStr, INJECT_PATH_MAX);
+
+    toml_datum_t EntryClass = toml_seek(InjectionTree, "EntryClass");
+    if (EntryClass.type != TOML_STRING) {
+        log_error("%s EntryClass is not a string.", LOG_PREFIX);
+        return false;
+    }
+    if (EntryClass.u.s == NULL || strlen(EntryClass.u.s) == 0) {
+        safe_copy(InjectionInfo.EntryClass, "cn.xiaozhou233.juiceloader.entry.Entry", INJECT_PATH_MAX);
+    } else {
+        safe_copy(InjectionInfo.EntryClass, EntryClass.u.s, INJECT_PATH_MAX);
+    }
+
+    toml_datum_t EntryMethod = toml_seek(InjectionTree, "EntryMethod");
+    if (EntryMethod.type != TOML_STRING) {
+        log_error("%s EntryMethod is not a string.", LOG_PREFIX);
+        return false;
+    }
+    if (EntryMethod.u.s == NULL || strlen(EntryMethod.u.s) == 0) {
+        safe_copy(InjectionInfo.EntryMethod, "start", INJECT_PATH_MAX);
+    } else {
+        safe_copy(InjectionInfo.EntryMethod, EntryMethod.u.s, INJECT_PATH_MAX);
+    }
+    // ======= Entry =======
+    return true;
+}
+
 DWORD WINAPI ThreadProc(LPVOID lpParam) {
     log_trace("%s New thread started.", LOG_PREFIX);
+
+    memset(&InjectionInfo, 0, sizeof(InjectionInfo));
 
     /// ======== Check Environment ======== ///
     InjectParameters *param = (InjectParameters*)lpParam;
@@ -22,35 +128,37 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
         log_error("%s ThreadProc got NULL param", LOG_PREFIX);
         return 1;
     }
-
-    log_info("%s ThreadProc got param: ConfigPath: %s", LOG_PREFIX, param->ConfigPath);
-
-    const char* bootstrapApiJar = param->BootstrapApiPath;
-    if (bootstrapApiJar == NULL) {
-        log_error("%s BootstrapApiPath is not set", LOG_PREFIX);
-        MessageBoxA(NULL, "BootstrapApiPath is not set", "Error", MB_OK);
+    if (!param->ConfigDir || param->ConfigDir[0] == '\0') {
+        log_error("%s ThreadProc got NULL or empty ConfigPath", LOG_PREFIX);
         return 1;
     }
+
+    char ConfigPath[INJECT_PATH_MAX];
+    snprintf(ConfigPath, sizeof(ConfigPath), "%s\\AgentConfig.toml", param->ConfigDir);
+    toml_result_t toml_result = toml_parse_file_ex(ConfigPath);
+    if (!toml_result.ok) {
+        log_error("%s ThreadProc failed to parse config file: %s", LOG_PREFIX, toml_result.errmsg);
+        return 1;
+    }
+    if (!ReadInjectionInfo(toml_result, param)) {
+         log_error("%s Failed to read injection info", LOG_PREFIX); 
+         return 1; 
+    }
+    toml_free(toml_result);
 
     log_trace("%s Checking bootstrap-api.jar", LOG_PREFIX);
-    if (access(bootstrapApiJar, 0) == -1) {
-        log_error("%s bootstrap-api.jar not found", LOG_PREFIX);
-        MessageBoxA(NULL, "bootstrap-api.jar not found", "Error", MB_OK);
-        return 1;
-    }
-
-    const char* loaderJar = param->JuiceLoaderJarPath;
-    if (loaderJar == NULL) {
-        log_error("%s JuiceLoaderJarPath is not set", LOG_PREFIX);
-        MessageBoxA(NULL, "JuiceLoaderJarPath is not set", "Error", MB_OK);
+    if (GetFileAttributesA(InjectionInfo.BootstrapAPIPath) == INVALID_FILE_ATTRIBUTES) {
+        log_error("%s bootstrap-api.jar not found: %s", LOG_PREFIX, InjectionInfo.BootstrapAPIPath);
+        // MessageBoxA(NULL, "bootstrap-api.jar not found", "Error", MB_OK);
         return 1;
     }
 
     // Check JuiceLoader.jar
+    
     log_trace("%s Checking JuiceLoader.jar", LOG_PREFIX);
-    if (access(loaderJar, 0) == -1) {
-        log_error("%s JuiceLoader.jar not found", LOG_PREFIX);
-        MessageBoxA(NULL, "JuiceLoader.jar not found", "Error", MB_OK);
+    if (GetFileAttributesA(InjectionInfo.JuiceLoaderJarPath) == INVALID_FILE_ATTRIBUTES) {
+        log_error("%s JuiceLoader.jar not found: %s", LOG_PREFIX, InjectionInfo.JuiceLoaderJarPath);
+        // MessageBoxA(NULL, "JuiceLoader.jar not found", "Error", MB_OK);
         return 1;
     }
     /// ======== Check Environment ======== ///
@@ -73,7 +181,7 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
     result = GetJNIEnv(jvm, &env);
     if (result != JNI_OK) {
         log_error("%s Failed to get JNIEnv (%d)", LOG_PREFIX, result);
-        MessageBoxA(NULL, "Failed to get JNIEnv", "Error", MB_OK);
+        // MessageBoxA(NULL, "Failed to get JNIEnv", "Error", MB_OK);
         return 1;
     } 
     log_info("%s Got JNIEnv", LOG_PREFIX);
@@ -86,43 +194,52 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
     result = GetJVMTI(jvm, &jvmti);
     if (result != JNI_OK) {
         log_error("%s Failed to get JVMTI (%d)", LOG_PREFIX, result);
-        MessageBoxA(NULL, "Failed to get JVMTI", "Error", MB_OK);
+        // MessageBoxA(NULL, "Failed to get JVMTI", "Error", MB_OK);
         return 1;
     }
     log_info("%s Enabled jvmti", LOG_PREFIX);
 
     // Inject jars
     log_info("%s injecting bootstrap-api jar...", LOG_PREFIX);
-    (*jvmti)->AddToBootstrapClassLoaderSearch(jvmti, bootstrapApiJar);
+    (*jvmti)->AddToBootstrapClassLoaderSearch(jvmti, InjectionInfo.BootstrapAPIPath);
     log_info("%s injected bootstrap-api jar", LOG_PREFIX);
     
     log_info("%s injecting loader jar...", LOG_PREFIX);
-    (*jvmti)->AddToBootstrapClassLoaderSearch(jvmti, loaderJar);
+    (*jvmti)->AddToBootstrapClassLoaderSearch(jvmti, InjectionInfo.JuiceLoaderJarPath);
     log_info("%s injected loader jar", LOG_PREFIX);
 
     // Invoke loader.init(JuiceLoaderLibPath, EntryJarPath)
     log_info("%s invoking loader init()...", LOG_PREFIX);
     log_info("\n============ Loader Info ============\n");
     jclass cls = (*env)->FindClass(env, "cn/xiaozhou233/juiceloader/JuiceLoader");
-    jmethodID mid = (*env)->GetStaticMethodID(env, cls, "init", "(Ljava/lang/String;Ljava/lang/String;)V");
+    if (cls == NULL) {
+        log_error("%s FindClass JuiceLoader failed", LOG_PREFIX);
+        return 1;
+    }
+    jmethodID mid = (*env)->GetStaticMethodID(env, cls, "init", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+    if (mid == NULL) {
+        log_error("%s GetStaticMethodID init failed", LOG_PREFIX);
+        if ((*env)->ExceptionCheck(env)) {
+            (*env)->ExceptionDescribe(env);
+            (*env)->ExceptionClear(env);
+        }
+
+        return 1;
+    }
     (*env)->CallStaticVoidMethod(env, cls, mid, 
-        (*env)->NewStringUTF(env, param->JuiceLoaderLibPath),
-        (*env)->NewStringUTF(env, param->EntryJarPath));
+        (*env)->NewStringUTF(env, InjectionInfo.JuiceLoaderLibPath),
+        (*env)->NewStringUTF(env, InjectionInfo.EntryJarPath),
+        (*env)->NewStringUTF(env, InjectionInfo.EntryClass),
+        (*env)->NewStringUTF(env, InjectionInfo.EntryMethod));
     log_info("\n============ Loader Info =============\n");
     log_info("%s invoked. ", LOG_PREFIX);
     log_info("%s done. cleaning up...", LOG_PREFIX);
 
-    free(param);
     (*jvm)->DetachCurrentThread(jvm);
 
+    free(param);
     log_info("%s exit.", LOG_PREFIX);
     return 0;
-}
-
-void safe_copy(char *dest, const char *src, size_t dest_size) {
-    if (!dest || dest_size == 0) return;
-    strncpy(dest, src, dest_size - 1);
-    dest[dest_size - 1] = '\0';
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
@@ -154,7 +271,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
             if (lpReserved != NULL) {
                 InjectParameters *remoteParm = (InjectParameters*)lpReserved;
 
-                safe_copy(localParm->ConfigPath, remoteParm->ConfigPath, sizeof(localParm->ConfigPath));
+                safe_copy(localParm->ConfigDir, remoteParm->ConfigDir, sizeof(localParm->ConfigDir));
             } else {
                 log_info("%s RemoteParm is NULL!", LOG_PREFIX);
 
@@ -167,10 +284,10 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
                     log_error("GetModuleFileName failed, error=%lu\n", GetLastError());
                     return -1;
                 }
-                safe_copy(localParm->ConfigPath, DllDir, sizeof(localParm->ConfigPath));
+                safe_copy(localParm->ConfigDir, DllDir, sizeof(localParm->ConfigDir));
             }
 
-            log_info("%s ConfigPath: %s", LOG_PREFIX, localParm->ConfigPath);
+            log_info("%s ConfigDir: %s", LOG_PREFIX, localParm->ConfigDir);
 
             HANDLE hThread = CreateThread(NULL, 0, ThreadProc, localParm, 0, NULL);
             if (hThread) {

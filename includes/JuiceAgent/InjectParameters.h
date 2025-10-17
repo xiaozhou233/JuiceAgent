@@ -6,7 +6,7 @@
 #define INJECT_PATH_MAX 4096
 
 typedef struct InjectParameters{
-    char ConfigPath[INJECT_PATH_MAX];
+    char ConfigDir[INJECT_PATH_MAX];
 } InjectParameters;
 
 #endif
