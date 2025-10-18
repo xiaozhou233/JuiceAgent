@@ -34,8 +34,7 @@ int inject(int pid, char *path, InjectParameters *params){
 
     do {
         if (!params) {
-            log_error("Invalid parameters");
-            BREAK_WITH_ERROR("Invalid parameters");
+            log_warn("[!] No parameters provided");
         }
 
         /* open DLL file */
@@ -129,8 +128,13 @@ int inject(int pid, char *path, InjectParameters *params){
 
         /* write params to remote memory */
         SIZE_T written = 0;
-        if (!WriteProcessMemory(hProcess, lpRemoteParam, params, sizeof(InjectParameters), &written) || written != sizeof(InjectParameters))
+        if (params) {
+            if (!WriteProcessMemory(hProcess, lpRemoteParam, params, sizeof(InjectParameters), &written) || written != sizeof(InjectParameters))
             BREAK_WITH_ERROR("WriteProcessMemory for remote param failed");
+        } else {
+            log_warn("No parameters provided; using null pointer");
+            lpRemoteParam = NULL;
+        }
 
         /* read back some bytes to verify write */
         {

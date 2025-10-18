@@ -253,6 +253,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
         case DLL_PROCESS_ATTACH:
             hAppInstance = hinstDLL;
 
+            // Initialize log
             log_set_level(LOG_TRACE);
             log_is_log_filename(false);
             log_is_log_line(false);
@@ -261,6 +262,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
 
             DisableThreadLibraryCalls(hinstDLL);
             
+            // Allocate memory for local param
             InjectParameters *localParm = (InjectParameters*)malloc(sizeof(InjectParameters));
             if (localParm == NULL) {
                 log_error("%s malloc failed for InjectParameters", LOG_PREFIX);
@@ -268,7 +270,9 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
             }
             memset(localParm, 0, sizeof(InjectParameters));
 
+            // Check if lpReserved is not NULL
             if (lpReserved != NULL) {
+                // Copy remote param to local param
                 InjectParameters *remoteParm = (InjectParameters*)lpReserved;
 
                 safe_copy(localParm->ConfigDir, remoteParm->ConfigDir, sizeof(localParm->ConfigDir));
@@ -277,14 +281,22 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
 
                 char DllDir[INJECT_PATH_MAX] = {0};
 
-                if (GetModuleFileNameA(hinstDLL, DllDir, MAX_PATH) != 0) {
-                    PathRemoveFileSpecA(DllDir);
-                    log_info("%s path: %s", LOG_PREFIX, DllDir);
+                if (GetModuleFileNameA(hinstDLL, DllDir, INJECT_PATH_MAX) == 0) {
+                    // Failed to get module file name
+                    DWORD err = GetLastError();
+                    if (err == ERROR_MOD_NOT_FOUND) {
+                        // Reflective detected, lpReserved must be set.
+                        log_fatal("%s Reflective load detected! Please set ConfigDir manually! Exit.", LOG_PREFIX);
+                    } else {
+                        log_error("%s Normal Inject: GetModuleFileNameA failed! Error: %lu", LOG_PREFIX, err);
+                    }
+                    break;
                 } else {
-                    log_error("GetModuleFileName failed, error=%lu\n", GetLastError());
-                    return -1;
+                    // Normal Inject(e.g. CreateRemoteThread+LoadLibraryA), lpReserved can be NULL.
+                    PathRemoveFileSpecA(DllDir);
+                    log_info("%s GetModuleFileNameA: %s", LOG_PREFIX, DllDir);
+                    safe_copy(localParm->ConfigDir, DllDir, INJECT_PATH_MAX);
                 }
-                safe_copy(localParm->ConfigDir, DllDir, sizeof(localParm->ConfigDir));
             }
 
             log_info("%s ConfigDir: %s", LOG_PREFIX, localParm->ConfigDir);
