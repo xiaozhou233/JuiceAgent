@@ -1,0 +1,7 @@
+[Injection]
+BootstrapAPIPath = "D:/Development/JuiceLoader/build/libs/bootstrap-api.jar"
+JuiceLoaderJarPath = "D:/Development/JuiceLoader/build/libs/JuiceLoader.jar"
+JuiceLoaderLibPath = ""
+EntryJarPath = "D:/Development/JuiceLoader/build/libs/Entry.jar"
+EntryClass = "cn.xiaozhou233.juiceloader.entry.Entry"
+EntryMethod = "start"
