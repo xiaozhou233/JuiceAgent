@@ -6,7 +6,16 @@
         "generator": "Ninja",
         "binaryDir": "${sourceDir}/build",
         "cacheVariables": {
-          "CMAKE_BUILD_TYPE": "Release"
+          "CMAKE_BUILD_TYPE": "Release",
+          "RELEASE_BUILD": "ON"
+        }
+      },
+      {
+        "name": "ninja-debug",
+        "generator": "Ninja",
+        "binaryDir": "${sourceDir}/debug",
+        "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "Debug"
         }
       }
     ]

@@ -89,6 +89,7 @@ If the injection is successful, EntryClass .EntryMethod() of <EntryJarPath> will
 - Java 8+
 - MinGW
 - CMake
+- Ninja
 ```
 git clone https://github.com/xiaozhou233/JuiceAgent.git
 cd JuiceAgent

@@ -19,6 +19,9 @@ add_subdirectory(${INCLUDES}/tomlc17)
 add_subdirectory(src/utils)
 
 include(cmake/JuiceModule.cmake)
+include(cmake/BuildVersion.cmake)
+
+build_version()
 
 # modules
 add_juice_module(agent)
