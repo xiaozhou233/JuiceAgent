@@ -79,7 +79,7 @@ import cn.xiaozhou233.juiceagent.injector.InjectorNative;
 System.load("<path-to-libinjector>");
 InjectorNative injectorNative = new InjectorNative();
 
-injectorNative.inject(<pid>, "<path-to-libagent>");
+injectorNative.inject(<pid>, "<path-to-libagent>", "<path-to-toml-config-dir>");
 ```
 
 ### 4. Done!
