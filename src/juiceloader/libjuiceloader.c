@@ -32,6 +32,8 @@ int setup(JNIEnv *env) {
     log_is_log_time(false);
     log_set_level(LOG_DEBUG);
 
+    log_info("[*] libjuiceloader Version %d.%d Build %d", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_BUILD_NUMBER);
+
     log_info("%s setup!", LOG_PREFIX);
     {// Get JavaVM
     if (JNI_GetCreatedJavaVMs(&JuiceLoaderNative.jvm, 1, NULL) != JNI_OK || !JuiceLoaderNative.jvm) {

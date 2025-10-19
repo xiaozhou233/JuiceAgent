@@ -29,9 +29,10 @@ int inject(int pid, char *path, InjectParameters *params){
     log_is_log_line(false);
     log_is_log_time(false);
 
+    log_info("[*] libinjector Version %d.%d Build %d", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_BUILD_NUMBER);
+
     log_debug("Injector process pointer size = %zu bytes", sizeof(void*));
     
-
     do {
         if (!params) {
             log_warn("[!] No parameters provided");

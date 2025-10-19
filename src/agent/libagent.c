@@ -259,6 +259,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
             log_is_log_line(false);
             log_is_log_time(false);
             log_info("%s DLL_PROCESS_ATTACH", LOG_PREFIX);
+            log_info("[*] JuiceAgent Version %d.%d Build %d", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_BUILD_NUMBER);
 
             DisableThreadLibraryCalls(hinstDLL);
             
