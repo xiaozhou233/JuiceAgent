@@ -201,11 +201,11 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
 
     // Inject jars
     log_info("%s injecting bootstrap-api jar...", LOG_PREFIX);
-    (*jvmti)->AddToBootstrapClassLoaderSearch(jvmti, InjectionInfo.BootstrapAPIPath);
+    (*jvmti)->AddToSystemClassLoaderSearch(jvmti, InjectionInfo.BootstrapAPIPath);
     log_info("%s injected bootstrap-api jar", LOG_PREFIX);
     
     log_info("%s injecting loader jar...", LOG_PREFIX);
-    (*jvmti)->AddToBootstrapClassLoaderSearch(jvmti, InjectionInfo.JuiceLoaderJarPath);
+    (*jvmti)->AddToSystemClassLoaderSearch(jvmti, InjectionInfo.JuiceLoaderJarPath);
     log_info("%s injected loader jar", LOG_PREFIX);
 
     // Invoke loader.init(JuiceLoaderLibPath, EntryJarPath)

@@ -118,8 +118,8 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_inj
     const char *pathStr = (*env)->GetStringUTFChars(env, path, NULL);
     log_info("%s InjectJar: %s", LOG_PREFIX, pathStr);
 
-    err = (*JuiceLoaderNative.jvmti)->AddToBootstrapClassLoaderSearch(JuiceLoaderNative.jvmti, pathStr);
-    check_jvmti_error(JuiceLoaderNative.jvmti, err, "AddToBootstrapClassLoaderSearch");
+    err = (*JuiceLoaderNative.jvmti)->AddToSystemClassLoaderSearch(JuiceLoaderNative.jvmti, pathStr);
+    check_jvmti_error(JuiceLoaderNative.jvmti, err, "AddToSystemClassLoaderSearch");
     return JNI_TRUE;
 }
 
