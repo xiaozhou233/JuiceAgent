@@ -50,11 +50,14 @@ static struct {
   bool is_log_level;
   bool is_log_filename;
   bool is_log_line;
+
+  const char *logname;
 } L = {
   .is_log_time = true,
   .is_log_level = true,
-  .is_log_filename = true,
-  .is_log_line = true
+  .is_log_filename = false,
+  .is_log_line = false,
+  .logname = NULL
 };
 
 
@@ -112,6 +115,8 @@ static void stdout_callback(log_Event *ev) {
     fprintf(ev->udata, ": ");
 #endif
 
+  if (L.logname) fprintf(ev->udata, "[%s] ", L.logname);
+
   vfprintf(ev->udata, ev->fmt, ev->ap);
   fprintf(ev->udata, "\n");
   fflush(ev->udata);
@@ -121,9 +126,9 @@ static void stdout_callback(log_Event *ev) {
 static void file_callback(log_Event *ev) {
   char buf[64];
   buf[strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", ev->time)] = '\0';
-  fprintf(
-    ev->udata, "%s %-5s %s:%d: ",
-    buf, level_strings[ev->level], ev->file, ev->line);
+  fprintf(ev->udata, "%s %-5s ", buf, level_strings[ev->level]);
+  fprintf(ev->udata, "%s:%d: ", ev->file, ev->line);
+  if (L.logname) fprintf(ev->udata, "[%s] ", L.logname);
   vfprintf(ev->udata, ev->fmt, ev->ap);
   fprintf(ev->udata, "\n");
   fflush(ev->udata);
@@ -229,4 +234,7 @@ void log_is_log_filename(bool enable) {
 }
 void log_is_log_line(bool enable) {
   L.is_log_line = enable;
+}
+void log_set_name(const char *name) {
+  L.logname = name;
 }
