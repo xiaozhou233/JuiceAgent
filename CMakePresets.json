@@ -13,7 +13,7 @@
       {
         "name": "ninja-debug",
         "generator": "Ninja",
-        "binaryDir": "${sourceDir}/debug",
+        "binaryDir": "${sourceDir}/build",
         "cacheVariables": {
           "CMAKE_BUILD_TYPE": "Debug"
         }
