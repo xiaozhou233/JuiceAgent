@@ -54,6 +54,7 @@ void log_is_log_time(bool enable);
 void log_is_log_level(bool enable);
 void log_is_log_filename(bool enable);
 void log_is_log_line(bool enable);
+void log_set_name(const char *name);
 
 void log_log(int level, const char *file, int line, const char *fmt, ...);
 

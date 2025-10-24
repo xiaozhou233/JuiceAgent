@@ -13,8 +13,6 @@
 #define WIN_X64
 extern HINSTANCE hAppInstance;
 
-#define LOG_PREFIX "[JuiceAgent]"
-
 struct _InjectionInfo {
     char BootstrapAPIPath[INJECT_PATH_MAX];
     char JuiceLoaderJarPath[INJECT_PATH_MAX];
@@ -37,7 +35,7 @@ static bool ReadInjectionInfo(toml_result_t result, InjectParameters* params) {
     toml_datum_t BootstrapAPIPath = toml_seek(InjectionTree, "BootstrapAPIPath");
     char BootstrapAPIPathStr[INJECT_PATH_MAX];
     if (BootstrapAPIPath.type != TOML_STRING) {
-        log_error("%s BootstrapAPIPath is not a string.", LOG_PREFIX);
+        log_error("BootstrapAPIPath is not a string.");
         return false;
     }
     if (BootstrapAPIPath.u.s == NULL || strlen(BootstrapAPIPath.u.s) == 0) {
@@ -52,7 +50,7 @@ static bool ReadInjectionInfo(toml_result_t result, InjectParameters* params) {
     toml_datum_t JuiceLoaderJarPath = toml_seek(InjectionTree, "JuiceLoaderJarPath");
     char JuiceLoaderJarPathStr[INJECT_PATH_MAX];
     if (JuiceLoaderJarPath.type != TOML_STRING) {
-        log_error("%s JuiceLoaderJarPath is not a string.", LOG_PREFIX);
+        log_error("JuiceLoaderJarPath is not a string.");
         return false;
     }
     if (JuiceLoaderJarPath.u.s == NULL || strlen(JuiceLoaderJarPath.u.s) == 0) {
@@ -67,7 +65,7 @@ static bool ReadInjectionInfo(toml_result_t result, InjectParameters* params) {
     toml_datum_t JuiceLoaderLibPath = toml_seek(InjectionTree, "JuiceLoaderLibPath");
     char JuiceLoaderLibPathStr[INJECT_PATH_MAX];
     if (JuiceLoaderLibPath.type != TOML_STRING) {
-        log_error("%s JuiceLoaderLibPath is not a string.", LOG_PREFIX);
+        log_error("JuiceLoaderLibPath is not a string.");
         return false;
     }
     if (JuiceLoaderLibPath.u.s == NULL || strlen(JuiceLoaderLibPath.u.s) == 0) {
@@ -82,7 +80,7 @@ static bool ReadInjectionInfo(toml_result_t result, InjectParameters* params) {
     toml_datum_t EntryJarPath = toml_seek(InjectionTree, "EntryJarPath");
     char EntryJarPathStr[INJECT_PATH_MAX];
     if (EntryJarPath.type != TOML_STRING) {
-        log_error("%s EntryJarPath is not a string.", LOG_PREFIX);
+        log_error("EntryJarPath is not a string.");
         return false;
     }
     if (EntryJarPath.u.s == NULL || strlen(EntryJarPath.u.s) == 0) {
@@ -94,7 +92,7 @@ static bool ReadInjectionInfo(toml_result_t result, InjectParameters* params) {
 
     toml_datum_t EntryClass = toml_seek(InjectionTree, "EntryClass");
     if (EntryClass.type != TOML_STRING) {
-        log_error("%s EntryClass is not a string.", LOG_PREFIX);
+        log_error("EntryClass is not a string.");
         return false;
     }
     if (EntryClass.u.s == NULL || strlen(EntryClass.u.s) == 0) {
@@ -105,7 +103,7 @@ static bool ReadInjectionInfo(toml_result_t result, InjectParameters* params) {
 
     toml_datum_t EntryMethod = toml_seek(InjectionTree, "EntryMethod");
     if (EntryMethod.type != TOML_STRING) {
-        log_error("%s EntryMethod is not a string.", LOG_PREFIX);
+        log_error("EntryMethod is not a string.");
         return false;
     }
     if (EntryMethod.u.s == NULL || strlen(EntryMethod.u.s) == 0) {
@@ -118,18 +116,18 @@ static bool ReadInjectionInfo(toml_result_t result, InjectParameters* params) {
 }
 
 DWORD WINAPI ThreadProc(LPVOID lpParam) {
-    log_trace("%s New thread started.", LOG_PREFIX);
+    log_trace("New thread started.");
 
     memset(&InjectionInfo, 0, sizeof(InjectionInfo));
 
     /// ======== Check Environment ======== ///
     InjectParameters *param = (InjectParameters*)lpParam;
     if (!param) {
-        log_error("%s ThreadProc got NULL param", LOG_PREFIX);
+        log_error("ThreadProc got NULL param");
         return 1;
     }
     if (!param->ConfigDir || param->ConfigDir[0] == '\0') {
-        log_error("%s ThreadProc got NULL or empty ConfigPath", LOG_PREFIX);
+        log_error("ThreadProc got NULL or empty ConfigPath");
         return 1;
     }
 
@@ -137,27 +135,27 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
     snprintf(ConfigPath, sizeof(ConfigPath), "%s\\AgentConfig.toml", param->ConfigDir);
     toml_result_t toml_result = toml_parse_file_ex(ConfigPath);
     if (!toml_result.ok) {
-        log_error("%s ThreadProc failed to parse config file: %s", LOG_PREFIX, toml_result.errmsg);
+        log_error("ThreadProc failed to parse config file: %s", toml_result.errmsg);
         return 1;
     }
     if (!ReadInjectionInfo(toml_result, param)) {
-         log_error("%s Failed to read injection info", LOG_PREFIX); 
+         log_error("Failed to read injection info"); 
          return 1; 
     }
     toml_free(toml_result);
 
-    log_trace("%s Checking bootstrap-api.jar", LOG_PREFIX);
+    log_trace("Checking bootstrap-api.jar");
     if (GetFileAttributesA(InjectionInfo.BootstrapAPIPath) == INVALID_FILE_ATTRIBUTES) {
-        log_error("%s bootstrap-api.jar not found: %s", LOG_PREFIX, InjectionInfo.BootstrapAPIPath);
+        log_error("bootstrap-api.jar not found: %s", InjectionInfo.BootstrapAPIPath);
         // MessageBoxA(NULL, "bootstrap-api.jar not found", "Error", MB_OK);
         return 1;
     }
 
     // Check JuiceLoader.jar
     
-    log_trace("%s Checking JuiceLoader.jar", LOG_PREFIX);
+    log_trace("Checking JuiceLoader.jar");
     if (GetFileAttributesA(InjectionInfo.JuiceLoaderJarPath) == INVALID_FILE_ATTRIBUTES) {
-        log_error("%s JuiceLoader.jar not found: %s", LOG_PREFIX, InjectionInfo.JuiceLoaderJarPath);
+        log_error("JuiceLoader.jar not found: %s", InjectionInfo.JuiceLoaderJarPath);
         // MessageBoxA(NULL, "JuiceLoader.jar not found", "Error", MB_OK);
         return 1;
     }
@@ -171,54 +169,54 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
 
     result = GetCreatedJVM(&jvm);
     if (result != JNI_OK) {
-        log_error("%s Failed to get JVM (%d)", LOG_PREFIX, result);
+        log_error("Failed to get JVM (%d)", result);
         MessageBoxA(NULL, "Failed to get JVM", "Error", MB_OK);
         return 1;
     }
-    log_info("%s Got JVM", LOG_PREFIX);
+    log_info("Got JVM");
 
 
     result = GetJNIEnv(jvm, &env);
     if (result != JNI_OK) {
-        log_error("%s Failed to get JNIEnv (%d)", LOG_PREFIX, result);
+        log_error("Failed to get JNIEnv (%d)", result);
         // MessageBoxA(NULL, "Failed to get JNIEnv", "Error", MB_OK);
         return 1;
     } 
-    log_info("%s Got JNIEnv", LOG_PREFIX);
+    log_info("Got JNIEnv");
     
     // Debug: JVM version
     jint version = (*env)->GetVersion(env);
-    log_trace("%s JVM version: 0x%x", LOG_PREFIX, version);
+    log_trace("JVM version: 0x%x", version);
 
     // Init and enable jvmti
     result = GetJVMTI(jvm, &jvmti);
     if (result != JNI_OK) {
-        log_error("%s Failed to get JVMTI (%d)", LOG_PREFIX, result);
+        log_error("Failed to get JVMTI (%d)", result);
         // MessageBoxA(NULL, "Failed to get JVMTI", "Error", MB_OK);
         return 1;
     }
-    log_info("%s Enabled jvmti", LOG_PREFIX);
+    log_info("Enabled jvmti");
 
     // Inject jars
-    log_info("%s injecting bootstrap-api jar...", LOG_PREFIX);
+    log_info("injecting bootstrap-api jar...");
     (*jvmti)->AddToSystemClassLoaderSearch(jvmti, InjectionInfo.BootstrapAPIPath);
-    log_info("%s injected bootstrap-api jar", LOG_PREFIX);
+    log_info("injected bootstrap-api jar");
     
-    log_info("%s injecting loader jar...", LOG_PREFIX);
+    log_info("injecting loader jar...");
     (*jvmti)->AddToSystemClassLoaderSearch(jvmti, InjectionInfo.JuiceLoaderJarPath);
-    log_info("%s injected loader jar", LOG_PREFIX);
+    log_info("injected loader jar");
 
     // Invoke loader.init(JuiceLoaderLibPath, EntryJarPath)
-    log_info("%s invoking loader init()...", LOG_PREFIX);
-    log_info("\n============ Loader Info ============\n");
+    log_info("invoking loader init()...");
+    log_info("============ Loader Info ============\n");
     jclass cls = (*env)->FindClass(env, "cn/xiaozhou233/juiceloader/JuiceLoader");
     if (cls == NULL) {
-        log_error("%s FindClass JuiceLoader failed", LOG_PREFIX);
+        log_error("FindClass JuiceLoader failed");
         return 1;
     }
     jmethodID mid = (*env)->GetStaticMethodID(env, cls, "init", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
     if (mid == NULL) {
-        log_error("%s GetStaticMethodID init failed", LOG_PREFIX);
+        log_error("GetStaticMethodID init failed");
         if ((*env)->ExceptionCheck(env)) {
             (*env)->ExceptionDescribe(env);
             (*env)->ExceptionClear(env);
@@ -231,14 +229,14 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
         (*env)->NewStringUTF(env, InjectionInfo.EntryJarPath),
         (*env)->NewStringUTF(env, InjectionInfo.EntryClass),
         (*env)->NewStringUTF(env, InjectionInfo.EntryMethod));
-    log_info("\n============ Loader Info =============\n");
-    log_info("%s invoked. ", LOG_PREFIX);
-    log_info("%s done. cleaning up...", LOG_PREFIX);
+    log_info("============ Loader Info =============\n");
+    log_info("invoked. ");
+    log_info("done. cleaning up...");
 
     (*jvm)->DetachCurrentThread(jvm);
 
     free(param);
-    log_info("%s exit.", LOG_PREFIX);
+    log_info("exit.");
     return 0;
 }
 
@@ -255,10 +253,9 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
 
             // Initialize log
             log_set_level(LOG_TRACE);
-            log_is_log_filename(false);
-            log_is_log_line(false);
             log_is_log_time(false);
-            log_info("%s DLL_PROCESS_ATTACH", LOG_PREFIX);
+            log_set_name("libagent");
+            log_info("DLL_PROCESS_ATTACH");
             log_info("[*] JuiceAgent Version %d.%d Build %d", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_BUILD_NUMBER);
 
             DisableThreadLibraryCalls(hinstDLL);
@@ -266,7 +263,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
             // Allocate memory for local param
             InjectParameters *localParm = (InjectParameters*)malloc(sizeof(InjectParameters));
             if (localParm == NULL) {
-                log_error("%s malloc failed for InjectParameters", LOG_PREFIX);
+                log_error("malloc failed for InjectParameters");
                 break;
             }
             memset(localParm, 0, sizeof(InjectParameters));
@@ -278,7 +275,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
 
                 safe_copy(localParm->ConfigDir, remoteParm->ConfigDir, sizeof(localParm->ConfigDir));
             } else {
-                log_info("%s RemoteParm is NULL!", LOG_PREFIX);
+                log_info("RemoteParm is NULL!");
 
                 char DllDir[INJECT_PATH_MAX] = {0};
 
@@ -287,32 +284,32 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
                     DWORD err = GetLastError();
                     if (err == ERROR_MOD_NOT_FOUND) {
                         // Reflective detected, lpReserved must be set.
-                        log_fatal("%s Reflective load detected! Please set ConfigDir manually! Exit.", LOG_PREFIX);
+                        log_fatal("Reflective load detected! Please set ConfigDir manually! Exit.");
                     } else {
-                        log_error("%s Normal Inject: GetModuleFileNameA failed! Error: %lu", LOG_PREFIX, err);
+                        log_error("Normal Inject: GetModuleFileNameA failed! Error: %lu", err);
                     }
                     break;
                 } else {
                     // Normal Inject(e.g. CreateRemoteThread+LoadLibraryA), lpReserved can be NULL.
                     PathRemoveFileSpecA(DllDir);
-                    log_info("%s GetModuleFileNameA: %s", LOG_PREFIX, DllDir);
+                    log_info("GetModuleFileNameA: %s", DllDir);
                     safe_copy(localParm->ConfigDir, DllDir, INJECT_PATH_MAX);
                 }
             }
 
-            log_info("%s ConfigDir: %s", LOG_PREFIX, localParm->ConfigDir);
+            log_info("ConfigDir: %s", localParm->ConfigDir);
 
             HANDLE hThread = CreateThread(NULL, 0, ThreadProc, localParm, 0, NULL);
             if (hThread) {
                 CloseHandle(hThread);
             } else {
-                log_error("%s CreateThread failed %lu", LOG_PREFIX, GetLastError());
+                log_error("CreateThread failed %lu", GetLastError());
                 free(localParm);
             }
 
             break;
         case DLL_PROCESS_DETACH:
-            log_info("%s DLL_PROCESS_DETACH", LOG_PREFIX);
+            log_info("DLL_PROCESS_DETACH");
             break;
         case DLL_THREAD_ATTACH:
         case DLL_THREAD_DETACH:
