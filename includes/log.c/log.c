@@ -27,6 +27,7 @@
  *   - log level switch
  *   - log filename switch
  *   - log line number switch
+ *   - log name prefix
 */
 
 #include "log.h"
