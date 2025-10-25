@@ -5,6 +5,10 @@
 JuiceAgent — a JVMTI-based injection library for loading external JARs and transforming Java bytecode, even when DisableAttachMechanism is enabled.
 
 **NOTICE:** Currently only supports **Windows**, and plans to support **Linux** in the future.
+
+**WARNING:** This project is still in the experimental stage and is not recommended for production use.
+**Disclaimer: This project is for learning and research in controlled environments only. The author is not responsible for any illegal or unauthorized use. Users must ensure their actions are legal. (See Full Disclaimer below)**
+***免责声明： 本项目仅供受控环境下的学习和研究使用。作者不对任何非法或未授权的使用承担责任。使用者应确保自己的行为合法。(在下方查看完整免责声明)***
 ## Summary
 JuiceAgent is a JVMTI-native injection framework that injects native code into a target JVM to dynamically load external JARs and perform bytecode redefinition/transformations without requiring a javaagent (works when DisableAttachMechanism=true).
 ## Features
@@ -28,6 +32,8 @@ JuiceAgent is a JVMTI-native injection framework that injects native code into a
 - Get Loaded Classes
 - JNI Function (Can be invoke in java)
 ## How To Use
+***TODO: Update How to  Use***
+***Notice: Tutorial for Version 1.0***
 
 ### 1. Download Files
 - Download `libagent`, `libinjector`, and `libjuiceloader` from the Release to the same directory.  
@@ -100,6 +106,12 @@ cmake --build build --
 dlls: build/bin/
 
 jars: see [JuiceLoader](https://github.com/xiaozhou233/JuiceLoader)
+
+## Full Disclaimer/ 完整免责声明
+Disclaimer: This project is intended for learning and research in controlled environments only. The author is not responsible for any consequences arising from unauthorized use, modification, cracking, or violation of any applicable agreements or laws. Users are responsible for ensuring their actions are legal and compliant.
+
+免责声明： 本项目仅建议在受控环境中用于学习与研究。任何利用本项目实施破解、篡改、未经授权获取源码或其他违反目标协议或法律的行为所导致的一切后果，作者概不负责。使用者应自行确保其行为合法合规，并对相应后果承担全部责任。
+
 ## Acknowledgements
 
  - [ReflectiveDLLInjection](https://github.com/stephenfewer/ReflectiveDLLInjection) - DLL Inject
