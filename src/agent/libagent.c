@@ -258,14 +258,56 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
 }
 
 /// =========================================================== ///
+/// Inject Method: JVM Options -agentpath
+
+/// =========================================================== ///
+/// Function: vm_init
+/// Description: Called when the JVM is fully initialized. This is a callback function.
+/// =========================================================== ///
+static char *agentpath_options = NULL;
+static void JNICALL vm_init(jvmtiEnv *jvmti, JNIEnv *env, jthread thread) {
+    log_info("vminit: VM fully initialized!");
+    log_info("Use options: %s", agentpath_options);
+
+    log_info("JNIEnv: %p", env);
+    log_info("jvmtiEnv: %p", jvmti);
+
+    log_info("Version: %d", (*env)->GetVersion(env));
+
+    //TODO: Impl vm_init and load agent
+
+}
+
+/// =========================================================== ///
 /// Function: Agent_OnLoad
 /// Description: Java Agent OnLoad
 /// Inject Method: JVM Options A) -agentpath:<path-to-agent>.dll=<param-config-dir>
 /// Example: java -agentpath:./libagent.dll=./config -jar myapp.jar
 /// =========================================================== ///
 
+// Notice: This function is called by the JVM when the agent is loaded.
+// Warning: JVM not initialized yet when this function is called.
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
     initLogger();
     log_info("Agent_OnLoad");
-    // TODO: Impl Agent_OnLoad
+    log_info("Agent_OnLoad: options: %s", options);
+
+    // save options
+    if (options != NULL) {
+        agentpath_options = strdup(options);
+    }
+    
+    jvmtiEnv *jvmti;
+    (*vm)->GetEnv(vm, (void **)&jvmti, JVMTI_VERSION_1_2);
+
+    // callbacks
+    jvmtiEventCallbacks callbacks = {0};
+    callbacks.VMInit = &vm_init;
+    (*jvmti)->SetEventCallbacks(jvmti, &callbacks, sizeof(callbacks));
+
+    // enable events
+    (*jvmti)->SetEventNotificationMode(jvmti, JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, NULL);
+
+    log_info("Agent_OnLoad: Done, waiting for JVM Init event.");
+    return JNI_OK;
 }
