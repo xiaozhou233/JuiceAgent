@@ -22,6 +22,13 @@ extern HINSTANCE hAppInstance;
 
 InjectionInfoType InjectionInfo;
 
+static void initLogger() {
+    log_set_level(LOG_TRACE);
+    log_is_log_time(false);
+    log_set_name("libagent");
+    log_info("Logger initialized.");
+}
+
 DWORD WINAPI ThreadProc(LPVOID lpParam) {
     log_trace("New thread started.");
 
@@ -147,6 +154,11 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
     return 0;
 }
 
+/// =========================================================== ///
+/// Function: DllMain
+/// Description: DLL Injection Entry Point
+/// Inject Method: A) ReflectiveDLLInjection B) LoadLibraryA+CreateRemoteThread
+/// =========================================================== ///
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
     BOOL bReturnValue = TRUE;
     switch (dwReason){
@@ -159,14 +171,34 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
             hAppInstance = hinstDLL;
 
             // Initialize log
-            log_set_level(LOG_TRACE);
-            log_is_log_time(false);
-            log_set_name("libagent");
+            initLogger();
             log_info("DLL_PROCESS_ATTACH");
             log_info("[*] JuiceAgent Version %d.%d Build %d", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_BUILD_NUMBER);
 
             DisableThreadLibraryCalls(hinstDLL);
             
+            // JVM Options Inject Method Detection
+            // TODO: Remove Duplicated Code: GetCreatedJVM/GetEnv and var jvm/env (Duplicated at: ThreadProc)
+            JavaVM *jvm = NULL;
+            JNIEnv *env = NULL;
+            jint result = GetCreatedJVM(&jvm);
+            // Check if JVM is created
+            if (result != JNI_OK || jvm == NULL) {
+                log_error("Failed to get JVM (%d) [JVM: %p]", result, jvm);
+                MessageBoxA(NULL, "Failed to get JVM [GetCreatedJVM Faliled or JVM is NULL]\nCheck console for more info.", "Error", MB_OK);
+                return 1;
+            }
+            log_info("DllMain GetCreatedJVM OK. Checking if JVM is inited...");
+            // Check if JVM is inited
+            // JNI_EDETACHED: jvm not initialized, means Agent loaded before JVM inited (jvm options: -agentpath)
+            // Will exit DllMain and jvm will invoke Agent_OnLoad
+            if ((*jvm)->GetEnv(jvm, (void **)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
+                log_warn("Inject Method JVM Options Detected! Exiting...");
+                log_trace("DllMain(DLL_PROCESS_ATTACH) Exiting...");
+                log_info("Agent Will be injected by the Inject Methood JVM Options.\n");
+                break;
+            }
+
             // Allocate memory for local param
             InjectParameters *localParm = (InjectParameters*)malloc(sizeof(InjectParameters));
             if (localParm == NULL) {
@@ -223,4 +255,17 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
             break;
     }
     return bReturnValue;
+}
+
+/// =========================================================== ///
+/// Function: Agent_OnLoad
+/// Description: Java Agent OnLoad
+/// Inject Method: JVM Options A) -agentpath:<path-to-agent>.dll=<param-config-dir>
+/// Example: java -agentpath:./libagent.dll=./config -jar myapp.jar
+/// =========================================================== ///
+
+JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
+    initLogger();
+    log_info("Agent_OnLoad");
+    // TODO: Impl Agent_OnLoad
 }
