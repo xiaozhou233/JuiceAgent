@@ -1,4 +1,4 @@
-# src/core/CMakeLists.txt
+# src/agent/CMakeLists.txt
 
 target_include_directories(agent PRIVATE ${CMAKE_SOURCE_DIR}/includes/tomlc17)
 
