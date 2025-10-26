@@ -274,8 +274,52 @@ static void JNICALL vm_init(jvmtiEnv *jvmti, JNIEnv *env, jthread thread) {
 
     log_info("Version: %d", (*env)->GetVersion(env));
 
-    //TODO: Impl vm_init and load agent
+    // TODO: Remove Duplicated Code
 
+    // Check  if agentpath_options is null
+    if (agentpath_options == NULL) {
+        // Use DLL path as default
+        log_info("agentpath_options is null, use DLL path as default");
+        char DllDir[INJECT_PATH_MAX] = {0};
+
+        if (GetModuleFileNameA(hAppInstance, DllDir, INJECT_PATH_MAX) == 0) {
+            // Failed to get module file name
+            DWORD err = GetLastError();
+            if (err == ERROR_MOD_NOT_FOUND) {
+                // Reflective detected, lpReserved must be set.
+                log_fatal("Reflective load detected! Please set ConfigDir manually! Exit.");
+            } else {
+                log_error("Normal Inject: GetModuleFileNameA failed! Error: %lu", err);
+            }
+                return;
+        } else {
+            // Normal Inject(e.g. CreateRemoteThread+LoadLibraryA), lpReserved can be NULL.
+            PathRemoveFileSpecA(DllDir);
+            log_info("GetModuleFileNameA: %s", DllDir);
+            agentpath_options = DllDir;
+        }
+    }
+    log_trace("agentpath_options: %s", agentpath_options);
+
+    // Allocate memory for InjectParameters
+    InjectParameters *localParm = (InjectParameters*)malloc(sizeof(InjectParameters));
+    if (localParm == NULL) {
+        log_error("malloc failed for InjectParameters");
+        return;
+    }
+    memset(localParm, 0, sizeof(InjectParameters));
+
+    // safe copy
+    safe_copy(localParm->ConfigDir, agentpath_options, INJECT_PATH_MAX);
+
+    // Start new thread
+    HANDLE hThread = CreateThread(NULL, 0, ThreadProc, localParm, 0, NULL);
+    if (hThread) {
+        CloseHandle(hThread);
+    } else {
+        log_error("CreateThread failed %lu", GetLastError());
+        free(localParm);
+    }
 }
 
 /// =========================================================== ///
@@ -311,3 +355,6 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
     log_info("Agent_OnLoad: Done, waiting for JVM Init event.");
     return JNI_OK;
 }
+
+/// Inject Method: JVM Options -agentpath
+/// =========================================================== ///
