@@ -264,10 +264,10 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
 /// Function: vm_init
 /// Description: Called when the JVM is fully initialized. This is a callback function.
 /// =========================================================== ///
-static char *agentpath_options = NULL;
+static char *agent_options = NULL;
 static void JNICALL vm_init(jvmtiEnv *jvmti, JNIEnv *env, jthread thread) {
     log_info("vminit: VM fully initialized!");
-    log_info("Use options: %s", agentpath_options);
+    log_info("Use options: %s", agent_options);
 
     log_info("JNIEnv: %p", env);
     log_info("jvmtiEnv: %p", jvmti);
@@ -276,10 +276,10 @@ static void JNICALL vm_init(jvmtiEnv *jvmti, JNIEnv *env, jthread thread) {
 
     // TODO: Remove Duplicated Code
 
-    // Check  if agentpath_options is null
-    if (agentpath_options == NULL) {
+    // Check  if agent_options is null
+    if (agent_options == NULL) {
         // Use DLL path as default
-        log_info("agentpath_options is null, use DLL path as default");
+        log_info("agent_options is null, use DLL path as default");
         char DllDir[INJECT_PATH_MAX] = {0};
 
         if (GetModuleFileNameA(hAppInstance, DllDir, INJECT_PATH_MAX) == 0) {
@@ -296,10 +296,10 @@ static void JNICALL vm_init(jvmtiEnv *jvmti, JNIEnv *env, jthread thread) {
             // Normal Inject(e.g. CreateRemoteThread+LoadLibraryA), lpReserved can be NULL.
             PathRemoveFileSpecA(DllDir);
             log_info("GetModuleFileNameA: %s", DllDir);
-            agentpath_options = DllDir;
+            agent_options = DllDir;
         }
     }
-    log_trace("agentpath_options: %s", agentpath_options);
+    log_trace("agent_options: %s", agent_options);
 
     // Allocate memory for InjectParameters
     InjectParameters *localParm = (InjectParameters*)malloc(sizeof(InjectParameters));
@@ -310,7 +310,7 @@ static void JNICALL vm_init(jvmtiEnv *jvmti, JNIEnv *env, jthread thread) {
     memset(localParm, 0, sizeof(InjectParameters));
 
     // safe copy
-    safe_copy(localParm->ConfigDir, agentpath_options, INJECT_PATH_MAX);
+    safe_copy(localParm->ConfigDir, agent_options, INJECT_PATH_MAX);
 
     // Start new thread
     HANDLE hThread = CreateThread(NULL, 0, ThreadProc, localParm, 0, NULL);
@@ -338,7 +338,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
 
     // save options
     if (options != NULL) {
-        agentpath_options = strdup(options);
+        agent_options = strdup(options);
     }
     
     jvmtiEnv *jvmti;
@@ -358,3 +358,13 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
 
 /// Inject Method: JVM Options -agentpath
 /// =========================================================== ///
+
+// Notice: This function is useless but required by the JVM (in Windows).
+JNIEXPORT jint JNICALL Agent_OnAttach (JavaVM* vm, char *options, void *reserved) {
+    log_info("Agent_OnAttach");
+    #ifdef WIN_X64
+        log_warn("Agent_OnAttach: Windows will invoke DllMain, Exiting Agent_OnAttach.");
+        log_info("Agent_OnAttach will exit in Windows, Loading will be done in DllMain.\n");
+    #endif
+    return JNI_OK;
+}
