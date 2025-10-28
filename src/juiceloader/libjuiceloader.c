@@ -32,38 +32,37 @@ int setup(JNIEnv *env) {
     log_is_log_time(false);
     log_set_level(LOG_DEBUG);
 
+    log_debug("[JuiceLoader] JuiceLoaderNative addr = %p", &JuiceLoaderNative);
+    log_debug("[JuiceLoader] JVMTI ptr = %p", JuiceLoaderNative.jvmti);
+
     log_info("[*] libjuiceloader Version %d.%d Build %d", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_BUILD_NUMBER);
 
     log_info("%s setup!", LOG_PREFIX);
-    {// Get JavaVM
-    if (JNI_GetCreatedJavaVMs(&JuiceLoaderNative.jvm, 1, NULL) != JNI_OK || !JuiceLoaderNative.jvm) {
-        log_error("%s JNI_GetCreatedJavaVMs failed", LOG_PREFIX);
+    // Get JavaVM
+    if ((*env)->GetJavaVM(env, &JuiceLoaderNative.jvm) != 0 || JuiceLoaderNative.jvm == NULL) {
+        log_error("%s GetJavaVM failed", LOG_PREFIX);
         return 1;
     } else {
         log_info("%s JNI_GetCreatedJavaVMs success", LOG_PREFIX);
     }
 
-    // Get JNIEnv
-    if ((*JuiceLoaderNative.jvm)->AttachCurrentThread(JuiceLoaderNative.jvm, (void **)&JuiceLoaderNative.env, NULL) != JNI_OK) {
-        log_error("%s AttachCurrentThread failed", LOG_PREFIX);
-        return 1;
-    } else {
-        log_info("%s AttachCurrentThread success", LOG_PREFIX);
-    }
+    // // Get JNIEnv
+    // if ((*JuiceLoaderNative.jvm)->AttachCurrentThread(JuiceLoaderNative.jvm, (void **)&JuiceLoaderNative.env, NULL) != JNI_OK) {
+    //     log_error("%s AttachCurrentThread failed", LOG_PREFIX);
+    //     return 1;
+    // } else {
+    //     log_info("%s AttachCurrentThread success", LOG_PREFIX);
+    // }
 
     // Debug: JVM version
-    jint version = (*JuiceLoaderNative.env)->GetVersion(JuiceLoaderNative.env);
+    jint version = (*env)->GetVersion(env);
     log_debug("%s JVM version: 0x%x", LOG_PREFIX, version);
 
-    jint res = (*JuiceLoaderNative.jvm)->GetEnv(JuiceLoaderNative.jvm, (void**)&JuiceLoaderNative.jvmti, JVMTI_VERSION_1_2);
-    if (res != JNI_OK || JuiceLoaderNative.jvmti == NULL) {
-        log_error("%s GetEnv failed", LOG_PREFIX);
+    if ((*JuiceLoaderNative.jvm)->GetEnv(JuiceLoaderNative.jvm, (void**)&JuiceLoaderNative.jvmti, JVMTI_VERSION_1_2) != JNI_OK || JuiceLoaderNative.jvmti == NULL) {
+        log_error("%s GetEnv for jvmti failed", LOG_PREFIX);
         return 1;
-    } else {
-        log_info("%s GetEnv success", LOG_PREFIX);
-    }}
-    log_info("%s Enabled JVMTI.");
-    
+    }
+    log_info("%s Enabled JVMTI at %p", LOG_PREFIX, JuiceLoaderNative.jvmti);
     jvmtiError err;
 //    jvmtiEventCallbacks callbacks;
 
@@ -75,6 +74,10 @@ int setup(JNIEnv *env) {
     caps.can_retransform_classes = 1;
     caps.can_retransform_any_class = 1;
 
+    if (JuiceLoaderNative.jvmti == NULL) {
+        log_error("JVMTI is NULL (Before AddCapabilities, After GetEnv), %p", JuiceLoaderNative.jvmti);
+        return 1;
+    }
     err = (*JuiceLoaderNative.jvmti)->AddCapabilities(JuiceLoaderNative.jvmti, &caps);
     check_jvmti_error(JuiceLoaderNative.jvmti, err, "AddCapabilities");
 
@@ -96,6 +99,8 @@ int setup(JNIEnv *env) {
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_init
   (JNIEnv *env, jobject obj) {
     log_info("%s JNI Func Init Invoke!");
+    log_debug("[JuiceLoader] JuiceLoaderNative addr = %p", &JuiceLoaderNative);
+    log_debug("[JuiceLoader] JVMTI ptr = %p", JuiceLoaderNative.jvmti);
     if(setup(env) == 0) {
         return JNI_TRUE;
     }
@@ -111,7 +116,7 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_inj
     log_info("%s JNI Func InjectJar Invoke!", LOG_PREFIX);
     jvmtiError err;
     if(JuiceLoaderNative.jvmti == NULL) {
-        log_error("%s JVM not init!", LOG_PREFIX);
+        log_error("%s JVM not init! (JVMTI == NULL)", LOG_PREFIX);
         return JNI_FALSE;
     }
 
@@ -133,7 +138,7 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_red
     jvmtiError err;
 
     if (JuiceLoaderNative.jvmti == NULL) {
-        log_error("%s JVM not init!", LOG_PREFIX);
+        log_error("%s JVM not init! (JVMTI == NULL)", LOG_PREFIX);
         return JNI_FALSE;
     }
 
@@ -166,7 +171,7 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_red
     jvmtiError err;
 
     if (JuiceLoaderNative.jvmti == NULL) {
-        log_error("%s JVM not init!", LOG_PREFIX);
+        log_error("%s JVM not init! (JVMTI = NULL)", LOG_PREFIX);
         return JNI_FALSE;
     }
 
@@ -191,6 +196,10 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_red
     defs[0].class_bytes = (const unsigned char*) buf;
 
     log_info("%s Redefining class...", LOG_PREFIX);
+    if (JuiceLoaderNative.jvmti == NULL) {
+        log_error("JVMTI is NULL (Before RedefineClasses, After FindClass), %p", JuiceLoaderNative.jvmti);
+        return 1;
+    }
     err = (*JuiceLoaderNative.jvmti)->RedefineClasses(JuiceLoaderNative.jvmti, 1, defs);
     check_jvmti_error(JuiceLoaderNative.jvmti, err, "RedefineClasses");
 
@@ -202,7 +211,15 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_red
 
 JNIEXPORT jobjectArray JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoaderNative_getLoadedClasses
   (JNIEnv *env, jobject obj) {
+    if (JuiceLoaderNative.jvmti == NULL) {
+        log_error("JVMTI is NULL (When GetLoadedClasses[invoked JNI Func]), %p", JuiceLoaderNative.jvmti);
+        return NULL;
+    }
+    jvmtiPhase phase; (*JuiceLoaderNative.jvmti)->GetPhase(JuiceLoaderNative.jvmti, &phase); log_info("Phase=%d", phase);
         jint count = 0;
+    log_debug("[JuiceLoader] JuiceLoaderNative addr = %p", &JuiceLoaderNative);
+    log_debug("[JuiceLoader] JVMTI ptr = %p", JuiceLoaderNative.jvmti);
+
     jclass* classes = NULL;
 
     jvmtiError err = (*JuiceLoaderNative.jvmti)->GetLoadedClasses(JuiceLoaderNative.jvmti, &count, &classes);

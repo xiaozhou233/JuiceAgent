@@ -147,7 +147,8 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
     log_info("invoked. ");
     log_info("done. cleaning up...");
 
-    (*jvm)->DetachCurrentThread(jvm);
+    // :(
+    // (*jvm)->DetachCurrentThread(jvm);
 
     free(param);
     log_info("exit.");
@@ -192,7 +193,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
             // Check if JVM is inited
             // JNI_EDETACHED: jvm not initialized, means Agent loaded before JVM inited (jvm options: -agentpath)
             // Will exit DllMain and jvm will invoke Agent_OnLoad
-            if ((*jvm)->GetEnv(jvm, (void **)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
+            if (GetJNIEnv(jvm, &env) == JNI_EDETACHED) {
                 log_warn("Inject Method JVM Options Detected! Exiting...");
                 log_trace("DllMain(DLL_PROCESS_ATTACH) Exiting...");
                 log_info("Agent Will be injected by the Inject Methood JVM Options.\n");

@@ -7,7 +7,6 @@
 struct _JuiceLoaderNative {
     JavaVM *jvm;
     jvmtiEnv *jvmti;
-    JNIEnv *env;
 } JuiceLoaderNative;
 
 
