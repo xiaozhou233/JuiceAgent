@@ -23,6 +23,14 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNativ
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_inject__ILjava_lang_String_2Ljava_lang_String_2
   (JNIEnv *, jobject, jint, jstring, jstring);
 
+/*
+ * Class:     cn_xiaozhou233_juiceagent_injector_InjectorNative
+ * Method:    findWindowsByTitle
+ * Signature: (Ljava/lang/String;)[Lcn/xiaozhou233/juiceagent/injector/InjectorNative/WindowInfo;
+ */
+JNIEXPORT jobjectArray JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_findWindowsByTitle
+  (JNIEnv *, jclass, jstring);
+
 #ifdef __cplusplus
 }
 #endif

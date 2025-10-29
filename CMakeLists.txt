@@ -35,5 +35,4 @@ include(cmake/JuiceModule.cmake)
 
 # modules
 add_juice_module(agent)
-add_juice_module(juiceloader)
 add_juice_module(injector)

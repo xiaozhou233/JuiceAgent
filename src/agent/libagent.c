@@ -16,6 +16,7 @@ Desc: Entry point for the agent
 #include "shlwapi.h"
 #include "tomlc17.h"
 #include "datautils.h"
+#include "juiceloader.h"
 
 #define WIN_X64
 extern HINSTANCE hAppInstance;
@@ -119,6 +120,13 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
     log_info("injecting loader jar...");
     (*jvmti)->AddToSystemClassLoaderSearch(jvmti, InjectionInfo.JuiceLoaderJarPath);
     log_info("injected loader jar");
+
+    // init juiceloader
+    log_info("init juice loader...");
+    init_juiceloader(env, jvmti);
+    
+    initLogger();
+    log_info("juice loader init done");
 
     // Invoke loader.init(JuiceLoaderLibPath, EntryJarPath)
     log_info("invoking loader init()...");

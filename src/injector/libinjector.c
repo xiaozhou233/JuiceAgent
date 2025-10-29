@@ -233,3 +233,63 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNativ
 
     return (ret == 0) ? JNI_TRUE : JNI_FALSE;
 }
+
+/// ================ FindWindowsByTitle  =================
+#define MAX_RESULTS 128
+
+typedef struct {
+    wchar_t title[256];
+    DWORD pid;
+} WindowData;
+
+static wchar_t g_keyword[256];
+static WindowData g_results[MAX_RESULTS];
+static int g_count = 0;
+
+
+BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
+    wchar_t title[256];
+    GetWindowTextW(hwnd, title, 256);
+    if (wcslen(title) == 0) return TRUE;
+
+    if (wcsstr(title, g_keyword)) {
+        DWORD pid = 0;
+        GetWindowThreadProcessId(hwnd, &pid);
+
+        if (g_count < MAX_RESULTS && pid) {
+            wcsncpy(g_results[g_count].title, title, 255);
+            g_results[g_count].pid = pid;
+            g_count++;
+        }
+    }
+    return TRUE;
+}
+
+JNIEXPORT jobjectArray JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_findWindowsByTitle
+  (JNIEnv *env, jclass clazz, jstring keyword) {
+
+    const jchar *input = (*env)->GetStringChars(env, keyword, NULL);
+    wcsncpy(g_keyword, (const wchar_t *)input, 255);
+    g_keyword[255] = L'\0';
+    (*env)->ReleaseStringChars(env, keyword, input);
+
+    g_count = 0;
+    EnumWindows(EnumWindowsProc, 0);
+
+    jclass infoClass = (*env)->FindClass(env, "cn/xiaozhou233/juiceagent/injector/InjectorNative$WindowInfo");
+    if (!infoClass) return NULL;
+
+    jmethodID ctor = (*env)->GetMethodID(env, infoClass, "<init>", "(Ljava/lang/String;I)V");
+    if (!ctor) return NULL;
+
+    jobjectArray array = (*env)->NewObjectArray(env, g_count, infoClass, NULL);
+
+    for (int i = 0; i < g_count; i++) {
+        jstring title = (*env)->NewString(env, (jchar*)g_results[i].title, wcslen(g_results[i].title));
+        jobject obj = (*env)->NewObject(env, infoClass, ctor, title, (jint)g_results[i].pid);
+        (*env)->SetObjectArrayElement(env, array, i, obj);
+    }
+
+    return array;
+}
+/// ===============================================================================
