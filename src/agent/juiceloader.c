@@ -17,6 +17,21 @@ static void initLogger() {
     log_info("Logger initialized.");
 }
 
+void JNICALL ClassFileLoadHook(
+        jvmtiEnv* jvmti_env,
+        JNIEnv* jni_env,
+        jclass class_being_redefined,
+        jobject loader,
+        const char* name,
+        jobject protection_domain,
+        jint class_data_len,
+        const unsigned char* classbytes,
+        jint* new_class_data_len,
+        unsigned char** new_classbytes) {
+    log_trace("CallBack: ClassFileLoadHook [%s]", name);
+    // event_post(GetClassBytes, classbytes, 1);
+}
+
 jint init_juiceloader(JNIEnv *env, jvmtiEnv *jvmti) {
     log_info("[*] libjuiceloader Version %d.%d Build %d", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_BUILD_NUMBER);
 
@@ -50,7 +65,11 @@ jint init_juiceloader(JNIEnv *env, jvmtiEnv *jvmti) {
         // JuiceLoaderNative.redefineClassByName(String className, byte[] classBytes, int length);
         {"redefineClassByName", "(Ljava/lang/String;[BI)Z", (void *)&loader_redefineClass_className},
         // JuiceLoaderNative.getLoadedClasses();
-        {"getLoadedClasses", "()[Ljava/lang/Class;", (void *)&loader_getLoadedClasses}
+        {"getLoadedClasses", "()[Ljava/lang/Class;", (void *)&loader_getLoadedClasses},
+        // public static native byte[] getClassBytes(Class<?> clazz);
+        // public static native byte[] getClassBytesByName(String className);
+        {"getClassBytes", "(Ljava/lang/Class;)[B", (void *)&loader_getClassBytes},
+        { "getClassBytesByName", "(Ljava/lang/String;)[B", (void *)&loader_getClassBytesByName}
     };
     jint result = (*env)->RegisterNatives(env, clazz, methods, sizeof(methods) / sizeof(methods[0]));
     if (result != JNI_OK) {
@@ -66,11 +85,21 @@ jint init_juiceloader(JNIEnv *env, jvmtiEnv *jvmti) {
     caps.can_redefine_any_class = 1;
     caps.can_retransform_classes = 1;
     caps.can_retransform_any_class = 1;    
+    caps.can_generate_all_class_hook_events = 1;
     result = (*JuiceLoaderNative.jvmti)->AddCapabilities(JuiceLoaderNative.jvmti, &caps);
     if (result != JNI_OK) {
         log_error("Cannot add JVMTI capabilities! [result=%d]", result);
         return JNI_ERR;
     }
+
+    // Register callbacks
+    jvmtiEventCallbacks callbacks;
+    memset(&callbacks, 0, sizeof(callbacks));
+    callbacks.ClassFileLoadHook = &ClassFileLoadHook;
+    (*jvmti)->SetEventCallbacks(jvmti, &callbacks, sizeof(callbacks));
+
+    // Enable events
+    (*jvmti)->SetEventNotificationMode(jvmti, JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, NULL);
 
     return JNI_OK;
 }
@@ -228,4 +257,13 @@ JNIEXPORT jobjectArray JNICALL loader_getLoadedClasses(JNIEnv *env, jclass loade
     }
     return classArray;
 }
-/// ============ JNI Function ============ ///
+
+JNIEXPORT jbyteArray JNICALL loader_getClassBytes(JNIEnv *env, jclass loader_class, jclass clazz) {
+    log_info("getClassBytes Invoked!");
+    
+}
+
+JNIEXPORT jbyteArray JNICALL loader_getClassBytesByName(JNIEnv *env, jclass loader_class, jstring className) {
+    log_info("getClassBytesByName Invoked!");
+
+}

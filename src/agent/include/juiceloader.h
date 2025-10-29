@@ -22,6 +22,8 @@ JNIEXPORT jboolean JNICALL loader_redefineClass_clazz(JNIEnv *env, jclass loader
 JNIEXPORT jboolean JNICALL loader_redefineClass_className(JNIEnv *env, jclass loader_class, jstring className, jbyteArray classBytes, jint length);
 // public native static Class<?>[] getLoadedClasses();
 JNIEXPORT jobjectArray JNICALL loader_getLoadedClasses(JNIEnv *env, jclass loader_class);
-
-
+// public static native byte[] getClassBytes(Class<?> clazz);
+JNIEXPORT jbyteArray JNICALL loader_getClassBytes(JNIEnv *env, jclass loader_class, jclass clazz);
+// public static native byte[] getClassBytesByName(String className);
+JNIEXPORT jbyteArray JNICALL loader_getClassBytesByName(JNIEnv *env, jclass loader_class, jstring className);
 #endif
