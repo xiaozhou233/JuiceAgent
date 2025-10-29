@@ -124,11 +124,10 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
     // init juiceloader
     log_info("init juice loader...");
     init_juiceloader(env, jvmti);
-    
+
     initLogger();
     log_info("juice loader init done");
 
-    // Invoke loader.init(JuiceLoaderLibPath, EntryJarPath)
     log_info("invoking loader init()...");
     log_info("============ Loader Info ============\n");
     jclass cls = (*env)->FindClass(env, "cn/xiaozhou233/juiceloader/JuiceLoader");
@@ -147,7 +146,6 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
         return 1;
     }
     (*env)->CallStaticVoidMethod(env, cls, mid, 
-        (*env)->NewStringUTF(env, InjectionInfo.JuiceLoaderLibPath),
         (*env)->NewStringUTF(env, InjectionInfo.EntryJarPath),
         (*env)->NewStringUTF(env, InjectionInfo.EntryClass),
         (*env)->NewStringUTF(env, InjectionInfo.EntryMethod));

@@ -49,21 +49,6 @@ bool ReadInjectionInfo(toml_result_t result, InjectParameters* params) {
     safe_copy(InjectionInfo.JuiceLoaderJarPath, JuiceLoaderJarPathStr, INJECT_PATH_MAX);
     // ======= JuiceLoaderJarPath =======
 
-    // ======= JuiceLoaderLibPath =======
-    toml_datum_t JuiceLoaderLibPath = toml_seek(InjectionTree, "JuiceLoaderLibPath");
-    char JuiceLoaderLibPathStr[INJECT_PATH_MAX];
-    if (JuiceLoaderLibPath.type != TOML_STRING) {
-        log_error("JuiceLoaderLibPath is not a string.");
-        return false;
-    }
-    if (JuiceLoaderLibPath.u.s == NULL || strlen(JuiceLoaderLibPath.u.s) == 0) {
-        sprintf(JuiceLoaderLibPathStr, "%s\\libjuiceloader.dll", params->ConfigDir);
-    } else {
-        sprintf(JuiceLoaderLibPathStr, "%s", JuiceLoaderLibPath.u.s);
-    }
-    safe_copy(InjectionInfo.JuiceLoaderLibPath, JuiceLoaderLibPathStr, INJECT_PATH_MAX);
-    // ======= JuiceLoaderLibPath =======
-
     // ======= Entry =======
     toml_datum_t EntryJarPath = toml_seek(InjectionTree, "EntryJarPath");
     char EntryJarPathStr[INJECT_PATH_MAX];

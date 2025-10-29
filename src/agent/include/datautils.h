@@ -9,7 +9,6 @@
 typedef struct _InjectionInfo {
     char BootstrapAPIPath[INJECT_PATH_MAX];
     char JuiceLoaderJarPath[INJECT_PATH_MAX];
-    char JuiceLoaderLibPath[INJECT_PATH_MAX];
     char EntryJarPath[INJECT_PATH_MAX];
     char EntryClass[INJECT_PATH_MAX];
     char EntryMethod[INJECT_PATH_MAX];
