@@ -86,6 +86,7 @@ JNIEXPORT jboolean JNICALL loader_init(JNIEnv *env, jclass loader_class) {
 
 // JuiceLoaderNative.injectJar(String)
 JNIEXPORT jboolean JNICALL loader_injectJar(JNIEnv *env, jclass loader_class, jstring jarPath) {
+    log_info("injectJar Invoked!");
     jboolean return_value = JNI_FALSE;
 
     const char *pathStr = (*env)->GetStringUTFChars(env, jarPath, NULL);
@@ -119,6 +120,7 @@ cleanup:
 
 // JuiceLoaderNative.redefineClass(Class, byte[], int)
 JNIEXPORT jboolean JNICALL loader_redefineClass_clazz(JNIEnv *env, jclass loader_class, jclass clazz, jbyteArray classBytes, jint length) {
+    log_info("redefineClass_clazz Invoked!");
     jboolean return_value = JNI_FALSE;
     jbyte* buf = NULL;
 
@@ -159,6 +161,7 @@ cleanup:
 }
 
 JNIEXPORT jboolean JNICALL loader_redefineClass_className(JNIEnv *env, jclass loader_class, jstring className, jbyteArray classBytes, jint length) {
+    log_info("redefineClass_className Invoked!");
     jboolean return_value = JNI_FALSE;
 
     if (JuiceLoaderNative.jvmti == NULL) {
@@ -193,6 +196,7 @@ cleanup:
 }
 
 JNIEXPORT jobjectArray JNICALL loader_getLoadedClasses(JNIEnv *env, jclass loader_class) {
+    log_info("loader_getLoadedClasses invoked!");
 
     if (JuiceLoaderNative.jvmti == NULL) {
         log_error("JuiceLoaderNative.jvmti is NULL! [jvmti=%p]", JuiceLoaderNative.jvmti);

@@ -135,7 +135,7 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
         log_error("FindClass JuiceLoader failed");
         return 1;
     }
-    jmethodID mid = (*env)->GetStaticMethodID(env, cls, "init", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+    jmethodID mid = (*env)->GetStaticMethodID(env, cls, "init", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
     if (mid == NULL) {
         log_error("GetStaticMethodID init failed");
         if ((*env)->ExceptionCheck(env)) {
