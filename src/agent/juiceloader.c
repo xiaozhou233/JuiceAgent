@@ -7,8 +7,13 @@ Desc: JuiceLoader Native, Provide jni function for JuiceLoader
 #include <windows.h>
 #include "log.h"
 #include "juiceloader.h"
+#include "javautils.h"
 
 JuiceLoaderNativeType JuiceLoaderNative;
+
+static const char* g_bytecodes_classname = NULL;
+static unsigned char* g_bytecodes = NULL;
+static jint g_bytecodes_len = 0;
 
 static void initLogger() {
     log_set_level(LOG_TRACE);
@@ -28,9 +33,21 @@ void JNICALL ClassFileLoadHook(
         const unsigned char* classbytes,
         jint* new_class_data_len,
         unsigned char** new_classbytes) {
-    log_trace("CallBack: ClassFileLoadHook [%s]", name);
-    // event_post(GetClassBytes, classbytes, 1);
+
+    //log_trace("CallBack: ClassFileLoadHook [%s]", name);
+
+    if (g_bytecodes_classname != NULL && g_bytecodes == NULL) {
+        if (strcmp(name, g_bytecodes_classname) == 0) {
+            g_bytecodes_len = class_data_len;
+            g_bytecodes = (unsigned char*)malloc(class_data_len);
+            memcpy(g_bytecodes, classbytes, class_data_len);
+
+            *new_classbytes = NULL;
+            *new_class_data_len = 0;
+        }
+    }
 }
+
 
 jint init_juiceloader(JNIEnv *env, jvmtiEnv *jvmti) {
     log_info("[*] libjuiceloader Version %d.%d Build %d", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_BUILD_NUMBER);
@@ -260,10 +277,69 @@ JNIEXPORT jobjectArray JNICALL loader_getLoadedClasses(JNIEnv *env, jclass loade
 
 JNIEXPORT jbyteArray JNICALL loader_getClassBytes(JNIEnv *env, jclass loader_class, jclass clazz) {
     log_info("getClassBytes Invoked!");
-    
+
+    if (JuiceLoaderNative.jvmti == NULL) {
+        log_error("JuiceLoaderNative.jvmti is NULL! [jvmti=%p]", JuiceLoaderNative.jvmti);
+        return NULL;
+    }
+
+    char* className = get_class_name(env, clazz);
+    if (className == NULL) {
+        log_error("Failed to get class name!");
+        return NULL;
+    }
+
+    // JVM 内部使用路径名（. 替换为 /）
+    for (char* p = className; *p; p++) {
+        if (*p == '.') *p = '/';
+    }
+
+    g_bytecodes = NULL;
+    g_bytecodes_classname = className;
+    g_bytecodes_len = 0;
+
+    jclass classes[1] = { clazz };
+    jvmtiError err = (*JuiceLoaderNative.jvmti)->RetransformClasses(JuiceLoaderNative.jvmti, 1, classes);
+    if (err != JVMTI_ERROR_NONE) {
+        log_error("RetransformClasses failed: %d", err);
+        free((void*)className);
+        return NULL;
+    }
+
+    if (g_bytecodes != NULL) {
+        jbyteArray result = (*env)->NewByteArray(env, g_bytecodes_len);
+        (*env)->SetByteArrayRegion(env, result, 0, g_bytecodes_len, (jbyte*)g_bytecodes);
+
+        free((void*)g_bytecodes);
+        free((void*)className);
+        g_bytecodes = NULL;
+        g_bytecodes_classname = NULL;
+        g_bytecodes_len = 0;
+
+        return result;
+    }
+
+    log_warn("No bytecode captured for class: %s", className);
+    free((void*)className);
+    return NULL;
 }
 
 JNIEXPORT jbyteArray JNICALL loader_getClassBytesByName(JNIEnv *env, jclass loader_class, jstring className) {
     log_info("getClassBytesByName Invoked!");
 
+    if (JuiceLoaderNative.jvmti == NULL) {
+        log_error("JuiceLoaderNative.jvmti is NULL! [jvmti=%p]", JuiceLoaderNative.jvmti);
+        return NULL;
+    }
+
+    const char* cname = (*env)->GetStringUTFChars(env, className, NULL);
+    jclass clazz = (*env)->FindClass(env, cname);
+    (*env)->ReleaseStringUTFChars(env, className, cname);
+
+    if (clazz == NULL) {
+        log_error("Failed to find class %s", cname);
+        return NULL;
+    }
+
+    return loader_getClassBytes(env, loader_class, clazz);
 }
