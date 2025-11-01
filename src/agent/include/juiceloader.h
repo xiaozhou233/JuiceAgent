@@ -9,6 +9,13 @@ typedef struct _JuiceLoaderNative {
 } JuiceLoaderNativeType;
 extern JuiceLoaderNativeType JuiceLoaderNative;
 
+typedef struct _JavaHookCache {
+    bool isReady;
+    jclass hook_class;
+    jmethodID post_class;
+} JavaHookCacheType;
+extern JavaHookCacheType JavaHookCache;
+
 jint init_juiceloader(JNIEnv *env, jvmtiEnv *jvmti);
 
 // JNI Functions

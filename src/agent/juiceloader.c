@@ -10,6 +10,7 @@ Desc: JuiceLoader Native, Provide jni function for JuiceLoader
 #include "javautils.h"
 
 JuiceLoaderNativeType JuiceLoaderNative;
+JavaHookCacheType JavaHookCache = {false, NULL, NULL};
 
 static const char* g_bytecodes_classname = NULL;
 static unsigned char* g_bytecodes = NULL;
@@ -45,6 +46,35 @@ void JNICALL ClassFileLoadHook(
             *new_classbytes = NULL;
             *new_class_data_len = 0;
         }
+    }
+
+    // Java Event Hook
+    if (JavaHookCache.isReady == true) {
+        jbyteArray jBytes = (*jni_env)->NewByteArray(jni_env, class_data_len);
+        (*jni_env)->SetByteArrayRegion(jni_env, jBytes, 0, class_data_len, (const jbyte*)classbytes);
+        jstring jName = (*jni_env)->NewStringUTF(jni_env, name);
+
+        jbyteArray result = (jbyteArray)(*jni_env)->CallStaticObjectMethod(
+            jni_env,
+            JavaHookCache.hook_class,
+            JavaHookCache.post_class,
+            class_being_redefined,
+            loader,
+            jName,
+            protection_domain,
+            class_data_len,
+            jBytes
+        );
+
+        if (result != NULL) {
+            jsize newLen = (*jni_env)->GetArrayLength(jni_env, result);
+            *new_classbytes = (unsigned char*)malloc(newLen);
+            (*jni_env)->GetByteArrayRegion(jni_env, result, 0, newLen, (jbyte*)*new_classbytes);
+            *new_class_data_len = newLen;
+        }
+
+        (*jni_env)->DeleteLocalRef(jni_env, jBytes);
+        (*jni_env)->DeleteLocalRef(jni_env, jName);
     }
 }
 
@@ -125,8 +155,26 @@ jint init_juiceloader(JNIEnv *env, jvmtiEnv *jvmti) {
 
 // JuiceLoaderNative.init()
 JNIEXPORT jboolean JNICALL loader_init(JNIEnv *env, jclass loader_class) {
-    // Deprcated
-    log_warn("JuiceLoaderNative.init() is deprecated, init will be done automatically.");
+    log_info("init Invoked!");
+    // Get JuiceEventBus class
+    log_info("Find JuiceEventBus class...");
+    JavaHookCache.hook_class = (*env)->FindClass(env, "cn/xiaozhou233/juiceloader/JuiceEventBus");
+    if (JavaHookCache.hook_class == NULL) {
+        log_error("Cannot find JuiceEventBus class!");
+        return JNI_FALSE;
+    }
+
+    // Get test method
+    log_info("Find JuiceEventBus post method...");
+    JavaHookCache.post_class = (*env)->GetStaticMethodID(env, JavaHookCache.hook_class, "postClassFileLoadHook", "(Ljava/lang/Class;Ljava/lang/ClassLoader;Ljava/lang/String;Ljava/lang/Object;I[B)[B");
+    if (JavaHookCache.post_class == NULL) {
+        log_error("Cannot find JuiceEventBus hook method!");
+        return JNI_FALSE;
+    }
+
+    // Set Ready
+    log_info("JuiceEventBus is ready!");
+    JavaHookCache.isReady = true;
     return JNI_TRUE;
 }
 
@@ -289,7 +337,6 @@ JNIEXPORT jbyteArray JNICALL loader_getClassBytes(JNIEnv *env, jclass loader_cla
         return NULL;
     }
 
-    // JVM 内部使用路径名（. 替换为 /）
     for (char* p = className; *p; p++) {
         if (*p == '.') *p = '/';
     }
