@@ -10,6 +10,7 @@ Desc: JuiceLoader Native, Provide jni function for JuiceLoader
 #include "javautils.h"
 
 JuiceLoaderNativeType JuiceLoaderNative;
+RetransformClassCacheType RetransformClassCache = {NULL, 0, 0};
 
 static const char* g_bytecodes_classname = NULL;
 static unsigned char* g_bytecodes = NULL;
@@ -34,8 +35,7 @@ void JNICALL ClassFileLoadHook(
         jint* new_class_data_len,
         unsigned char** new_classbytes) {
 
-    //log_trace("CallBack: ClassFileLoadHook [%s]", name);
-
+    // ---- get class bytecode ---- //
     if (g_bytecodes_classname != NULL && g_bytecodes == NULL) {
         if (strcmp(name, g_bytecodes_classname) == 0) {
             g_bytecodes_len = class_data_len;
@@ -44,9 +44,47 @@ void JNICALL ClassFileLoadHook(
 
             *new_classbytes = NULL;
             *new_class_data_len = 0;
+
+            log_trace("[Hook:get] Captured class bytes of %s, len=%d", name, class_data_len);
+            return;
         }
     }
+    // ---- get class bytecode ---- //
+
+    // ---- set class bytecode ---- //
+    if (RetransformClassCache.size == 0) {
+        return;
+    }
+
+    for (int i = 0; i < RetransformClassCache.size; i++) {
+        ClassBytesCacheType *entry = &RetransformClassCache.arr[i];
+        if (strcmp(entry->name, name) == 0) {
+
+            unsigned char *newBytes = NULL;
+            jvmtiError err = (*jvmti_env)->Allocate(jvmti_env, entry->len, &newBytes);
+            if (err != JVMTI_ERROR_NONE || newBytes == NULL) {
+                log_error("[Hook:set] jvmti->Allocate failed for class %s, err=%d", name, err);
+                return;
+            }
+
+            memcpy(newBytes, entry->bytes, entry->len);
+            *new_classbytes = newBytes;
+            *new_class_data_len = entry->len;
+
+            log_info("[Hook:set] Patched class: %s, new_len=%d", name, entry->len);
+
+            free(entry->name);
+            free(entry->bytes);
+            for (int j = i; j < RetransformClassCache.size - 1; j++) {
+                RetransformClassCache.arr[j] = RetransformClassCache.arr[j + 1];
+            }
+            RetransformClassCache.size--;
+            break;
+        }
+    }
+    // ---- set class bytecode ---- //
 }
+
 
 
 jint init_juiceloader(JNIEnv *env, jvmtiEnv *jvmti) {
@@ -86,13 +124,20 @@ jint init_juiceloader(JNIEnv *env, jvmtiEnv *jvmti) {
         // public static native byte[] getClassBytes(Class<?> clazz);
         // public static native byte[] getClassBytesByName(String className);
         {"getClassBytes", "(Ljava/lang/Class;)[B", (void *)&loader_getClassBytes},
-        { "getClassBytesByName", "(Ljava/lang/String;)[B", (void *)&loader_getClassBytesByName}
+        { "getClassBytesByName", "(Ljava/lang/String;)[B", (void *)&loader_getClassBytesByName},
+        // public static native boolean retransformClass(Class<?> clazz, byte[] classBytes, int length);
+        {"retransformClass", "(Ljava/lang/Class;[BI)Z", (void *)&loader_retransformClass}
     };
     jint result = (*env)->RegisterNatives(env, clazz, methods, sizeof(methods) / sizeof(methods[0]));
     if (result != JNI_OK) {
         log_error("Cannot register JNI methods for JuiceLoaderNative class! [result=%d]", result);
         return JNI_ERR;
     }
+
+    // Init RetransformClassCache
+    RetransformClassCache.arr = NULL;
+    RetransformClassCache.size = 0;
+    RetransformClassCache.capacity = 0;
 
     // Application ability
     jvmtiCapabilities caps;
@@ -342,4 +387,48 @@ JNIEXPORT jbyteArray JNICALL loader_getClassBytesByName(JNIEnv *env, jclass load
     }
 
     return loader_getClassBytes(env, loader_class, clazz);
+}
+
+JNIEXPORT jboolean JNICALL loader_retransformClass(JNIEnv *env, jclass loader_class, jclass clazz, jbyteArray classBytes, jint length) {
+    if (JuiceLoaderNative.jvmti == NULL) {
+        log_error("JuiceLoaderNative.jvmti is NULL! (retransformClass)");
+        return JNI_FALSE;
+    }
+
+    const char *name_dot = get_class_name(env, clazz);
+    char* name = strdup(name_dot);
+    for (char* p = name; *p; ++p) {
+        if (*p == '.') *p = '/';
+    }
+
+    // get class bytes
+    jbyte *bytes = (*env)->GetByteArrayElements(env, classBytes, NULL);
+    jint len = (*env)->GetArrayLength(env, classBytes);
+
+    if (RetransformClassCache.size >= RetransformClassCache.capacity) {
+        int new_capacity = RetransformClassCache.capacity == 0 ? 4 : RetransformClassCache.capacity * 2;
+        RetransformClassCache.arr = realloc(RetransformClassCache.arr, new_capacity * sizeof(ClassBytesCacheType));
+        RetransformClassCache.capacity = new_capacity;
+    }
+
+    // save class bytes to cache
+    ClassBytesCacheType *entry = &RetransformClassCache.arr[RetransformClassCache.size++];
+    entry->name = _strdup(name);
+    entry->bytes = malloc(len);
+    memcpy(entry->bytes, bytes, len);
+    entry->len = len;
+
+    // clean up
+    (*env)->ReleaseByteArrayElements(env, classBytes, bytes, JNI_ABORT);
+
+    // retransform classes
+    jclass classes[1] = { clazz };
+    jvmtiError err = (*JuiceLoaderNative.jvmti)->RetransformClasses(JuiceLoaderNative.jvmti, 1, classes);
+    if (err != JVMTI_ERROR_NONE) {
+        log_error("RetransformClasses failed! [err=%d]", err);
+        return JNI_FALSE;
+    }
+
+    log_info("[retransformClass] Class retransformed: %s (len=%d)", entry->name, entry->len);
+    return JNI_TRUE;
 }

@@ -8,7 +8,9 @@ Desc: data utils
 #include "datautils.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "tomlc17.h"
+#include "juiceloader.h"
 
 void safe_copy(char *dest, const char *src, size_t dest_size) {
     if (!dest || dest_size == 0) return;

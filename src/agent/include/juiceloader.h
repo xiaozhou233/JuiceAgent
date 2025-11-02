@@ -9,6 +9,21 @@ typedef struct _JuiceLoaderNative {
 } JuiceLoaderNativeType;
 extern JuiceLoaderNativeType JuiceLoaderNative;
 
+typedef struct {
+    char *name;
+    unsigned char *bytes;
+    int len;
+} ClassBytesCacheType;
+
+typedef struct {
+    ClassBytesCacheType *arr;
+    int size;
+    int capacity;
+} RetransformClassCacheType;
+
+extern RetransformClassCacheType RetransformClassCache;
+
+
 jint init_juiceloader(JNIEnv *env, jvmtiEnv *jvmti);
 
 // JNI Functions
@@ -26,4 +41,6 @@ JNIEXPORT jobjectArray JNICALL loader_getLoadedClasses(JNIEnv *env, jclass loade
 JNIEXPORT jbyteArray JNICALL loader_getClassBytes(JNIEnv *env, jclass loader_class, jclass clazz);
 // public static native byte[] getClassBytesByName(String className);
 JNIEXPORT jbyteArray JNICALL loader_getClassBytesByName(JNIEnv *env, jclass loader_class, jstring className);
+// public static native boolean retransformClass(Class<?> clazz, byte[] classBytes, int length);
+JNIEXPORT jboolean JNICALL loader_retransformClass(JNIEnv *env, jclass loader_class, jclass clazz, jbyteArray classBytes, jint length);
 #endif
