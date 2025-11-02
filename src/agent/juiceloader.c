@@ -35,29 +35,32 @@ void JNICALL ClassFileLoadHook(
         jint* new_class_data_len,
         unsigned char** new_classbytes) {
 
-    //log_trace("CallBack: ClassFileLoadHook [%s]", name);
-
+    // Retransform save class bytes
     if (g_bytecodes_classname != NULL && g_bytecodes == NULL) {
         if (strcmp(name, g_bytecodes_classname) == 0) {
             g_bytecodes_len = class_data_len;
             g_bytecodes = (unsigned char*)malloc(class_data_len);
             memcpy(g_bytecodes, classbytes, class_data_len);
-
             *new_classbytes = NULL;
             *new_class_data_len = 0;
         }
     }
 
-    // Java Event Hook
-    if (JavaHookCache.isReady == true) {
+    // Java Hook Event
+    if (JavaHookCache.isReady){
+        // byte[] -> jbyteArray
         jbyteArray jBytes = (*jni_env)->NewByteArray(jni_env, class_data_len);
+        if (jBytes == NULL) return;
+
+        // jbyteArray -> byte[]
         (*jni_env)->SetByteArrayRegion(jni_env, jBytes, 0, class_data_len, (const jbyte*)classbytes);
         jstring jName = (*jni_env)->NewStringUTF(jni_env, name);
 
+        // Call Java Hook
         jbyteArray result = (jbyteArray)(*jni_env)->CallStaticObjectMethod(
             jni_env,
             JavaHookCache.hook_class,
-            JavaHookCache.post_class,
+            JavaHookCache.post_method,
             class_being_redefined,
             loader,
             jName,
@@ -66,17 +69,59 @@ void JNICALL ClassFileLoadHook(
             jBytes
         );
 
-        if (result != NULL) {
-            jsize newLen = (*jni_env)->GetArrayLength(jni_env, result);
-            *new_classbytes = (unsigned char*)malloc(newLen);
-            (*jni_env)->GetByteArrayRegion(jni_env, result, 0, newLen, (jbyte*)*new_classbytes);
-            *new_class_data_len = newLen;
+        // clean up local references
+        (*jni_env)->DeleteLocalRef(jni_env, jName);
+        (*jni_env)->DeleteLocalRef(jni_env, jBytes);
+
+        // check result
+        if (result == NULL) {
+            log_trace("result == NULL -> nothing to do");
+            return;
         }
 
-        (*jni_env)->DeleteLocalRef(jni_env, jBytes);
-        (*jni_env)->DeleteLocalRef(jni_env, jName);
+        // ensure result is a byte array
+        jclass byteArrCls = (*jni_env)->FindClass(jni_env, "[B");
+        jboolean isByteArr = (*jni_env)->IsInstanceOf(jni_env, result, byteArrCls);
+        (*jni_env)->DeleteLocalRef(jni_env, byteArrCls);
+
+        if (!isByteArr) {
+            log_error("result is NOT byte[]");
+            return;
+        }
+
+        // get result length
+        jsize newLen = (*jni_env)->GetArrayLength(jni_env, (jarray)result);
+        log_trace("newLen = %d", (int)newLen);
+
+        // check newLen
+        if (newLen <= 0 || newLen > 50 * 1024 * 1024) {
+            printf("invalid newLen\n"); fflush(stdout);
+            return;
+        }
+
+        // allocate new buffer
+        unsigned char* buf = NULL;
+        jint allocRes = (*jvmti_env)->Allocate(jvmti_env, (jlong)newLen, (unsigned char**)&buf);
+        if (allocRes != JVMTI_ERROR_NONE || buf == NULL) {
+            printf("jvmti Allocate failed: %d\n", allocRes); fflush(stdout);
+            return;
+        }
+
+        // copy result to new buffer
+        (*jni_env)->GetByteArrayRegion(jni_env, (jbyteArray)result, 0, newLen, (jbyte*)buf);
+
+        // assign output pointers
+        *new_classbytes = buf;
+        *new_class_data_len = (int)newLen;
+
+        printf("assigned output pointers\n"); fflush(stdout);
+        log_trace("[*] Assigned output pointers: %p, %d", *new_classbytes, *new_class_data_len);
+
+        // clean up
+        (*jni_env)->DeleteLocalRef(jni_env, result);
     }
 }
+
 
 
 jint init_juiceloader(JNIEnv *env, jvmtiEnv *jvmti) {
@@ -166,8 +211,8 @@ JNIEXPORT jboolean JNICALL loader_init(JNIEnv *env, jclass loader_class) {
 
     // Get test method
     log_info("Find JuiceEventBus post method...");
-    JavaHookCache.post_class = (*env)->GetStaticMethodID(env, JavaHookCache.hook_class, "postClassFileLoadHook", "(Ljava/lang/Class;Ljava/lang/ClassLoader;Ljava/lang/String;Ljava/lang/Object;I[B)[B");
-    if (JavaHookCache.post_class == NULL) {
+    JavaHookCache.post_method = (*env)->GetStaticMethodID(env, JavaHookCache.hook_class, "postClassFileLoadHook", "(Ljava/lang/Class;Ljava/lang/ClassLoader;Ljava/lang/String;Ljava/lang/Object;I[B)[B");
+    if (JavaHookCache.post_method == NULL) {
         log_error("Cannot find JuiceEventBus hook method!");
         return JNI_FALSE;
     }

@@ -12,7 +12,7 @@ extern JuiceLoaderNativeType JuiceLoaderNative;
 typedef struct _JavaHookCache {
     bool isReady;
     jclass hook_class;
-    jmethodID post_class;
+    jmethodID post_method;
 } JavaHookCacheType;
 extern JavaHookCacheType JavaHookCache;
 
