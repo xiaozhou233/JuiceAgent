@@ -43,4 +43,6 @@ JNIEXPORT jbyteArray JNICALL loader_getClassBytes(JNIEnv *env, jclass loader_cla
 JNIEXPORT jbyteArray JNICALL loader_getClassBytesByName(JNIEnv *env, jclass loader_class, jstring className);
 // public static native boolean retransformClass(Class<?> clazz, byte[] classBytes, int length);
 JNIEXPORT jboolean JNICALL loader_retransformClass(JNIEnv *env, jclass loader_class, jclass clazz, jbyteArray classBytes, jint length);
+// public static native boolean retransformClassByName(String className, byte[] classBytes, int length);
+JNIEXPORT jboolean JNICALL loader_retransformClassByName(JNIEnv *env, jclass loader_class, jstring className, jbyteArray classBytes, jint length);
 #endif

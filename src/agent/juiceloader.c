@@ -126,7 +126,9 @@ jint init_juiceloader(JNIEnv *env, jvmtiEnv *jvmti) {
         {"getClassBytes", "(Ljava/lang/Class;)[B", (void *)&loader_getClassBytes},
         { "getClassBytesByName", "(Ljava/lang/String;)[B", (void *)&loader_getClassBytesByName},
         // public static native boolean retransformClass(Class<?> clazz, byte[] classBytes, int length);
-        {"retransformClass", "(Ljava/lang/Class;[BI)Z", (void *)&loader_retransformClass}
+        {"retransformClass", "(Ljava/lang/Class;[BI)Z", (void *)&loader_retransformClass},
+        // public static native boolean retransformClassByName(String className, byte[] classBytes, int length);
+        {"retransformClassByName", "(Ljava/lang/String;[BI)Z", (void *)&loader_retransformClassByName}
     };
     jint result = (*env)->RegisterNatives(env, clazz, methods, sizeof(methods) / sizeof(methods[0]));
     if (result != JNI_OK) {
@@ -431,4 +433,21 @@ JNIEXPORT jboolean JNICALL loader_retransformClass(JNIEnv *env, jclass loader_cl
 
     log_info("[retransformClass] Class retransformed: %s (len=%d)", entry->name, entry->len);
     return JNI_TRUE;
+}
+
+JNIEXPORT jboolean JNICALL loader_retransformClassByName(JNIEnv *env, jclass loader_class, jstring className, jbyteArray classBytes, jint length) {
+    const char *name_dot = (*env)->GetStringUTFChars(env, className, NULL);
+    char *name = strdup(name_dot);
+    for (char *p = name; *p; ++p) if (*p == '.') *p = '/';
+    (*env)->ReleaseStringUTFChars(env, className, name_dot);
+
+    jclass target = (*env)->FindClass(env, name);
+    free(name);
+
+    if (!target) {
+        log_error("FindClass failed in retransformClassByName");
+        return JNI_FALSE;
+    }
+
+    return loader_retransformClass(env, loader_class, target, classBytes, length);
 }
