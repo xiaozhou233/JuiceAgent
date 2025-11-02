@@ -75,7 +75,7 @@ void JNICALL ClassFileLoadHook(
 
         // check result
         if (result == NULL) {
-            log_trace("result == NULL -> nothing to do");
+            // log_trace("result == NULL -> nothing to do");
             return;
         }
 
@@ -91,11 +91,11 @@ void JNICALL ClassFileLoadHook(
 
         // get result length
         jsize newLen = (*jni_env)->GetArrayLength(jni_env, (jarray)result);
-        log_trace("newLen = %d", (int)newLen);
+        // log_trace("newLen = %d", (int)newLen);
 
         // check newLen
-        if (newLen <= 0 || newLen > 50 * 1024 * 1024) {
-            printf("invalid newLen\n"); fflush(stdout);
+        if (newLen <= 0 || newLen > 64 * 1024 * 1024) {
+            log_error("invalid newLen = %d", (int)newLen);
             return;
         }
 
@@ -103,7 +103,7 @@ void JNICALL ClassFileLoadHook(
         unsigned char* buf = NULL;
         jint allocRes = (*jvmti_env)->Allocate(jvmti_env, (jlong)newLen, (unsigned char**)&buf);
         if (allocRes != JVMTI_ERROR_NONE || buf == NULL) {
-            printf("jvmti Allocate failed: %d\n", allocRes); fflush(stdout);
+            log_error("jvmti Allocate failed: %d", allocRes);
             return;
         }
 
@@ -114,8 +114,7 @@ void JNICALL ClassFileLoadHook(
         *new_classbytes = buf;
         *new_class_data_len = (int)newLen;
 
-        printf("assigned output pointers\n"); fflush(stdout);
-        log_trace("[*] Assigned output pointers: %p, %d", *new_classbytes, *new_class_data_len);
+        // log_trace("[*] Assigned output pointers: %p, %d", *new_classbytes, *new_class_data_len);
 
         // clean up
         (*jni_env)->DeleteLocalRef(jni_env, result);
