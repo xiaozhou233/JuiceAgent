@@ -1,4 +1,4 @@
-#include "./GlobalUtils.h"
+#include "jvmutils.h"
 
 // Get JavaVM
 jint GetCreatedJVM(JavaVM **out_jvm) {

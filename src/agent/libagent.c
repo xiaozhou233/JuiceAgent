@@ -12,7 +12,7 @@ Desc: Entry point for the agent
 #include "jvmti.h"
 #include "InjectParameters.h"
 #include "log.h"
-#include "GlobalUtils.h"
+#include "jvmutils.h"
 #include "shlwapi.h"
 #include "tomlc17.h"
 #include "datautils.h"
