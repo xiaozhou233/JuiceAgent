@@ -59,13 +59,6 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
     }
     toml_free(toml_result);
 
-    log_trace("Checking bootstrap-api.jar");
-    if (GetFileAttributesA(InjectionInfo.BootstrapAPIPath) == INVALID_FILE_ATTRIBUTES) {
-        log_error("bootstrap-api.jar not found: %s", InjectionInfo.BootstrapAPIPath);
-        // MessageBoxA(NULL, "bootstrap-api.jar not found", "Error", MB_OK);
-        return 1;
-    }
-
     // Check JuiceLoader.jar
     
     log_trace("Checking JuiceLoader.jar");
@@ -113,9 +106,6 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
     log_info("Enabled jvmti");
 
     // Inject jars
-    log_info("injecting bootstrap-api jar...");
-    (*jvmti)->AddToSystemClassLoaderSearch(jvmti, InjectionInfo.BootstrapAPIPath);
-    log_info("injected bootstrap-api jar");
     
     log_info("injecting loader jar...");
     (*jvmti)->AddToSystemClassLoaderSearch(jvmti, InjectionInfo.JuiceLoaderJarPath);

@@ -21,21 +21,6 @@ void safe_copy(char *dest, const char *src, size_t dest_size) {
 bool ReadInjectionInfo(toml_result_t result, InjectParameters* params) {
     toml_datum_t InjectionTree = toml_seek(result.toptab, "Injection");
 
-    // ======= BootstrapAPIPath =======
-    toml_datum_t BootstrapAPIPath = toml_seek(InjectionTree, "BootstrapAPIPath");
-    char BootstrapAPIPathStr[INJECT_PATH_MAX];
-    if (BootstrapAPIPath.type != TOML_STRING) {
-        log_error("BootstrapAPIPath is not a string.");
-        return false;
-    }
-    if (BootstrapAPIPath.u.s == NULL || strlen(BootstrapAPIPath.u.s) == 0) {
-        sprintf(BootstrapAPIPathStr, "%s\\bootstrap-api.jar", params->ConfigDir);
-    } else {
-        sprintf(BootstrapAPIPathStr, "%s", BootstrapAPIPath.u.s);
-    }
-    safe_copy(InjectionInfo.BootstrapAPIPath, BootstrapAPIPathStr, INJECT_PATH_MAX);
-    // ======= BootstrapAPIPath =======
-
     // ======= JuiceLoaderJarPath =======
     toml_datum_t JuiceLoaderJarPath = toml_seek(InjectionTree, "JuiceLoaderJarPath");
     char JuiceLoaderJarPathStr[INJECT_PATH_MAX];
