@@ -105,9 +105,9 @@ jint init_juiceloader(JNIEnv *env, jvmtiEnv *jvmti) {
 
 
     // Dynamic register jni functions
-    jclass clazz = (*env)->FindClass(env, "cn/xiaozhou233/juiceloader/JuiceLoaderNative");
+    jclass clazz = (*env)->FindClass(env, "cn/xiaozhou233/juiceloader/JuiceLoader");
     if (clazz == NULL) {
-        log_error("Cannot find JuiceLoaderNative class!");
+        log_error("Cannot find JuiceLoader class!");
         return JNI_ERR;
     }
     JNINativeMethod methods[] = {

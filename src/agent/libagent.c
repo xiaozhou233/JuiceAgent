@@ -130,9 +130,9 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
 
     log_info("invoking loader init()...");
     log_info("============ Loader Info ============\n");
-    jclass cls = (*env)->FindClass(env, "cn/xiaozhou233/juiceloader/JuiceLoader");
+    jclass cls = (*env)->FindClass(env, "cn/xiaozhou233/juiceloader/JuiceLoaderBootstrap");
     if (cls == NULL) {
-        log_error("FindClass JuiceLoader failed");
+        log_error("FindClass JuiceLoaderBootstrap failed");
         return 1;
     }
     jmethodID mid = (*env)->GetStaticMethodID(env, cls, "init", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
