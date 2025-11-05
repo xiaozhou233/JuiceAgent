@@ -17,60 +17,37 @@ void safe_copy(char *dest, const char *src, size_t dest_size) {
     strncpy(dest, src, dest_size - 1);
     dest[dest_size - 1] = '\0';
 }
+static void GetTomlStringOrDefault(toml_datum_t tableDatum, const char* key, const char* defaultVal, char* outBuf, size_t bufSize) {
+    toml_datum_t datum = toml_seek(tableDatum, key);
+    if (datum.type != TOML_STRING || !datum.u.s || datum.u.s[0] == '\0') {
+        safe_copy(outBuf, defaultVal, bufSize);
+    } else {
+        safe_copy(outBuf, datum.u.s, bufSize);
+    }
+}
 
 bool ReadInjectionInfo(toml_result_t result, InjectParameters* params) {
+    if (!result.ok) return false;
+
     toml_datum_t InjectionTree = toml_seek(result.toptab, "Injection");
-
-    // ======= JuiceLoaderJarPath =======
-    toml_datum_t JuiceLoaderJarPath = toml_seek(InjectionTree, "JuiceLoaderJarPath");
-    char JuiceLoaderJarPathStr[INJECT_PATH_MAX];
-    if (JuiceLoaderJarPath.type != TOML_STRING) {
-        log_error("JuiceLoaderJarPath is not a string.");
+    if (InjectionTree.type != TOML_TABLE) {
+        log_error("Injection section missing");
         return false;
     }
-    if (JuiceLoaderJarPath.u.s == NULL || strlen(JuiceLoaderJarPath.u.s) == 0) {
-        sprintf(JuiceLoaderJarPathStr, "%s\\JuiceLoader.jar", params->ConfigDir);
-    } else {
-        sprintf(JuiceLoaderJarPathStr, "%s", JuiceLoaderJarPath.u.s);
-    }
-    safe_copy(InjectionInfo.JuiceLoaderJarPath, JuiceLoaderJarPathStr, INJECT_PATH_MAX);
-    // ======= JuiceLoaderJarPath =======
 
-    // ======= Entry =======
-    toml_datum_t EntryJarPath = toml_seek(InjectionTree, "EntryJarPath");
-    char EntryJarPathStr[INJECT_PATH_MAX];
-    if (EntryJarPath.type != TOML_STRING) {
-        log_error("EntryJarPath is not a string.");
-        return false;
-    }
-    if (EntryJarPath.u.s == NULL || strlen(EntryJarPath.u.s) == 0) {
-        sprintf(EntryJarPathStr, "%s\\entry.jar", params->ConfigDir);
-    } else {
-        sprintf(EntryJarPathStr, "%s", EntryJarPath.u.s);
-    }
-    safe_copy(InjectionInfo.EntryJarPath, EntryJarPathStr, INJECT_PATH_MAX);
+    char tmp[INJECT_PATH_MAX];
 
-    toml_datum_t EntryClass = toml_seek(InjectionTree, "EntryClass");
-    if (EntryClass.type != TOML_STRING) {
-        log_error("EntryClass is not a string.");
-        return false;
-    }
-    if (EntryClass.u.s == NULL || strlen(EntryClass.u.s) == 0) {
-        safe_copy(InjectionInfo.EntryClass, "cn.xiaozhou233.juiceloader.entry.Entry", INJECT_PATH_MAX);
-    } else {
-        safe_copy(InjectionInfo.EntryClass, EntryClass.u.s, INJECT_PATH_MAX);
-    }
+    snprintf(tmp, sizeof(tmp), "%s\\JuiceLoader.jar", params->ConfigDir);
+    GetTomlStringOrDefault(InjectionTree, "JuiceLoaderJarPath", tmp, InjectionInfo.JuiceLoaderJarPath, INJECT_PATH_MAX);
 
-    toml_datum_t EntryMethod = toml_seek(InjectionTree, "EntryMethod");
-    if (EntryMethod.type != TOML_STRING) {
-        log_error("EntryMethod is not a string.");
-        return false;
-    }
-    if (EntryMethod.u.s == NULL || strlen(EntryMethod.u.s) == 0) {
-        safe_copy(InjectionInfo.EntryMethod, "start", INJECT_PATH_MAX);
-    } else {
-        safe_copy(InjectionInfo.EntryMethod, EntryMethod.u.s, INJECT_PATH_MAX);
-    }
-    // ======= Entry =======
+    snprintf(tmp, sizeof(tmp), "%s\\entry.jar", params->ConfigDir);
+    GetTomlStringOrDefault(InjectionTree, "EntryJarPath", tmp, InjectionInfo.EntryJarPath, INJECT_PATH_MAX);
+
+    GetTomlStringOrDefault(InjectionTree, "EntryClass", "cn.xiaozhou233.juiceloader.entry.Entry", InjectionInfo.EntryClass, INJECT_PATH_MAX);
+    GetTomlStringOrDefault(InjectionTree, "EntryMethod", "start", InjectionInfo.EntryMethod, INJECT_PATH_MAX);
+
+    snprintf(tmp, sizeof(tmp), "%s\\injection", params->ConfigDir);
+    GetTomlStringOrDefault(InjectionTree, "InjectionDir", tmp, InjectionInfo.InjectionDir, INJECT_PATH_MAX);
+
     return true;
 }

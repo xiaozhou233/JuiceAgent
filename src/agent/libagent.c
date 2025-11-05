@@ -133,7 +133,7 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
         log_error("FindClass JuiceLoaderBootstrap failed");
         return 1;
     }
-    jmethodID mid = (*env)->GetStaticMethodID(env, cls, "init", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+    jmethodID mid = (*env)->GetStaticMethodID(env, cls, "init", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
     if (mid == NULL) {
         log_error("GetStaticMethodID init failed");
         if ((*env)->ExceptionCheck(env)) {
@@ -146,7 +146,8 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
     (*env)->CallStaticVoidMethod(env, cls, mid, 
         (*env)->NewStringUTF(env, InjectionInfo.EntryJarPath),
         (*env)->NewStringUTF(env, InjectionInfo.EntryClass),
-        (*env)->NewStringUTF(env, InjectionInfo.EntryMethod));
+        (*env)->NewStringUTF(env, InjectionInfo.EntryMethod),
+        (*env)->NewStringUTF(env, InjectionInfo.InjectionDir));
     log_info("============ Loader Info =============\n");
     log_info("invoked. ");
     log_info("done. cleaning up...");
