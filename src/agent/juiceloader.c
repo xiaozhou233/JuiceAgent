@@ -128,7 +128,9 @@ jint init_juiceloader(JNIEnv *env, jvmtiEnv *jvmti) {
         // public static native boolean retransformClass(Class<?> clazz, byte[] classBytes, int length);
         {"retransformClass", "(Ljava/lang/Class;[BI)Z", (void *)&loader_retransformClass},
         // public static native boolean retransformClassByName(String className, byte[] classBytes, int length);
-        {"retransformClassByName", "(Ljava/lang/String;[BI)Z", (void *)&loader_retransformClassByName}
+        {"retransformClassByName", "(Ljava/lang/String;[BI)Z", (void *)&loader_retransformClassByName},
+        // public static native Class<?> getClassByName(String className);
+        {"getClassByName", "(Ljava/lang/String;)Ljava/lang/Class;", (void *)&loader_getClassByName}
     };
     jint result = (*env)->RegisterNatives(env, clazz, methods, sizeof(methods) / sizeof(methods[0]));
     if (result != JNI_OK) {
@@ -450,4 +452,27 @@ JNIEXPORT jboolean JNICALL loader_retransformClassByName(JNIEnv *env, jclass loa
     }
 
     return loader_retransformClass(env, loader_class, target, classBytes, length);
+}
+
+JNIEXPORT jclass JNICALL loader_getClassByName(JNIEnv *env, jclass loader_class, jstring className) {
+    if (className == NULL) {
+        return NULL;
+    }
+
+    // jstring -> const char*
+    const char *name_utf = (*env)->GetStringUTFChars(env, className, NULL);
+    if (name_utf == NULL) {
+        return NULL;
+    }
+
+    // find class
+    jclass clazz = (*env)->FindClass(env, name_utf);
+
+    // clean up
+    (*env)->ReleaseStringUTFChars(env, className, name_utf);
+
+    if (clazz == NULL) {
+        log_error("Failed to find class %s", name_utf);
+    }
+    return clazz;
 }
