@@ -312,6 +312,7 @@ static void JNICALL vm_init(jvmtiEnv *jvmti, JNIEnv *env, jthread thread) {
 /// Example: java -agentpath:./libagent.dll=./config -jar myapp.jar
 /// =========================================================== ///
 
+// WARN: This inject method maybe not work on some JVMs.
 // Notice: This function is called by the JVM when the agent is loaded.
 // Warning: JVM not initialized yet when this function is called.
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
