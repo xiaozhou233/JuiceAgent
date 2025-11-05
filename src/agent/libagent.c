@@ -23,6 +23,12 @@ extern HINSTANCE hAppInstance;
 
 InjectionInfoType InjectionInfo;
 
+struct _JuiceAgent {
+    bool isAttached;
+    JavaVM *jvm;
+    jvmtiEnv *jvmti;
+} JuiceAgent = {false, NULL, NULL};
+
 static void initLogger() {
     log_set_level(LOG_TRACE);
     log_is_log_time(false);
@@ -88,6 +94,8 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
     if (result != JNI_OK) {
         log_error("Failed to get JNIEnv (%d)", result);
         // MessageBoxA(NULL, "Failed to get JNIEnv", "Error", MB_OK);
+        log_error("Maybe the JVM havent been init yet.");
+        JuiceAgent.isAttached = false;
         return 1;
     } 
     log_info("Got JNIEnv");
@@ -173,28 +181,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved){
             log_info("[*] JuiceAgent Version %d.%d Build %d", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_BUILD_NUMBER);
 
             DisableThreadLibraryCalls(hinstDLL);
-            
-            // JVM Options Inject Method Detection
-            // TODO: Remove Duplicated Code: GetCreatedJVM/GetEnv and var jvm/env (Duplicated at: ThreadProc)
-            JavaVM *jvm = NULL;
-            JNIEnv *env = NULL;
-            jint result = GetCreatedJVM(&jvm);
-            // Check if JVM is created
-            if (result != JNI_OK || jvm == NULL) {
-                log_error("Failed to get JVM (%d) [JVM: %p]", result, jvm);
-                MessageBoxA(NULL, "Failed to get JVM [GetCreatedJVM Faliled or JVM is NULL]\nCheck console for more info.", "Error", MB_OK);
-                return 1;
-            }
-            log_info("DllMain GetCreatedJVM OK. Checking if JVM is inited...");
-            // Check if JVM is inited
-            // JNI_EDETACHED: jvm not initialized, means Agent loaded before JVM inited (jvm options: -agentpath)
-            // Will exit DllMain and jvm will invoke Agent_OnLoad
-            if (GetJNIEnv(jvm, &env) == JNI_EDETACHED) {
-                log_warn("Inject Method JVM Options Detected! Exiting...");
-                log_trace("DllMain(DLL_PROCESS_ATTACH) Exiting...");
-                log_info("Agent Will be injected by the Inject Methood JVM Options.\n");
-                break;
-            }
 
             // Allocate memory for local param
             InjectParameters *localParm = (InjectParameters*)malloc(sizeof(InjectParameters));
