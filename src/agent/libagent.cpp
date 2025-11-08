@@ -1,7 +1,3 @@
-// For Reflective Inject
-#include "ReflectiveLoader.h"
-#define WIN_X64
-
 #include <windows.h>
 #include "Logger.hpp"
 #include <JuiceAgent.h>

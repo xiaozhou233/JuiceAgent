@@ -26,7 +26,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/includes)
 
 # libraries
-add_subdirectory(${INCLUDES}/ReflectiveDLLInjection)
 add_subdirectory(${INCLUDES}/log.c)
 add_subdirectory(${INCLUDES}/tomlc17)
 
@@ -34,4 +33,5 @@ include(cmake/JuiceModule.cmake)
 
 # modules
 add_juice_module(agent)
-#add_juice_module(injector)
+add_juice_module(injector)
+add_subdirectory(${CMAKE_SOURCE_DIR}/src/executable)
