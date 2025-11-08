@@ -28,6 +28,7 @@ static int GetJavaEnv() {
     int max_try = 30;
 
     // Get the JVM
+    max_try = 30;
     do {
         res = JNI_GetCreatedJavaVMs(&jvm, 1, NULL);
         if (res != JNI_OK || jvm == NULL) {
@@ -50,16 +51,30 @@ static int GetJavaEnv() {
     PLOGI << "Got the JVM";
 
     // Get the JNIEnv
-    res = jvm->GetEnv((void**)&env, JNI_VERSION_1_8);
-    if (res != JNI_OK || env == NULL) {
-        PLOGI << "GetEnv failed, trying to attach.";
-        PLOGD << "env NULL: " << (env == NULL);
-        res = jvm->AttachCurrentThread((void**)&env, NULL);
+    max_try = 30;
+    do {
+        res = jvm->GetEnv((void**)&env, JNI_VERSION_1_8);
         if (res != JNI_OK || env == NULL) {
-            PLOGE.printf("AttachCurrentThread failed: %d", res);
+            PLOGI << "GetEnv failed, trying to attach.";
             PLOGD << "env NULL: " << (env == NULL);
-            return res;
+            res = jvm->AttachCurrentThread((void**)&env, NULL);
+            if (res != JNI_OK || env == NULL) {
+                PLOGE.printf("AttachCurrentThread failed: %d", res);
+                PLOGD << "env NULL: " << (env == NULL);
+                return res;
+            }
         }
+        Sleep(1000);
+        max_try--;
+        if (env != NULL) {
+            break;
+        } else {
+            PLOGI.printf("Waiting for JNI... (%d)", max_try);
+        }
+    } while (env == NULL && max_try > 0);
+    if (env == NULL) {
+        PLOGE << "Get JNI failed";
+        return res;
     }
     JuiceAgent.env = env;
     PLOGI << "Got the JNIEnv";
