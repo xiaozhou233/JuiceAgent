@@ -25,11 +25,25 @@ static int GetJavaEnv() {
     JavaVM *jvm = NULL;
     jvmtiEnv *jvmti = NULL;
     JNIEnv *env = NULL;
+    int max_try = 30;
 
     // Get the JVM
-    res = JNI_GetCreatedJavaVMs(&jvm, 1, NULL);
-    if (res != JNI_OK) {
-        PLOGE.printf("JNI_GetCreatedJavaVMs failed: %d", res);
+    do {
+        res = JNI_GetCreatedJavaVMs(&jvm, 1, NULL);
+        if (res != JNI_OK || jvm == NULL) {
+            PLOGE.printf("JNI_GetCreatedJavaVMs failed: %d", res);
+            PLOGD << "JVM NULL: " << (jvm == NULL);
+        }
+        Sleep(1000);
+        max_try--;
+        if (jvm != NULL) {
+            break;
+        } else {
+            PLOGI.printf("Waiting for JVM... (%d)", max_try);
+        }
+    } while (jvm == NULL && max_try > 0);
+    if (jvm == NULL) {
+        PLOGE << "GetJavaEnv failed";
         return res;
     }
     JuiceAgent.jvm = jvm;
@@ -37,11 +51,13 @@ static int GetJavaEnv() {
 
     // Get the JNIEnv
     res = jvm->GetEnv((void**)&env, JNI_VERSION_1_8);
-    if (res != JNI_OK) {
+    if (res != JNI_OK || env == NULL) {
         PLOGI << "GetEnv failed, trying to attach.";
+        PLOGD << "env NULL: " << (env == NULL);
         res = jvm->AttachCurrentThread((void**)&env, NULL);
-        if (res != JNI_OK) {
+        if (res != JNI_OK || env == NULL) {
             PLOGE.printf("AttachCurrentThread failed: %d", res);
+            PLOGD << "env NULL: " << (env == NULL);
             return res;
         }
     }
@@ -50,8 +66,9 @@ static int GetJavaEnv() {
     
     // Get the JVMTI
     res = jvm->GetEnv((void**)&jvmti, JVMTI_VERSION_1_2);
-    if (res != JNI_OK) {
+    if (res != JNI_OK || jvmti == NULL) {
         PLOGE.printf("GetEnv failed: %d", res);
+        PLOGD << "jvmti NULL: " << (jvmti == NULL);
         return res;
     }
     JuiceAgent.jvmti = jvmti;
@@ -71,7 +88,7 @@ static int InvokeJuiceLoaderInit(const char* ConfigDir) {
     const char *method_signature = "(Ljava/lang/String;)V";
 
     PLOGI << "Invoke JuiceLoader Init";
-    PLOGI << "\n\n================ JuiceLoader Init =================";
+    PLOGI << "================ JuiceLoader Init =================";
     // Find class
     jclass cls = env->FindClass(bootstrap_class);
     if (cls == NULL) {
@@ -101,7 +118,7 @@ static int InvokeJuiceLoaderInit(const char* ConfigDir) {
             env->ExceptionClear();
     }
 
-    PLOGI << "================ JuiceLoader Init =================\n\n";
+    PLOGI << "================ JuiceLoader Init =================";
 
     PLOGI << "Invoke JuiceLoader Init done";
     return 0;
@@ -261,4 +278,16 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved)
     }
 
     return TRUE;
+}
+
+extern "C" __declspec(dllexport)
+JNIEXPORT jint JNICALL 
+Agent_OnLoad(JavaVM* vm, char *options, void *reserved) {
+    return JNI_OK;
+}
+
+extern "C" __declspec(dllexport)
+JNIEXPORT jint JNICALL 
+Agent_OnAttach(JavaVM* vm, char *options, void *reserved) {
+    return JNI_OK;
 }
