@@ -9,26 +9,16 @@ JuiceLoaderNativeType JuiceLoaderNative;
 static int RegisterNatives(JNIEnv *env) {
     const char* native_class = "cn/xiaozhou233/juiceloader/JuiceLoader";
     JNINativeMethod methods[] = {
-        // JuiceLoaderNative.init()
-        {"init", "()Z", (void *)&loader_init},
-        // JuiceLoaderNative.injectJar(String(jarPath));
-        {"injectJar", "(Ljava/lang/String;)Z", (void *)&loader_injectJar},
-        // JuiceLoaderNative.redefineClass(Class<?> clazz, byte[] classBytes, int length);
-        {"redefineClass", "(Ljava/lang/Class;[BI)Z", (void *)&loader_redefineClass_clazz},
-        // JuiceLoaderNative.redefineClassByName(String className, byte[] classBytes, int length);
-        {"redefineClassByName", "(Ljava/lang/String;[BI)Z", (void *)&loader_redefineClass_className},
-        // JuiceLoaderNative.getLoadedClasses();
-        {"getLoadedClasses", "()[Ljava/lang/Class;", (void *)&loader_getLoadedClasses},
-        // public static native byte[] getClassBytes(Class<?> clazz);
-        // public static native byte[] getClassBytesByName(String className);
-        {"getClassBytes", "(Ljava/lang/Class;)[B", (void *)&loader_getClassBytes},
-        { "getClassBytesByName", "(Ljava/lang/String;)[B", (void *)&loader_getClassBytesByName},
-        // public static native boolean retransformClass(Class<?> clazz, byte[] classBytes, int length);
-        {"retransformClass", "(Ljava/lang/Class;[BI)Z", (void *)&loader_retransformClass},
-        // public static native boolean retransformClassByName(String className, byte[] classBytes, int length);
-        {"retransformClassByName", "(Ljava/lang/String;[BI)Z", (void *)&loader_retransformClassByName},
-        // public static native Class<?> getClassByName(String className);
-        {"getClassByName", "(Ljava/lang/String;)Ljava/lang/Class;", (void *)&loader_getClassByName}
+        {(char*)"init", (char*)"()Z", (void *)&loader_init},
+        {(char*)"injectJar", (char*)"(Ljava/lang/String;)Z", (void *)&loader_injectJar},
+        {(char*)"redefineClass", (char*)"(Ljava/lang/Class;[BI)Z", (void *)&loader_redefineClass_clazz},
+        {(char*)"redefineClassByName", (char*)"(Ljava/lang/String;[BI)Z", (void *)&loader_redefineClass_className},
+        {(char*)"getLoadedClasses", (char*)"()[Ljava/lang/Class;", (void *)&loader_getLoadedClasses},
+        {(char*)"getClassBytes", (char*)"(Ljava/lang/Class;)[B", (void *)&loader_getClassBytes},
+        {(char*)"getClassBytesByName", (char*)"(Ljava/lang/String;)[B", (void *)&loader_getClassBytesByName},
+        {(char*)"retransformClass", (char*)"(Ljava/lang/Class;[BI)Z", (void *)&loader_retransformClass},
+        {(char*)"retransformClassByName", (char*)"(Ljava/lang/String;[BI)Z", (void *)&loader_retransformClassByName},
+        {(char*)"getClassByName", (char*)"(Ljava/lang/String;)Ljava/lang/Class;", (void *)&loader_getClassByName}
     };
 
     // Find Native(JNI) Class
