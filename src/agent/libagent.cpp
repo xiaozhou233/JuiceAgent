@@ -2,6 +2,7 @@
 #include "Logger.hpp"
 #include <JuiceAgent.h>
 #include <juiceloader.h>
+#include <tinytoml/toml.h>
 
 // For Java VM
 #include <jni.h>
@@ -13,6 +14,8 @@ struct _JuiceAgent {
     jvmtiEnv *jvmti;
     JNIEnv *env;
 } JuiceAgent = {false, NULL, NULL, NULL};
+
+InjectionInfoType InjectionInfo;
 
 HINSTANCE hAppInstance = nullptr;
 
@@ -104,9 +107,58 @@ static int InvokeJuiceLoaderInit(const char* ConfigDir) {
     return 0;
 }
 
-int InitJuiceAgent(const char* ConfigDir, const char* JuiceLoaderJarPath) {
+static int ReadConfig(const char* ConfigDir)
+{
+    std::string path = std::string(ConfigDir) + "\\config.toml";
+    std::ifstream ifs(path);
+    if (!ifs) return -1;
+
+    toml::ParseResult pr = toml::parse(ifs);
+    if (!pr.valid()) return -2;
+
+    const toml::Value& tbl = pr.value;
+
+    auto get_str = [&](const char* key, const char* def, char* out) {
+        const toml::Value* v = tbl.find(key);
+        if (v && v->is<std::string>()) {
+            std::string s = v->as<std::string>();
+            strncpy(out, s.c_str(), INJECT_PATH_MAX - 1);
+        } else {
+            strncpy(out, def, INJECT_PATH_MAX - 1);
+        }
+        out[INJECT_PATH_MAX - 1] = '\0';
+    };
+
+    std::string defaultJuiceLoader = std::string(ConfigDir) + "\\JuiceLoader.jar";
+    std::string defaultEntryJar    = std::string(ConfigDir) + "\\Entry.jar";
+
+    std::string defaultInjectionDir = std::string(ConfigDir) + "\\injection";
+
+    get_str("JuiceLoaderJarPath", defaultJuiceLoader.c_str(), InjectionInfo.JuiceLoaderJarPath);
+    get_str("InjectionDir", defaultInjectionDir.c_str(), InjectionInfo.InjectionDir);
+    get_str("EntryJarPath", defaultEntryJar.c_str(), InjectionInfo.EntryJarPath);
+    get_str("EntryClass", "cn.xiaozhou233.juicesky.LoaderEntry", InjectionInfo.EntryClass);
+    get_str("EntryMethod", "start", InjectionInfo.EntryMethod);
+
+    PLOGD << "JuiceLoaderJarPath: " << InjectionInfo.JuiceLoaderJarPath;
+    PLOGD << "InjectionDir: " << InjectionInfo.InjectionDir;
+    PLOGD << "EntryJarPath: " << InjectionInfo.EntryJarPath;
+    PLOGD << "EntryClass: " << InjectionInfo.EntryClass;
+    PLOGD << "EntryMethod: " << InjectionInfo.EntryMethod;
+
+    return 0;
+}
+
+
+int InitJuiceAgent(const char* ConfigDir) {
     // Variables
     int result = JNI_ERR;
+
+    // Step 0: Read Config
+    if (ReadConfig(ConfigDir) != 0) {
+        PLOGE << "Failed to read config";
+        return 1;
+    }
     
     // Step 1: Get the Java environment
     if (GetJavaEnv() != 0) {
@@ -115,7 +167,7 @@ int InitJuiceAgent(const char* ConfigDir, const char* JuiceLoaderJarPath) {
     }
 
     // Step 2: Inject JuiceLoader.jar
-    result = JuiceAgent.jvmti->AddToSystemClassLoaderSearch(JuiceLoaderJarPath);
+    result = JuiceAgent.jvmti->AddToSystemClassLoaderSearch(InjectionInfo.JuiceLoaderJarPath);
     if (result != JNI_OK) {
         PLOGE.printf("AddToSystemClassLoaderSearch failed: %d", result);
         return 1;
@@ -148,10 +200,9 @@ DWORD WINAPI ThreadProc(LPVOID lpParam) {
 
     InjectParams* pParams = (InjectParams*)lpParam;
     PLOGD << "ConfigDir: " << pParams->ConfigDir;
-    PLOGD << "JuiceLoaderJarPath: " << pParams->JuiceLoaderJarPath;
 
     PLOGI << "Init JuiceAgent...";
-    int result = InitJuiceAgent(pParams->ConfigDir, pParams->JuiceLoaderJarPath);
+    int result = InitJuiceAgent(pParams->ConfigDir);
     PLOGI.printf("Init JuiceAgent result: %d", result);
 
     PLOGI << "Exit ThreadProc";
@@ -174,7 +225,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved)
             // TODO: ReflectiveLoader Params
             InjectParams *testParams = (InjectParams*)malloc(sizeof(InjectParams));
             strcpy(testParams->ConfigDir, "C:\\Users\\xiaozhou\\Desktop\\Inject_V1.0_b1");
-            strcpy(testParams->JuiceLoaderJarPath, "C:\\Users\\xiaozhou\\Desktop\\Inject_V1.0_b1\\JuiceLoader.jar");
             lpReserved = (void*)testParams;
 
             // Check if lpReserved is NULL
