@@ -24,7 +24,19 @@ typedef struct {
 extern RetransformClassCacheType RetransformClassCache;
 
 
-jint init_juiceloader(JNIEnv *env, jvmtiEnv *jvmti);
+int InitJuiceLoader(JNIEnv *env, jvmtiEnv *jvmti);
+
+void JNICALL ClassFileLoadHook(
+        jvmtiEnv* jvmti_env,
+        JNIEnv* jni_env,
+        jclass class_being_redefined,
+        jobject loader,
+        const char* name,
+        jobject protection_domain,
+        jint class_data_len,
+        const unsigned char* classbytes,
+        jint* new_class_data_len,
+        unsigned char** new_classbytes);
 
 // JNI Functions
 // public native static boolean init();

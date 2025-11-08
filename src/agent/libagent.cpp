@@ -5,6 +5,7 @@
 #include <windows.h>
 #include "Logger.hpp"
 #include <JuiceAgent.h>
+#include <juiceloader.h>
 
 // For Java VM
 #include <jni.h>
@@ -19,10 +20,6 @@ struct _JuiceAgent {
 
 HINSTANCE hAppInstance = nullptr;
 
-int init_juiceloader(JNIEnv *env, _jvmtiEnv *jvmti) {
-    PLOGI << "EXAMPLE INIT JUICELOADER!";
-    return 0;
-}
 
 static int GetJavaEnv() {
     jint res = JNI_ERR;
@@ -129,7 +126,7 @@ int InitJuiceAgent(const char* ConfigDir, const char* JuiceLoaderJarPath) {
     }
 
     // Step 3: Invoke JuiceLoader Native Init
-    if (init_juiceloader(JuiceAgent.env, JuiceAgent.jvmti) != JNI_OK) {
+    if (InitJuiceLoader(JuiceAgent.env, JuiceAgent.jvmti) != JNI_OK) {
         PLOGE << "Failed to invoke JuiceLoader Native Init: " << result;
         return 1;
     } 
