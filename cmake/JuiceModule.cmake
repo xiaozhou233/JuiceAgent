@@ -7,7 +7,9 @@ function(add_juice_module NAME)
     # Collect all source files in module src and utils
     file(GLOB MODULE_SOURCES
         "${CMAKE_SOURCE_DIR}/src/${NAME}/*.c"
+        "${CMAKE_SOURCE_DIR}/src/${NAME}/*.cpp"
         "${CMAKE_SOURCE_DIR}/src/${NAME}/utils/*.c"
+        "${CMAKE_SOURCE_DIR}/src/${NAME}/utils/*.cpp"
     )
 
     # Create shared library
