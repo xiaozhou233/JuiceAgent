@@ -1,5 +1,0 @@
-[Injection]
-JuiceLoaderJarPath = "D:/Development/JuiceLoader/build/libs/JuiceLoader.jar"
-EntryJarPath = "D:/Development/JuiceLoader/build/libs/Entry.jar"
-EntryClass = "cn.xiaozhou233.juiceloader.entry.Entry"
-EntryMethod = "start"
