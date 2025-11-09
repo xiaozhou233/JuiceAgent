@@ -59,4 +59,6 @@ JNIEXPORT jboolean JNICALL loader_retransformClass(JNIEnv *env, jclass loader_cl
 JNIEXPORT jboolean JNICALL loader_retransformClassByName(JNIEnv *env, jclass loader_class, jstring className, jbyteArray classBytes, jint length);
 // public static native Class<?> getClassByName(String className);
 JNIEXPORT jclass JNICALL loader_getClassByName(JNIEnv *env, jclass loader_class, jstring className);
+JNIEXPORT jobject JNICALL loader_nativeGetThreadByName (JNIEnv* env, jclass, jstring jName);
+JNIEXPORT jobject JNICALL loader_nativeInjectJarToThread (JNIEnv* env, jclass, jobject threadObj, jstring jJarPath);
 #endif

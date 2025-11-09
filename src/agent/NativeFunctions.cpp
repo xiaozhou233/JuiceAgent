@@ -25,6 +25,14 @@ char* get_class_name(JNIEnv* env, jclass clazz) {
     return result;
 }
 
+// Helper: macro to throw RuntimeException with message
+static void throwRuntimeException(JNIEnv *env, const char *msg) {
+    jclass rte = env->FindClass("java/lang/RuntimeException");
+    if (rte != NULL) {
+        env->ThrowNew(rte, msg);
+    }
+}
+
 /// ================= ClassFileLoadHook ================= ///
 
 void JNICALL ClassFileLoadHook(
@@ -108,7 +116,7 @@ JNIEXPORT jboolean JNICALL loader_injectJar(JNIEnv *env, jclass loader_class, js
         return JNI_FALSE;
     }
 
-    jvmtiError result = JuiceLoaderNative.jvmti->AddToSystemClassLoaderSearch(pathStr);
+    jvmtiError result = JuiceLoaderNative.jvmti->AddToBootstrapClassLoaderSearch(pathStr);
     if (result != JVMTI_ERROR_NONE) {
         PLOGE.printf("Cannot inject jar [result=%d]", result);
         env->ReleaseStringUTFChars(jarPath, pathStr);
@@ -343,4 +351,133 @@ JNIEXPORT jclass JNICALL loader_getClassByName(JNIEnv *env, jclass loader_class,
         PLOGE.printf("Failed to find class %s", name_utf);
     }
     return clazz;
+}
+
+// static native Thread getThreadByName(String name)
+JNIEXPORT jobject JNICALL
+loader_nativeGetThreadByName
+  (JNIEnv* env, jclass, jstring jName)
+{
+    // Convert jstring to std::string
+    const char* cName = env->GetStringUTFChars(jName, nullptr);
+    std::string targetName = cName;
+    env->ReleaseStringUTFChars(jName, cName);
+
+    // Thread class
+    jclass threadClass = env->FindClass("java/lang/Thread");
+
+    // Call Thread.getAllStackTraces(), signature: ()Ljava/util/Map;
+    jmethodID midGetAll = env->GetStaticMethodID(
+        threadClass,
+        "getAllStackTraces",
+        "()Ljava/util/Map;"
+    );
+
+    jobject mapObj = env->CallStaticObjectMethod(threadClass, midGetAll);
+
+    // Map.keySet() -> Set
+    jclass mapClass = env->FindClass("java/util/Map");
+    jmethodID midKeySet = env->GetMethodID(
+        mapClass,
+        "keySet",
+        "()Ljava/util/Set;"
+    );
+    jobject setObj = env->CallObjectMethod(mapObj, midKeySet);
+
+    // Set.iterator() -> Iterator
+    jclass setClass = env->FindClass("java/util/Set");
+    jmethodID midIterator = env->GetMethodID(
+        setClass,
+        "iterator",
+        "()Ljava/util/Iterator;"
+    );
+    jobject iteratorObj = env->CallObjectMethod(setObj, midIterator);
+
+    // Iterator.hasNext() / next()
+    jclass iteratorClass = env->FindClass("java/util/Iterator");
+    jmethodID midHasNext = env->GetMethodID(iteratorClass, "hasNext", "()Z");
+    jmethodID midNext = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
+
+    // Thread.getName()
+    jmethodID midGetName = env->GetMethodID(threadClass, "getName", "()Ljava/lang/String;");
+
+    while (env->CallBooleanMethod(iteratorObj, midHasNext)) {
+        jobject threadObj = env->CallObjectMethod(iteratorObj, midNext);
+        jstring jThreadName = (jstring)env->CallObjectMethod(threadObj, midGetName);
+
+        const char* cThreadName = env->GetStringUTFChars(jThreadName, nullptr);
+        bool match = (targetName == cThreadName);
+        env->ReleaseStringUTFChars(jThreadName, cThreadName);
+
+        if (match) {
+            return threadObj; // Found target
+        }
+    }
+
+    return nullptr; // Not found
+}
+
+
+
+// static native ClassLoader injectJarToThread(Thread thread, String jarPath)
+JNIEXPORT jobject JNICALL
+loader_nativeInjectJarToThread
+  (JNIEnv* env, jclass, jobject threadObj, jstring jJarPath)
+{
+    // Convert jstring -> std::string
+    const char* cJarPath = env->GetStringUTFChars(jJarPath, nullptr);
+
+    // new File(jarPath)
+    jclass fileClass = env->FindClass("java/io/File");
+    jmethodID fileCtor = env->GetMethodID(fileClass, "<init>", "(Ljava/lang/String;)V");
+    jstring jPathCopy = env->NewStringUTF(cJarPath);
+    jobject fileObj = env->NewObject(fileClass, fileCtor, jPathCopy);
+
+    // File.toURI()
+    jmethodID midToURI = env->GetMethodID(fileClass, "toURI", "()Ljava/net/URI;");
+    jobject uriObj = env->CallObjectMethod(fileObj, midToURI);
+
+    // URI.toURL()
+    jclass uriClass = env->FindClass("java/net/URI");
+    jmethodID midToURL = env->GetMethodID(uriClass, "toURL", "()Ljava/net/URL;");
+    jobject urlObj = env->CallObjectMethod(uriObj, midToURL);
+
+    // Thread.getContextClassLoader()
+    jclass threadClass = env->FindClass("java/lang/Thread");
+    jmethodID midGetCL = env->GetMethodID(
+        threadClass, "getContextClassLoader", "()Ljava/lang/ClassLoader;"
+    );
+    jobject originalCL = env->CallObjectMethod(threadObj, midGetCL);
+
+    // URLClassLoader(URL[] urls, ClassLoader parent)
+    jclass urlClassLoaderClass = env->FindClass("java/net/URLClassLoader");
+    jmethodID urlCLCtor = env->GetMethodID(
+        urlClassLoaderClass,
+        "<init>",
+        "([Ljava/net/URL;Ljava/lang/ClassLoader;)V"
+    );
+
+    // Create URL[] array with 1 element
+    jobjectArray urlArray = env->NewObjectArray(1, env->FindClass("java/net/URL"), nullptr);
+    env->SetObjectArrayElement(urlArray, 0, urlObj);
+
+    // Create new URLClassLoader
+    jobject newClassLoader = env->NewObject(
+        urlClassLoaderClass,
+        urlCLCtor,
+        urlArray,
+        originalCL
+    );
+
+    // thread.setContextClassLoader(newCL)
+    jmethodID midSetCL = env->GetMethodID(
+        threadClass,
+        "setContextClassLoader",
+        "(Ljava/lang/ClassLoader;)V"
+    );
+    env->CallVoidMethod(threadObj, midSetCL, newClassLoader);
+
+    env->ReleaseStringUTFChars(jJarPath, cJarPath);
+
+    return newClassLoader;
 }

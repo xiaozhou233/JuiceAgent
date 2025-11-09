@@ -100,7 +100,7 @@ static int InvokeJuiceLoaderInit(const char* ConfigDir) {
 
     const char *bootstrap_class = "cn/xiaozhou233/juiceloader/JuiceLoaderBootstrap";
     const char *method_name = "init";
-    const char *method_signature = "(Ljava/lang/String;)V";
+    const char *method_signature = "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V";
 
     PLOGI << "Invoke JuiceLoader Init";
     PLOGI << "================ JuiceLoader Init =================";
@@ -127,7 +127,10 @@ static int InvokeJuiceLoaderInit(const char* ConfigDir) {
     }
 
     // Invoke method
-    env->CallStaticVoidMethod(cls, mid, env->NewStringUTF(ConfigDir));
+    env->CallStaticVoidMethod(cls, mid, env->NewStringUTF(InjectionInfo.EntryJarPath),
+                                        env->NewStringUTF(InjectionInfo.EntryClass),
+                                        env->NewStringUTF(InjectionInfo.EntryMethod),
+                                        env->NewStringUTF(InjectionInfo.InjectionDir));
     if (env->ExceptionCheck()) {
             env->ExceptionDescribe();
             env->ExceptionClear();
@@ -169,7 +172,7 @@ static int ReadConfig(const char* ConfigDir)
     get_str("JuiceLoaderJarPath", defaultJuiceLoader.c_str(), InjectionInfo.JuiceLoaderJarPath);
     get_str("InjectionDir", defaultInjectionDir.c_str(), InjectionInfo.InjectionDir);
     get_str("EntryJarPath", defaultEntryJar.c_str(), InjectionInfo.EntryJarPath);
-    get_str("EntryClass", "cn.xiaozhou233.juicesky.LoaderEntry", InjectionInfo.EntryClass);
+    get_str("EntryClass", "cn.xiaozhou233.test.Entry", InjectionInfo.EntryClass);
     get_str("EntryMethod", "start", InjectionInfo.EntryMethod);
 
     PLOGD << "JuiceLoaderJarPath: " << InjectionInfo.JuiceLoaderJarPath;

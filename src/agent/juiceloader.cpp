@@ -18,7 +18,11 @@ static int RegisterNatives(JNIEnv *env) {
         {(char*)"getClassBytesByName", (char*)"(Ljava/lang/String;)[B", (void *)&loader_getClassBytesByName},
         {(char*)"retransformClass", (char*)"(Ljava/lang/Class;[BI)Z", (void *)&loader_retransformClass},
         {(char*)"retransformClassByName", (char*)"(Ljava/lang/String;[BI)Z", (void *)&loader_retransformClassByName},
-        {(char*)"getClassByName", (char*)"(Ljava/lang/String;)Ljava/lang/Class;", (void *)&loader_getClassByName}
+        {(char*)"getClassByName", (char*)"(Ljava/lang/String;)Ljava/lang/Class;", (void *)&loader_getClassByName},
+        // public static native Thread nativeGetThreadByName(String var0);
+        {(char*)"nativeGetThreadByName", (char*)"(Ljava/lang/String;)Ljava/lang/Thread;", (void *)&loader_nativeGetThreadByName},
+        // public static native ClassLoader nativeInjectJarToThread(Thread var0, String var1);
+        {(char*)"nativeInjectJarToThread", (char*)"(Ljava/lang/Thread;Ljava/lang/String;)Ljava/lang/ClassLoader;", (void *)&loader_nativeInjectJarToThread}
     };
 
     // Find Native(JNI) Class
