@@ -100,7 +100,7 @@ static int InvokeJuiceLoaderInit(const char* ConfigDir) {
 
     const char *bootstrap_class = "cn/xiaozhou233/juiceloader/JuiceLoaderBootstrap";
     const char *method_name = "init";
-    const char *method_signature = "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V";
+    const char *method_signature = "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V";
 
     PLOGI << "Invoke JuiceLoader Init";
     PLOGI << "================ JuiceLoader Init =================";
@@ -130,7 +130,8 @@ static int InvokeJuiceLoaderInit(const char* ConfigDir) {
     env->CallStaticVoidMethod(cls, mid, env->NewStringUTF(InjectionInfo.EntryJarPath),
                                         env->NewStringUTF(InjectionInfo.EntryClass),
                                         env->NewStringUTF(InjectionInfo.EntryMethod),
-                                        env->NewStringUTF(InjectionInfo.InjectionDir));
+                                        env->NewStringUTF(InjectionInfo.InjectionDir),
+                                        env->NewStringUTF(InjectionInfo.JuiceLoaderLibraryPath));
     if (env->ExceptionCheck()) {
             env->ExceptionDescribe();
             env->ExceptionClear();
@@ -144,15 +145,18 @@ static int InvokeJuiceLoaderInit(const char* ConfigDir) {
 
 static int ReadConfig(const char* ConfigDir)
 {
+    // ConfigDir/config.toml
     std::string path = std::string(ConfigDir) + "\\config.toml";
     std::ifstream ifs(path);
     if (!ifs) return -1;
 
+    // Parse toml
     toml::ParseResult pr = toml::parse(ifs);
     if (!pr.valid()) return -2;
 
     const toml::Value& tbl = pr.value;
 
+    // Helper function: get string from toml
     auto get_str = [&](const char* key, const char* def, char* out) {
         const toml::Value* v = tbl.find(key);
         if (v && v->is<std::string>()) {
@@ -164,18 +168,21 @@ static int ReadConfig(const char* ConfigDir)
         out[INJECT_PATH_MAX - 1] = '\0';
     };
 
+    // Default values
     std::string defaultJuiceLoader = std::string(ConfigDir) + "\\JuiceLoader.jar";
+    std::string defaultJuiceLoaderLibrary = std::string(ConfigDir) + "\\libjuiceloader.dll";
     std::string defaultEntryJar    = std::string(ConfigDir) + "\\Entry.jar";
-
     std::string defaultInjectionDir = std::string(ConfigDir) + "\\injection";
 
     get_str("JuiceLoaderJarPath", defaultJuiceLoader.c_str(), InjectionInfo.JuiceLoaderJarPath);
+    get_str("JuiceLoaderLibraryPath", defaultJuiceLoaderLibrary.c_str(), InjectionInfo.JuiceLoaderLibraryPath);
     get_str("InjectionDir", defaultInjectionDir.c_str(), InjectionInfo.InjectionDir);
     get_str("EntryJarPath", defaultEntryJar.c_str(), InjectionInfo.EntryJarPath);
     get_str("EntryClass", "cn.xiaozhou233.test.Entry", InjectionInfo.EntryClass);
     get_str("EntryMethod", "start", InjectionInfo.EntryMethod);
 
     PLOGD << "JuiceLoaderJarPath: " << InjectionInfo.JuiceLoaderJarPath;
+    PLOGD << "JuiceLoaderLibraryPath: " << InjectionInfo.JuiceLoaderLibraryPath;
     PLOGD << "InjectionDir: " << InjectionInfo.InjectionDir;
     PLOGD << "EntryJarPath: " << InjectionInfo.EntryJarPath;
     PLOGD << "EntryClass: " << InjectionInfo.EntryClass;

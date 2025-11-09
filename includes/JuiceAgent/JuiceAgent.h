@@ -14,6 +14,7 @@ typedef struct _InjectionInfo {
     char EntryClass[INJECT_PATH_MAX];
     char EntryMethod[INJECT_PATH_MAX];
     char InjectionDir[INJECT_PATH_MAX];
+    char JuiceLoaderLibraryPath[INJECT_PATH_MAX];
 } InjectionInfoType;
 
 extern InjectionInfoType InjectionInfo;
