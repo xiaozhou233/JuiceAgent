@@ -1,4 +1,5 @@
 #include <juiceloader.h>
+#include <cn_xiaozhou233_juiceloader_JuiceLoader.h>
 #include <jni.h>
 #include <jvmti.h>
 #include <string.h>
@@ -97,12 +98,40 @@ void JNICALL ClassFileLoadHook(
 
 
 /// ============ JNI Function ============ ///
-JNIEXPORT jboolean JNICALL loader_init(JNIEnv *env, jclass loader_class) {
-    PLOGW << "JuiceLoaderNative.init() is deprecated, init will be done automatically.";
+C_EXPORT
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_init 
+(JNIEnv *env, jclass loader_class) {
+    PLOGI << "Invoked!";
+
+    // Get JavaVM
+    JavaVM* jvm = nullptr;
+    env->GetJavaVM(&jvm);
+    if (jvm == nullptr) {
+        PLOGE << "Failed to get JavaVM instance";
+        return JNI_FALSE;
+    }
+
+    // Get JVMTI
+    jvmtiEnv* jvmti = nullptr;
+    jvmtiError err = static_cast<jvmtiError>(jvm->GetEnv(reinterpret_cast<void**>(&jvmti), JVMTI_VERSION_1_2));
+    if (err != JVMTI_ERROR_NONE || jvmti == nullptr) {
+        PLOGE << "Failed to get JVMTI environment, error: " << err;
+        return JNI_FALSE;
+    }
+
+    int result = InitJuiceLoader(env, jvmti);
+    if (result != 0) {
+        PLOGE << "Failed to initialize JuiceLoader, error code: " << result;
+        return JNI_FALSE;
+    }
+
+    PLOGI << "JuiceLoader initialized successfully";
     return JNI_TRUE;
 }
 
-JNIEXPORT jboolean JNICALL loader_injectJar(JNIEnv *env, jclass loader_class, jstring jarPath) {
+C_EXPORT
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_injectJar
+(JNIEnv *env, jclass loader_class, jstring jarPath) {
     PLOGI << "Invoked!";
     const char *pathStr = env->GetStringUTFChars(jarPath, NULL);
     if (!pathStr) {
@@ -127,7 +156,10 @@ JNIEXPORT jboolean JNICALL loader_injectJar(JNIEnv *env, jclass loader_class, js
     PLOGI << "Jar injected: " << pathStr;
     return JNI_TRUE;
 }
-JNIEXPORT jboolean JNICALL loader_redefineClass_clazz(JNIEnv *env, jclass loader_class, jclass clazz, jbyteArray classBytes, jint length) {
+
+C_EXPORT
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_redefineClass
+(JNIEnv *env, jclass loader_class, jclass clazz, jbyteArray classBytes, jint length) {
     PLOGI << "Invoked!";
     if (!JuiceLoaderNative.jvmti) {
         PLOGE.printf("JuiceLoaderNative.jvmti is NULL! [jvmti=%p]", JuiceLoaderNative.jvmti);
@@ -157,7 +189,9 @@ JNIEXPORT jboolean JNICALL loader_redefineClass_clazz(JNIEnv *env, jclass loader
     return JNI_TRUE;
 }
 
-JNIEXPORT jboolean JNICALL loader_redefineClass_className(JNIEnv *env, jclass loader_class, jstring className, jbyteArray classBytes, jint length) {
+C_EXPORT
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_redefineClassByName
+(JNIEnv *env, jclass loader_class, jstring className, jbyteArray classBytes, jint length) {
     PLOGI << "redefineClass_className Invoked!";
     if (!JuiceLoaderNative.jvmti) {
         PLOGE.printf("JuiceLoaderNative.jvmti is NULL! [jvmti=%p]", JuiceLoaderNative.jvmti);
@@ -177,12 +211,14 @@ JNIEXPORT jboolean JNICALL loader_redefineClass_className(JNIEnv *env, jclass lo
         return JNI_FALSE;
     }
 
-    jboolean ret = loader_redefineClass_clazz(env, loader_class, clazz, classBytes, length);
+    jboolean ret = Java_cn_xiaozhou233_juiceloader_JuiceLoader_redefineClass(env, loader_class, clazz, classBytes, length);
     env->ReleaseStringUTFChars(className, cname);
     return ret;
 }
 
-JNIEXPORT jobjectArray JNICALL loader_getLoadedClasses(JNIEnv *env, jclass loader_class) {
+C_EXPORT
+JNIEXPORT jobjectArray JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_getLoadedClasses
+(JNIEnv *env, jclass loader_class) {
     PLOGI << "loader_getLoadedClasses invoked!";
 
     if (!JuiceLoaderNative.jvmti) {
@@ -209,7 +245,9 @@ JNIEXPORT jobjectArray JNICALL loader_getLoadedClasses(JNIEnv *env, jclass loade
     return classArray;
 }
 
-JNIEXPORT jbyteArray JNICALL loader_getClassBytes(JNIEnv *env, jclass loader_class, jclass clazz) {
+C_EXPORT
+JNIEXPORT jbyteArray JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_getClassBytes
+(JNIEnv *env, jclass loader_class, jclass clazz) {
     PLOGI << "getClassBytes Invoked!";
     if (!JuiceLoaderNative.jvmti) {
         PLOGE << "JuiceLoaderNative.jvmti is NULL!";
@@ -254,7 +292,9 @@ JNIEXPORT jbyteArray JNICALL loader_getClassBytes(JNIEnv *env, jclass loader_cla
     return result;
 }
 
-JNIEXPORT jbyteArray JNICALL loader_getClassBytesByName(JNIEnv *env, jclass loader_class, jstring className) {
+C_EXPORT
+JNIEXPORT jbyteArray JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_getClassBytesByName
+(JNIEnv *env, jclass loader_class, jstring className) {
     PLOGI << "getClassBytesByName Invoked!";
     if (!JuiceLoaderNative.jvmti) {
         PLOGE << "JuiceLoaderNative.jvmti is NULL!";
@@ -270,9 +310,12 @@ JNIEXPORT jbyteArray JNICALL loader_getClassBytesByName(JNIEnv *env, jclass load
         return NULL;
     }
 
-    return loader_getClassBytes(env, loader_class, clazz);
+    return Java_cn_xiaozhou233_juiceloader_JuiceLoader_getClassBytes(env, loader_class, clazz);
 }
-JNIEXPORT jboolean JNICALL loader_retransformClass(JNIEnv *env, jclass loader_class, jclass clazz, jbyteArray classBytes, jint length) {
+
+C_EXPORT
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_retransformClass
+(JNIEnv *env, jclass loader_class, jclass clazz, jbyteArray classBytes, jint length) {
     if (!JuiceLoaderNative.jvmti) {
         PLOGE << "JuiceLoaderNative.jvmti is NULL! (retransformClass)";
         return JNI_FALSE;
@@ -312,7 +355,9 @@ JNIEXPORT jboolean JNICALL loader_retransformClass(JNIEnv *env, jclass loader_cl
     return JNI_TRUE;
 }
 
-JNIEXPORT jboolean JNICALL loader_retransformClassByName(JNIEnv *env, jclass loader_class, jstring className, jbyteArray classBytes, jint length) {
+C_EXPORT
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_retransformClassByName
+(JNIEnv *env, jclass loader_class, jstring className, jbyteArray classBytes, jint length) {
     const char *name_dot = env->GetStringUTFChars(className, NULL);
     char *name = _strdup(name_dot);
     for (char *p = name; *p; ++p) if (*p == '.') *p = '/';
@@ -326,10 +371,12 @@ JNIEXPORT jboolean JNICALL loader_retransformClassByName(JNIEnv *env, jclass loa
         return JNI_FALSE;
     }
 
-    return loader_retransformClass(env, loader_class, target, classBytes, length);
+    return Java_cn_xiaozhou233_juiceloader_JuiceLoader_retransformClass(env, loader_class, target, classBytes, length);
 }
 
-JNIEXPORT jclass JNICALL loader_getClassByName(JNIEnv *env, jclass loader_class, jstring className) {
+C_EXPORT
+JNIEXPORT jclass JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_getClassByName
+(JNIEnv *env, jclass loader_class, jstring className) {
     
     if (className == NULL) {
         return NULL;
@@ -354,8 +401,8 @@ JNIEXPORT jclass JNICALL loader_getClassByName(JNIEnv *env, jclass loader_class,
 }
 
 // static native Thread getThreadByName(String name)
-JNIEXPORT jobject JNICALL
-loader_nativeGetThreadByName
+C_EXPORT
+JNIEXPORT jobject JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_nativeGetThreadByName
   (JNIEnv* env, jclass, jstring jName)
 {
     // Convert jstring to std::string
@@ -420,9 +467,9 @@ loader_nativeGetThreadByName
 
 
 // static native ClassLoader injectJarToThread(Thread thread, String jarPath)
-JNIEXPORT jobject JNICALL
-loader_nativeInjectJarToThread
-  (JNIEnv* env, jclass, jobject threadObj, jstring jJarPath)
+C_EXPORT 
+JNIEXPORT jobject JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_nativeInjectJarToThread
+ (JNIEnv* env, jclass, jobject threadObj, jstring jJarPath)
 {
     // Convert jstring -> std::string
     const char* cJarPath = env->GetStringUTFChars(jJarPath, nullptr);

@@ -23,6 +23,7 @@ typedef struct {
 
 extern RetransformClassCacheType RetransformClassCache;
 
+#define C_EXPORT extern "C" __declspec(dllexport)
 
 int InitJuiceLoader(JNIEnv *env, jvmtiEnv *jvmti);
 

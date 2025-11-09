@@ -1,7 +1,6 @@
 #include <windows.h>
 #include "Logger.hpp"
 #include <JuiceAgent.h>
-#include <juiceloader.h>
 #include <tinytoml/toml.h>
 
 // For Java VM
@@ -217,19 +216,13 @@ int InitJuiceAgent(const char* ConfigDir) {
         return 1;
     }
 
-    // Step 3: Invoke JuiceLoader Native Init
-    if (InitJuiceLoader(JuiceAgent.env, JuiceAgent.jvmti) != JNI_OK) {
-        PLOGE << "Failed to invoke JuiceLoader Native Init: " << result;
-        return 1;
-    } 
-
-    // Step 4: Invoke JuiceLoader Init
+    // Step 3: Invoke JuiceLoader Init
     if (InvokeJuiceLoaderInit(ConfigDir) != 0) {
         PLOGE << "Failed to invoke JuiceLoader Init code=" << result;
         return 1;
     }
 
-    // Step 5: Done, cleanup
+    // Step 4: Done, cleanup
 
     return 0;
 }
