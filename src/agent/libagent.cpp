@@ -158,8 +158,13 @@ static int ReadConfig(const char* ConfigDir)
         const toml::Value* v = tbl.find(key);
         if (v && v->is<std::string>()) {
             std::string s = v->as<std::string>();
-            strncpy(out, s.c_str(), INJECT_PATH_MAX - 1);
-            PLOGD << "Found parameter: " << key << " = " << s.c_str();
+            if (!s.empty()) {
+                strncpy(out, s.c_str(), INJECT_PATH_MAX - 1);
+                PLOGD << "Found parameter: " << key << " = " << s.c_str();
+            } else {
+            strncpy(out, def, INJECT_PATH_MAX - 1);
+            PLOGD << "Parameter " << key << " is empty, use default: " << def;
+            }
         } else {
             strncpy(out, def, INJECT_PATH_MAX - 1);
             PLOGD << "Not found parameter: " << key << ", use default: " << def;
