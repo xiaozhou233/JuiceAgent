@@ -5,13 +5,17 @@
 #include <string.h>
 #include "LoadLibraryR.h"
 #include "InjectorNative.h"
-#include "InjectParameters.h"
-#include "log.c"
+#include "JuiceAgent.h"
 
 #define WIN_X64
+#define log_debug(...) printf("[DEBUG] %s:%d: " __VA_ARGS__, __FILE__, __LINE__)
+#define log_info(...)  printf("[INFO] %s:%d: " __VA_ARGS__, __FILE__, __LINE__)
+#define log_warn(...)  printf("[WARN] %s:%d: " __VA_ARGS__, __FILE__, __LINE__)
+#define log_error(...) printf("[ERROR] %s:%d: " __VA_ARGS__, __FILE__, __LINE__)
+
 #define BREAK_WITH_ERROR( e ) { log_error("[-] %s. Error=%l", e, GetLastError()); break; }
 
-int inject(int pid, char *path, InjectParameters *params){
+int inject(int pid, char *path, InjectParams *params){
     HANDLE hFile          = NULL;
     HANDLE hRemoteThread  = NULL;
     HANDLE hProcess       = NULL;
@@ -23,11 +27,6 @@ int inject(int pid, char *path, InjectParameters *params){
     DWORD dwProcessId     = (DWORD)pid;
     TOKEN_PRIVILEGES priv = {0};
     BOOL bSuccess         = FALSE;
-
-    log_set_level(LOG_DEBUG);
-    log_is_log_filename(false);
-    log_is_log_line(false);
-    log_is_log_time(false);
 
     log_info("[*] libinjector Version %d.%d Build %d", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_BUILD_NUMBER);
 
@@ -120,8 +119,8 @@ int inject(int pid, char *path, InjectParameters *params){
             log_error("Unknown DLL machine type; proceed with caution");
         }
 
-        /* allocate remote memory for InjectParameters */
-        lpRemoteParam = VirtualAllocEx(hProcess, NULL, sizeof(InjectParameters), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+        /* allocate remote memory for InjectParams */
+        lpRemoteParam = VirtualAllocEx(hProcess, NULL, sizeof(InjectParams), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
         if (!lpRemoteParam)
             BREAK_WITH_ERROR("VirtualAllocEx for remote param failed");
 
@@ -130,7 +129,7 @@ int inject(int pid, char *path, InjectParameters *params){
         /* write params to remote memory */
         SIZE_T written = 0;
         if (params) {
-            if (!WriteProcessMemory(hProcess, lpRemoteParam, params, sizeof(InjectParameters), &written) || written != sizeof(InjectParameters))
+            if (!WriteProcessMemory(hProcess, lpRemoteParam, params, sizeof(InjectParams), &written) || written != sizeof(InjectParams))
             BREAK_WITH_ERROR("WriteProcessMemory for remote param failed");
         } else {
             log_warn("No parameters provided; using null pointer");
@@ -139,9 +138,9 @@ int inject(int pid, char *path, InjectParameters *params){
 
         /* read back some bytes to verify write */
         {
-            InjectParameters verify;
+            InjectParams verify;
             SIZE_T read = 0;
-            if (ReadProcessMemory(hProcess, lpRemoteParam, &verify, sizeof(InjectParameters), &read)) {
+            if (ReadProcessMemory(hProcess, lpRemoteParam, &verify, sizeof(InjectParams), &read)) {
                 log_debug("[*] Read back remote param, ConfigDir=%.*s", (int)sizeof(verify.ConfigDir), verify.ConfigDir);
             } else {
                 log_error("[-] ReadProcessMemory failed: %lu", GetLastError());
@@ -220,7 +219,7 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNativ
     // Config Path
     const char* ConfigDir = (*env)->GetStringUTFChars(env, configDir, NULL);
 
-    InjectParameters params;
+    InjectParams params;
     memset(&params, 0, sizeof(params));
 
     strncpy(params.ConfigDir, ConfigDir ? ConfigDir : "", sizeof(params.ConfigDir)-1);
