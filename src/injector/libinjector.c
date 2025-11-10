@@ -8,12 +8,7 @@
 #include "JuiceAgent.h"
 
 #define WIN_X64
-#define log_debug(...) printf("[DEBUG] %s:%d: " __VA_ARGS__, __FILE__, __LINE__)
-#define log_info(...)  printf("[INFO] %s:%d: " __VA_ARGS__, __FILE__, __LINE__)
-#define log_warn(...)  printf("[WARN] %s:%d: " __VA_ARGS__, __FILE__, __LINE__)
-#define log_error(...) printf("[ERROR] %s:%d: " __VA_ARGS__, __FILE__, __LINE__)
-
-#define BREAK_WITH_ERROR( e ) { log_error("[-] %s. Error=%l", e, GetLastError()); break; }
+#define BREAK_WITH_ERROR( e ) { printf("[-] %s. Error=%l", e, GetLastError()); break; }
 
 int inject(int pid, char *path, InjectParams *params){
     HANDLE hFile          = NULL;
@@ -28,13 +23,14 @@ int inject(int pid, char *path, InjectParams *params){
     TOKEN_PRIVILEGES priv = {0};
     BOOL bSuccess         = FALSE;
 
-    log_info("[*] libinjector Version %d.%d Build %d", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_BUILD_NUMBER);
 
-    log_debug("Injector process pointer size = %zu bytes", sizeof(void*));
+    printf("[*] libinjector Version %d.%d Build %d", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_BUILD_NUMBER);
+
+    printf("Injector process pointer size = %zu bytes", sizeof(void*));
     
     do {
         if (!params) {
-            log_warn("[!] No parameters provided");
+            printf("[!] No parameters provided");
         }
 
         /* open DLL file */
@@ -44,13 +40,13 @@ int inject(int pid, char *path, InjectParams *params){
 		/* Debug helper: print the path being opened and its absolute path */
 		char fullPath[MAX_PATH] = {0};
 		if (GetFullPathNameA(path, MAX_PATH, fullPath, NULL) != 0) {
-            log_debug("Injector GetFullPathNameA success: %s", fullPath);
+            printf("Injector GetFullPathNameA success: %s", fullPath);
 		} else {
-            log_error("[*] Injector GetFullPathNameA failed: %lu", GetLastError());
+            printf("[*] Injector GetFullPathNameA failed: %lu", GetLastError());
 		}
 
 		/* Before CreateFileA, print which file we are about to open */
-        log_debug("[*] About to open DLL: %s", path);
+        printf("[*] About to open DLL: %s", path);
 
 		/* after ReadFile (or after loading into lpBuffer), verify exports again on the buffer we actually read */
 
@@ -69,11 +65,11 @@ int inject(int pid, char *path, InjectParams *params){
 
         /* print machine type of DLL buffer */
         WORD dllMachine = get_pe_machine(lpBuffer, dwLength);
-        log_debug("[*] DLL PE machine: %s (0x%04x)", machine_to_str(dllMachine), dllMachine);
+        printf("[*] DLL PE machine: %s (0x%04x)", machine_to_str(dllMachine), dllMachine);
 
         /* check if DLL has ReflectiveLoader export */
         BOOL hasRL = has_reflective_loader_export(lpBuffer, dwLength);
-        log_debug("[*] DLL has ReflectiveLoader export: %s", hasRL ? "YES" : "NO");
+        printf("[*] DLL has ReflectiveLoader export: %s", hasRL ? "YES" : "NO");
 
         /* enable SeDebugPrivilege (best-effort) */
         if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken)) {
@@ -93,38 +89,38 @@ int inject(int pid, char *path, InjectParams *params){
         /* detect target architecture */
         BOOL targetIsWow64 = FALSE;
         if (!IsWow64Process(hProcess, &targetIsWow64)) {
-            log_error("IsWow64Process failed");
+            printf("IsWow64Process failed");
         } else {
-            log_info("Is target process wow64 = %d (TRUE means 32-bit process on 64-bit OS)", targetIsWow64);
+            printf("Is target process wow64 = %d (TRUE means 32-bit process on 64-bit OS)", targetIsWow64);
         }
 
         /* compare architectures */
 #if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
-        log_info("Injector compiled as: x64");
+        printf("Injector compiled as: x64");
 #else
-        log_info("Injector compiled as: x86");
+        printf("Injector compiled as: x86");
 #endif
 
         if (dllMachine == IMAGE_FILE_MACHINE_AMD64) {
-            log_info("[*] DLL is x64");
+            printf("[*] DLL is x64");
 #if !defined(_M_X64) && !defined(__x86_64__)
-            log_warn("[-] MISMATCH: injector is 32-bit but DLL is x64. This will fail.");
+            printf("[-] MISMATCH: injector is 32-bit but DLL is x64. This will fail.");
 #endif
         } else if (dllMachine == IMAGE_FILE_MACHINE_I386) {
-            log_info("[*] DLL is x86");
+            printf("[*] DLL is x86");
 #if defined(_M_X64) || defined(__x86_64__)
-            log_warn("[-] MISMATCH: injector is 64-bit but DLL is x86. This will fail.");
+            printf("[-] MISMATCH: injector is 64-bit but DLL is x86. This will fail.");
 #endif
         } else {
-            log_error("Unknown DLL machine type; proceed with caution");
+            printf("Unknown DLL machine type; proceed with caution");
         }
 
-        /* allocate remote memory for InjectParams */
+        /* allocate remote memory for InjectParameters */
         lpRemoteParam = VirtualAllocEx(hProcess, NULL, sizeof(InjectParams), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
         if (!lpRemoteParam)
             BREAK_WITH_ERROR("VirtualAllocEx for remote param failed");
 
-        log_debug("remote param addr = %p", lpRemoteParam);
+        printf("remote param addr = %p", lpRemoteParam);
 
         /* write params to remote memory */
         SIZE_T written = 0;
@@ -132,7 +128,7 @@ int inject(int pid, char *path, InjectParams *params){
             if (!WriteProcessMemory(hProcess, lpRemoteParam, params, sizeof(InjectParams), &written) || written != sizeof(InjectParams))
             BREAK_WITH_ERROR("WriteProcessMemory for remote param failed");
         } else {
-            log_warn("No parameters provided; using null pointer");
+            printf("No parameters provided; using null pointer");
             lpRemoteParam = NULL;
         }
 
@@ -141,9 +137,9 @@ int inject(int pid, char *path, InjectParams *params){
             InjectParams verify;
             SIZE_T read = 0;
             if (ReadProcessMemory(hProcess, lpRemoteParam, &verify, sizeof(InjectParams), &read)) {
-                log_debug("[*] Read back remote param, ConfigDir=%.*s", (int)sizeof(verify.ConfigDir), verify.ConfigDir);
+                printf("[*] Read back remote param, ConfigDir=%.*s", (int)sizeof(verify.ConfigDir), verify.ConfigDir);
             } else {
-                log_error("[-] ReadProcessMemory failed: %lu", GetLastError());
+                printf("[-] ReadProcessMemory failed: %lu", GetLastError());
             }
         }
 
@@ -151,20 +147,20 @@ int inject(int pid, char *path, InjectParams *params){
         hRemoteThread = LoadRemoteLibraryR(hProcess, lpBuffer, dwLength, lpRemoteParam);
         if (!hRemoteThread) {
             /* library didn't set last error; print hint info we gathered */
-            log_error("[-] LoadRemoteLibraryR returned NULL. GetLastError=%lu", GetLastError());
-            log_error("[-] Diagnostic summary: dllMachine=0x%04x, hasReflectiveLoader=%d, targetIsWow64=%d",
+            printf("[-] LoadRemoteLibraryR returned NULL. GetLastError=%lu", GetLastError());
+            printf("[-] Diagnostic summary: dllMachine=0x%04x, hasReflectiveLoader=%d, targetIsWow64=%d",
                    dllMachine, hasRL ? 1 : 0, targetIsWow64 ? 1 : 0);
             BREAK_WITH_ERROR("LoadRemoteLibraryR returned NULL");
         }
 
-        log_info("[+] DLL injected: '%s' into PID %d, remote param at %p", path, dwProcessId, lpRemoteParam);
+        printf("[+] DLL injected: '%s' into PID %d, remote param at %p", path, dwProcessId, lpRemoteParam);
         /* wait for reflective loader thread to complete */
         WaitForSingleObject(hRemoteThread, INFINITE);
 
         /* get remote thread exit code */
         DWORD exitCode = 0;
         if (GetExitCodeThread(hRemoteThread, &exitCode))
-            log_info("[+] Remote thread exit code: %lu", exitCode);
+            printf("[+] Remote thread exit code: %lu", exitCode);
 
         bSuccess = TRUE;
 
