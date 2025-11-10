@@ -29,6 +29,7 @@ function(add_juice_module NAME)
 
     # Link common libraries
     target_link_libraries(${NAME} PRIVATE
+        ReflectiveDLLInjection
         jvm
     )
 

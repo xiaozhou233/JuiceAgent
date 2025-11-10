@@ -16,8 +16,6 @@ struct _JuiceAgent {
 
 InjectionInfoType InjectionInfo;
 
-HINSTANCE hAppInstance = nullptr;
-
 
 static int GetJavaEnv() {
     jint res = JNI_ERR;
@@ -251,7 +249,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved)
     switch (dwReason)
     {
         case DLL_PROCESS_ATTACH: {
-            hAppInstance = hinstDLL;
             InitLogger();
 
             PLOGI << "DLL_PROCESS_ATTACH";
