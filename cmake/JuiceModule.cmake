@@ -10,6 +10,8 @@ function(add_juice_module NAME)
         "${CMAKE_SOURCE_DIR}/src/${NAME}/*.cpp"
         "${CMAKE_SOURCE_DIR}/src/${NAME}/utils/*.c"
         "${CMAKE_SOURCE_DIR}/src/${NAME}/utils/*.cpp"
+        "${CMAKE_SOURCE_DIR}/src/${NAME}/jni/*.c"
+        "${CMAKE_SOURCE_DIR}/src/${NAME}/jni/*.cpp"
     )
 
     # Create shared library
