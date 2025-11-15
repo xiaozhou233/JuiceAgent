@@ -97,7 +97,7 @@ static int InvokeJuiceLoaderInit(const char* ConfigDir) {
 
     const char *bootstrap_class = "cn/xiaozhou233/juiceloader/JuiceLoaderBootstrap";
     const char *method_name = "init";
-    const char *method_signature = "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V";
+    const char *method_signature = "([Ljava/lang/String;)V";
 
     PLOGI << "Invoke JuiceLoader Init";
     PLOGI << "================ JuiceLoader Init =================";
@@ -123,12 +123,24 @@ static int InvokeJuiceLoaderInit(const char* ConfigDir) {
         return 1;
     }
 
+    // arguments array
+    const char* args[] = {
+        InjectionInfo.EntryJarPath,
+        InjectionInfo.EntryClass,
+        InjectionInfo.EntryMethod,
+        InjectionInfo.InjectionDir,
+        InjectionInfo.JuiceLoaderLibraryPath
+    };
+    int argCount = sizeof(args)/sizeof(args[0]);
+    
+    jclass stringCls = env->FindClass("java/lang/String");
+    jobjectArray jArgs = env->NewObjectArray(argCount, stringCls, nullptr);
+    for (int i = 0; i < argCount; i++) {
+        env->SetObjectArrayElement(jArgs, i, env->NewStringUTF(args[i]));
+    }
+
     // Invoke method
-    env->CallStaticVoidMethod(cls, mid, env->NewStringUTF(InjectionInfo.EntryJarPath),
-                                        env->NewStringUTF(InjectionInfo.EntryClass),
-                                        env->NewStringUTF(InjectionInfo.EntryMethod),
-                                        env->NewStringUTF(InjectionInfo.InjectionDir),
-                                        env->NewStringUTF(InjectionInfo.JuiceLoaderLibraryPath));
+    env->CallStaticVoidMethod(cls, mid, jArgs);
     if (env->ExceptionCheck()) {
             env->ExceptionDescribe();
             env->ExceptionClear();

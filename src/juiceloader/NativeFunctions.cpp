@@ -145,7 +145,7 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_injectJar
         return JNI_FALSE;
     }
 
-    jvmtiError result = JuiceLoaderNative.jvmti->AddToBootstrapClassLoaderSearch(pathStr);
+    jvmtiError result = JuiceLoaderNative.jvmti->AddToSystemClassLoaderSearch(pathStr);
     if (result != JVMTI_ERROR_NONE) {
         PLOGE.printf("Cannot inject jar [result=%d]", result);
         env->ReleaseStringUTFChars(jarPath, pathStr);
