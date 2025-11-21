@@ -1,11 +1,7 @@
 #ifndef JUICEAGENT_H
 #define JUICEAGENT_H
 
-#define INJECT_PATH_MAX 4096
-
-typedef struct InjectParams{
-    char ConfigDir[INJECT_PATH_MAX];
-} InjectParams;
+#define INJECT_PATH_MAX 260
 
 typedef struct _InjectionInfo {
     char BootstrapAPIPath[INJECT_PATH_MAX];

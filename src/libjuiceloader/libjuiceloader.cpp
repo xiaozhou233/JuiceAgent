@@ -1,7 +1,7 @@
 // JVM
 #include <jni.h>
 #include <jvmti.h>
-#include <Logger.hpp>
+#include <JuiceAgent/Logger.hpp>
 #include <juiceloader.h>
 
 JuiceLoaderNativeType JuiceLoaderNative;
@@ -30,7 +30,7 @@ static int ConfigureJVMTI(JNIEnv *env, _jvmtiEnv *jvmti) {
     // Register callbacks
     jvmtiEventCallbacks callbacks;
     memset(&callbacks, 0, sizeof(callbacks));
-    callbacks.ClassFileLoadHook = &ClassFileLoadHook;
+    // callbacks.ClassFileLoadHook = &ClassFileLoadHook;
     jvmti->SetEventCallbacks(&callbacks, sizeof(callbacks));
 
     // Enable events
@@ -39,8 +39,8 @@ static int ConfigureJVMTI(JNIEnv *env, _jvmtiEnv *jvmti) {
     return JNI_OK;
 }
 
+extern "C" __declspec(dllexport)
 int InitJuiceLoader(JNIEnv *env, _jvmtiEnv *jvmti) {
-    PLOGI.printf("[*] libjuiceloader Version %d.%d Build %d", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_BUILD_NUMBER);
     // Step 1: Check if env/jvmti is null
     PLOGD.printf("env: %p, jvmti: %p", env, jvmti);
     if (env == nullptr) {
@@ -62,5 +62,4 @@ int InitJuiceLoader(JNIEnv *env, _jvmtiEnv *jvmti) {
 
     return 0;
 }
-
 

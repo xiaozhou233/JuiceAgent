@@ -4,7 +4,7 @@
 #include <jvmti.h>
 #include <string.h>
 #include <stdlib.h>
-#include <Logger.hpp>
+#include <JuiceAgent/Logger.hpp>
 
 RetransformClassCacheType RetransformClassCache = {NULL, 0, 0};
 

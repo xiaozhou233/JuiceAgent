@@ -1,8 +1,0 @@
-# config.toml
-
-JuiceLoaderJarPath = "D:\\Development\\JuiceLoader\\JuiceLoader.jar"
-JuiceLoaderLibraryPath = ""
-InjectionDir = "D:\\Development\\JuiceLoader\\injection"
-EntryJarPath = "D:\\Development\\JuiceLoader\\Entry.jar"
-EntryClass = "cn.xiaozhou233.test.Entry"
-EntryMethod = "start"

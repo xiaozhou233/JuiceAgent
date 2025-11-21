@@ -1,17 +1,15 @@
-// injector_debug.c
-#include "InjectorUtils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "LoadLibraryR.h"
-#include "InjectorNative.h"
-#include "JuiceAgent.h"
+#include <jni.h>
+#include <ReflectiveDLLInjection/LoadLibraryR.h>
 
 #define WIN_X64
 #define BREAK_WITH_ERROR( e ) { printf("[-] %s. Error=%l", e, GetLastError()); break; }
+#define MAX_PATH 260
 
 __declspec(dllexport)
-int inject(int pid, char *path, InjectParams *params){
+int inject(int pid, char *path, char *params){
     HANDLE hFile          = NULL;
     HANDLE hRemoteThread  = NULL;
     HANDLE hProcess       = NULL;
@@ -23,9 +21,6 @@ int inject(int pid, char *path, InjectParams *params){
     DWORD dwProcessId     = (DWORD)pid;
     TOKEN_PRIVILEGES priv = {0};
     BOOL bSuccess         = FALSE;
-
-
-    printf("[*] libinjector Version %d.%d Build %d\n", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_BUILD_NUMBER);
 
     printf("Injector process pointer size = %zu bytes\n", sizeof(void*));
     
@@ -64,14 +59,6 @@ int inject(int pid, char *path, InjectParams *params){
         if (!ReadFile(hFile, lpBuffer, dwLength, &dwBytesRead, NULL) || dwBytesRead != dwLength)
             BREAK_WITH_ERROR("ReadFile failed or incomplete");
 
-        /* print machine type of DLL buffer */
-        WORD dllMachine = get_pe_machine(lpBuffer, dwLength);
-        printf("[*] DLL PE machine: %s (0x%04x)\n", machine_to_str(dllMachine), dllMachine);
-
-        /* check if DLL has ReflectiveLoader export */
-        BOOL hasRL = has_reflective_loader_export(lpBuffer, dwLength);
-        printf("[*] DLL has ReflectiveLoader export: %s\n", hasRL ? "YES" : "NO");
-
         /* enable SeDebugPrivilege (best-effort) */
         if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken)) {
             priv.PrivilegeCount = 1;
@@ -95,29 +82,9 @@ int inject(int pid, char *path, InjectParams *params){
             printf("Is target process wow64 = %d (TRUE means 32-bit process on 64-bit OS)\n", targetIsWow64);
         }
 
-        /* compare architectures */
-#if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
-        printf("Injector compiled as: x64\n");
-#else
-        printf("Injector compiled as: x86\n");
-#endif
-
-        if (dllMachine == IMAGE_FILE_MACHINE_AMD64) {
-            printf("[*] DLL is x64\n");
-#if !defined(_M_X64) && !defined(__x86_64__)
-            printf("[-] MISMATCH: injector is 32-bit but DLL is x64. This will fail.");
-#endif
-        } else if (dllMachine == IMAGE_FILE_MACHINE_I386) {
-            printf("[*] DLL is x86\n");
-#if defined(_M_X64) || defined(__x86_64__)
-            printf("[-] MISMATCH: injector is 64-bit but DLL is x86. This will fail.\n");
-#endif
-        } else {
-            printf("Unknown DLL machine type; proceed with caution\n");
-        }
 
         /* allocate remote memory for InjectParameters */
-        lpRemoteParam = VirtualAllocEx(hProcess, NULL, sizeof(InjectParams), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+        lpRemoteParam = VirtualAllocEx(hProcess, NULL, MAX_PATH, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
         if (!lpRemoteParam)
             BREAK_WITH_ERROR("VirtualAllocEx for remote param failed\n");
 
@@ -126,7 +93,7 @@ int inject(int pid, char *path, InjectParams *params){
         /* write params to remote memory */
         SIZE_T written = 0;
         if (params) {
-            if (!WriteProcessMemory(hProcess, lpRemoteParam, params, sizeof(InjectParams), &written) || written != sizeof(InjectParams))
+            if (!WriteProcessMemory(hProcess, lpRemoteParam, params, MAX_PATH, &written) || written != MAX_PATH)
             BREAK_WITH_ERROR("WriteProcessMemory for remote param failed\n");
         } else {
             printf("No parameters provided; using null pointer\n");
@@ -135,12 +102,17 @@ int inject(int pid, char *path, InjectParams *params){
 
         /* read back some bytes to verify write */
         {
-            InjectParams verify;
+            char verify[MAX_PATH] = {0};
             SIZE_T read = 0;
-            if (ReadProcessMemory(hProcess, lpRemoteParam, &verify, sizeof(InjectParams), &read)) {
-                printf("[*] Read back remote param, ConfigDir=%.*s\n", (int)sizeof(verify.ConfigDir), verify.ConfigDir);
+
+            if (lpRemoteParam) {
+                if (ReadProcessMemory(hProcess, lpRemoteParam, verify, MAX_PATH, &read)) {
+                    printf("[*] Read back remote param, ConfigDir=%s\n", verify);
+                } else {
+                    printf("[-] ReadProcessMemory failed: %lu\n", GetLastError());
+                }
             } else {
-                printf("[-] ReadProcessMemory failed: %lu\n", GetLastError());
+                printf("[*] lpRemoteParam == NULL, skip verify\n");
             }
         }
 
@@ -149,8 +121,6 @@ int inject(int pid, char *path, InjectParams *params){
         if (!hRemoteThread) {
             /* library didn't set last error; print hint info we gathered */
             printf("[-] LoadRemoteLibraryR returned NULL. GetLastError=%lu\n", GetLastError());
-            printf("[-] Diagnostic summary: dllMachine=0x%04x, hasReflectiveLoader=%d, targetIsWow64=%d\n",
-                   dllMachine, hasRL ? 1 : 0, targetIsWow64 ? 1 : 0);
             BREAK_WITH_ERROR("LoadRemoteLibraryR returned NULL");
         }
 
@@ -211,19 +181,15 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNativ
 */
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_inject__ILjava_lang_String_2Ljava_lang_String_2
   (JNIEnv *env, jobject obj, jint pid , jstring path, jstring configDir){
-    // Injection Path
+
     const char* InjectionDLL = (*env)->GetStringUTFChars(env, path, NULL);
-    // Config Path
     const char* ConfigDir = (*env)->GetStringUTFChars(env, configDir, NULL);
 
-    InjectParams params;
-    memset(&params, 0, sizeof(params));
+    char params[MAX_PATH] = {0};    /* use a real buffer */
+    strncpy(params, ConfigDir ? ConfigDir : "", MAX_PATH - 1);
 
-    strncpy(params.ConfigDir, ConfigDir ? ConfigDir : "", sizeof(params.ConfigDir)-1);
+    int ret = inject(pid, (char*)InjectionDLL, params);
 
-    int ret = inject(pid, (char*)InjectionDLL, &params);
-
-    // Clean up
     (*env)->ReleaseStringUTFChars(env, path, InjectionDLL);
     (*env)->ReleaseStringUTFChars(env, configDir, ConfigDir);
 

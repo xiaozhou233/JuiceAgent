@@ -28,7 +28,7 @@
 #include "ReflectiveLoader.h"
 
 #define WIN_X64
-
+#define REFLECTIVEDLLINJECTION_VIA_LOADREMOTELIBRARYR
 
 //===============================================================================================//
 // Our loader will set this to a pseudo correct HINSTANCE/HMODULE value
