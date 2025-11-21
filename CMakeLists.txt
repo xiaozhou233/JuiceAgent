@@ -11,6 +11,9 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
 
+# libraries
+add_subdirectory(${CMAKE_SOURCE_DIR}/includes/ReflectiveDLLInjection)
+
 # modules
 add_subdirectory(${SRC_DIR}/libagent)
 add_subdirectory(${SRC_DIR}/libinjector)
