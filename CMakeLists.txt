@@ -13,3 +13,4 @@ set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
 
 # modules
 add_subdirectory(${SRC_DIR}/libagent)
+add_subdirectory(${SRC_DIR}/libinjector)
