@@ -10,6 +10,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
+link_directories("$ENV{JAVA_HOME}/lib")
 
 # libraries
 add_subdirectory(${CMAKE_SOURCE_DIR}/includes/ReflectiveDLLInjection)

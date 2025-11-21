@@ -11,8 +11,10 @@ target_include_directories(agent PRIVATE
     ${CMAKE_SOURCE_DIR}/includes
     ${CMAKE_SOURCE_DIR}/includes/jvm
     ${CMAKE_SOURCE_DIR}/includes/jvm/win32
+    ${CMAKE_CURRENT_SOURCE_DIR}/includes
 )
 
 target_link_libraries(agent PRIVATE
     ReflectiveDLLInjection
+    jvm
 )  
