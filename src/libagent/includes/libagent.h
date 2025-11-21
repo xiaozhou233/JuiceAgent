@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 
+extern "C" __declspec(dllexport)
 bool InitJuiceAgent(const char* runtime_path);
 
 
