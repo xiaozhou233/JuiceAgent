@@ -21,6 +21,8 @@ void JNICALL ClassFileLoadHook(
         jint* new_class_data_len,
         unsigned char** new_classbytes) {
 
+    // PLOGI << "[Hook] ClassFileLoadHook: " << name;
+
     // ---- capture class bytes ---- //
     if (g_bytecodes_classname != NULL && g_bytecodes == NULL) {
         if (strcmp(name, g_bytecodes_classname) == 0) {
