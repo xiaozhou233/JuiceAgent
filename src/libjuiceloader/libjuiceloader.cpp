@@ -3,6 +3,7 @@
 #include <jvmti.h>
 #include <JuiceAgent/Logger.hpp>
 #include <juiceloader.h>
+#include <jni_impl.h>
 
 JuiceLoaderNativeType JuiceLoaderNative;
 
@@ -30,7 +31,7 @@ static int ConfigureJVMTI(JNIEnv *env, _jvmtiEnv *jvmti) {
     // Register callbacks
     jvmtiEventCallbacks callbacks;
     memset(&callbacks, 0, sizeof(callbacks));
-    // callbacks.ClassFileLoadHook = &ClassFileLoadHook;
+    callbacks.ClassFileLoadHook = &ClassFileLoadHook;
     jvmti->SetEventCallbacks(&callbacks, sizeof(callbacks));
 
     // Enable events
@@ -41,6 +42,7 @@ static int ConfigureJVMTI(JNIEnv *env, _jvmtiEnv *jvmti) {
 
 extern "C" __declspec(dllexport)
 int InitJuiceLoader(JNIEnv *env, _jvmtiEnv *jvmti) {
+    InitLogger();
     // Step 1: Check if env/jvmti is null
     PLOGD.printf("env: %p, jvmti: %p", env, jvmti);
     if (env == nullptr) {

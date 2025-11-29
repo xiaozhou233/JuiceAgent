@@ -3,6 +3,8 @@ file(
     libjuiceloader_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/jni/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/jni/*.cpp
 )
 
 add_library(juiceloader SHARED ${libjuiceloader_sources})
