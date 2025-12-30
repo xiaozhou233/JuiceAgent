@@ -206,10 +206,23 @@ static int InvokeJuiceLoaderInit(const char* ConfigDir) {
     return 0;
 }
 
+static int StartIPCServer() {
+    PLOGI << "Start IPC Server ...";
+
+    // TODO: Start IPC Server
+    return 0;
+}
+
 extern "C" __declspec(dllexport)
 bool InitJuiceAgent(const char* runtime_path) {
     PLOGI << "--------> InitJuiceAgent Invoke <--------";
     PLOGD << "runtime_path: " << runtime_path;
+
+    if (StartIPCServer() != 0) {
+        PLOGE << "Start IPC Server failed";
+        return false;
+    }
+    PLOGI << "[OK] Start IPC Server";
 
     // Read Config
     PLOGI << "ReadConfig ...";
