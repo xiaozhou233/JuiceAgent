@@ -21,11 +21,11 @@ static int ReadConfig(const char* ConfigDir)
     // ConfigDir/config.toml
     std::string path = std::string(ConfigDir) + "\\config.toml";
     std::ifstream ifs(path);
-    if (!ifs) return -1;
+    PLOGW << "Cannot open config file: " << path;
 
     // Parse toml
     toml::ParseResult pr = toml::parse(ifs);
-    if (!pr.valid()) return -2;
+    PLOGW << "Cannot parse config file: " << path;
 
     const toml::Value& tbl = pr.value;
 
