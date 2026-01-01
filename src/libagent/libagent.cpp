@@ -212,36 +212,40 @@ bool InitJuiceAgent(const char* runtime_path) {
     PLOGD << "runtime_path: " << runtime_path;
 
     // Read Config
-    PLOGI << "ReadConfig ...";
+    PLOGI << "Step > ReadConfig ...";
     if (ReadConfig(runtime_path) != 0) {
         PLOGE << "ReadConfig failed";
         return false;
     }
     PLOGI << "[OK] ReadConfig";
+    PLOGI << "\n";
     
     // Get JavaEnv
-    PLOGI << "Get JavaEnv ...";
+    PLOGI << "Step > Get JavaEnv ...";
     if (GetJavaEnv() != 0) {
         PLOGE << "GetJavaEnv failed";
         return false;
     }
     PLOGI << "[OK] Get JavaEnv";
+    PLOGI << "\n";
 
     // Inject JuiceLoader jar
-    PLOGI << "Inject JuiceLoader jar ...";
+    PLOGI << "Step > Inject JuiceLoader jar ...";
     if (JuiceAgent.jvmti->AddToSystemClassLoaderSearch(InjectionInfo.JuiceLoaderJarPath) != JNI_OK) {
         PLOGE << "AddToSystemClassLoaderSearch failed";
         return false;
     }
     PLOGI << "[OK] Inject JuiceLoader jar";
+    PLOGI << "\n";
 
     // Invoke JuiceLoader Init
-    PLOGI << "Invoke JuiceLoader Init ...";
+    PLOGI << "Step> Invoke JuiceLoader Init ...";
     if (InvokeJuiceLoaderInit(runtime_path) != 0) {
         PLOGE << "Invoke JuiceLoader Init failed";
         return false;
     }
     PLOGI << "[OK] Invoke JuiceLoader Init";
+    PLOGI << "\n";
 
     // Load JuiceLoaderLibrary
 
