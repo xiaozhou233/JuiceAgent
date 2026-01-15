@@ -25,6 +25,38 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_injectJar
 
 /*
  * Class:     cn_xiaozhou233_juiceloader_JuiceLoader
+ * Method:    AddToBootstrapClassLoaderSearch
+ * Signature: (Ljava/lang/String;)Z
+ */
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_AddToBootstrapClassLoaderSearch
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     cn_xiaozhou233_juiceloader_JuiceLoader
+ * Method:    AddToSystemClassLoaderSearch
+ * Signature: (Ljava/lang/String;)Z
+ */
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_AddToSystemClassLoaderSearch
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     cn_xiaozhou233_juiceloader_JuiceLoader
+ * Method:    AddToClassLoader
+ * Signature: (Ljava/lang/String;Ljava/lang/ClassLoader;)Z
+ */
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_AddToClassLoader
+  (JNIEnv *, jclass, jstring, jobject);
+
+/*
+ * Class:     cn_xiaozhou233_juiceloader_JuiceLoader
+ * Method:    defineClass
+ * Signature: (Ljava/lang/ClassLoader;[B)Ljava/lang/Class;
+ */
+JNIEXPORT jclass JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_defineClass
+  (JNIEnv *, jclass, jobject, jbyteArray);
+
+/*
+ * Class:     cn_xiaozhou233_juiceloader_JuiceLoader
  * Method:    redefineClass
  * Signature: (Ljava/lang/Class;[BI)Z
  */
