@@ -8,7 +8,7 @@
 #include <cn_xiaozhou233_juiceloader_JuiceLoader.h>
 
 // Variables
-extern const char* g_bytecodes_classname;
+extern const char* g_target_internal_name;
 extern unsigned char* g_bytecodes;
 extern jint g_bytecodes_len;
 

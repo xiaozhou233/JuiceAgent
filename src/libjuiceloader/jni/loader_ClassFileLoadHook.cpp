@@ -11,46 +11,48 @@ static void throwRuntimeException(JNIEnv *env, const char *msg) {
 
 void JNICALL ClassFileLoadHook(
         jvmtiEnv* jvmti_env,
-        JNIEnv* jni_env,
-        jclass class_being_redefined,
-        jobject loader,
+        JNIEnv*,
+        jclass,
+        jobject,
         const char* name,
-        jobject protection_domain,
+        jobject,
         jint class_data_len,
         const unsigned char* classbytes,
         jint* new_class_data_len,
         unsigned char** new_classbytes) {
 
-    // PLOGI << "[Hook] ClassFileLoadHook: " << name;
+    if (!name) return;
 
-    // ---- capture class bytes ---- //
-    if (g_bytecodes_classname != NULL && g_bytecodes == NULL) {
-        if (strcmp(name, g_bytecodes_classname) == 0) {
-            g_bytecodes_len = class_data_len;
-            g_bytecodes = (unsigned char*)malloc(class_data_len);
-            memcpy(g_bytecodes, classbytes, class_data_len);
+    /* =========================
+     * 1. Capture original bytes
+     * ========================= */
+    if (g_target_internal_name &&
+        g_bytecodes == nullptr &&
+        strcmp(name, g_target_internal_name) == 0) {
 
-            *new_classbytes = NULL;
-            *new_class_data_len = 0;
+        g_bytecodes_len = class_data_len;
+        g_bytecodes = (unsigned char*)malloc(class_data_len);
+        memcpy(g_bytecodes, classbytes, class_data_len);
 
-            PLOGD.printf("[Hook:get] Captured class bytes of %s, len=%d", name, class_data_len);
-            return;
-        }
-    }
-
-    // ---- set class bytes from cache ---- //
-    if (RetransformClassCache.size == 0) {
+        // IMPORTANT:
+        // Do NOT touch new_classbytes here
+        // Let JVM continue normally
+        PLOGD.printf("[Hook:get] Captured class bytes: %s (%d)", name, class_data_len);
         return;
     }
 
+    /* =========================
+     * 2. Apply redefine patch
+     * ========================= */
+    if (RetransformClassCache.size == 0) return;
+
     for (int i = 0; i < RetransformClassCache.size; i++) {
-        ClassBytesCacheType *entry = &RetransformClassCache.arr[i];
+        ClassBytesCacheType* entry = &RetransformClassCache.arr[i];
         if (strcmp(entry->name, name) == 0) {
 
-            unsigned char *newBytes = nullptr;
-            jvmtiError err = jvmti_env->Allocate(entry->len, &newBytes);
-            if (err != JVMTI_ERROR_NONE || newBytes == nullptr) {
-                PLOGE.printf("[Hook:set] jvmti->Allocate failed for class %s, err=%d", name, err);
+            unsigned char* newBytes = nullptr;
+            if (jvmti_env->Allocate(entry->len, &newBytes) != JVMTI_ERROR_NONE) {
+                PLOGE.printf("[Hook:set] Allocate failed: %s", name);
                 return;
             }
 
@@ -58,7 +60,7 @@ void JNICALL ClassFileLoadHook(
             *new_classbytes = newBytes;
             *new_class_data_len = entry->len;
 
-            PLOGI.printf("[Hook:set] Patched class: %s, new_len=%d", name, entry->len);
+            PLOGI.printf("[Hook:set] Redefined class: %s (%d)", name, entry->len);
 
             free(entry->name);
             free(entry->bytes);
@@ -66,7 +68,7 @@ void JNICALL ClassFileLoadHook(
                 RetransformClassCache.arr[j] = RetransformClassCache.arr[j + 1];
             }
             RetransformClassCache.size--;
-            break;
+            return;
         }
     }
 }

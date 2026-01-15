@@ -1,72 +1,142 @@
 #include <jni_impl.h>
+#include <string.h>
+
+/* =========================
+ * utils
+ * ========================= */
 
 static char* get_class_name(JNIEnv* env, jclass clazz) {
     jclass clsClass = env->FindClass("java/lang/Class");
-    jmethodID mid_getName = env->GetMethodID(clsClass, "getName", "()Ljava/lang/String;");
-    jstring nameStr = (jstring)env->CallObjectMethod(clazz, mid_getName);
+    jmethodID mid = env->GetMethodID(clsClass, "getName", "()Ljava/lang/String;");
+    jstring nameStr = (jstring)env->CallObjectMethod(clazz, mid);
 
-    const char* temp = env->GetStringUTFChars(nameStr, NULL);
-    char* result = _strdup(temp);
-    env->ReleaseStringUTFChars(nameStr, temp);
+    const char* tmp = env->GetStringUTFChars(nameStr, nullptr);
+    char* result = _strdup(tmp);
+    env->ReleaseStringUTFChars(nameStr, tmp);
     env->DeleteLocalRef(nameStr);
     return result;
 }
 
-JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_retransformClass
-(JNIEnv *env, jclass loader_class, jclass clazz, jbyteArray classBytes, jint length) {
-    if (!JuiceLoaderNative.jvmti) {
-        PLOGE << "JuiceLoaderNative.jvmti is NULL! (retransformClass)";
+/* =========================
+ * JVMTI global lookup
+ * ========================= */
+
+static jclass findLoadedClassByInternalName(
+        jvmtiEnv* jvmti,
+        const char* internalName
+) {
+    jint count = 0;
+    jclass* classes = nullptr;
+
+    if (jvmti->GetLoadedClasses(&count, &classes) != JVMTI_ERROR_NONE || count == 0) {
+        return nullptr;
+    }
+
+    jclass result = nullptr;
+
+    for (jint i = 0; i < count; i++) {
+        char* sig = nullptr;
+        if (jvmti->GetClassSignature(classes[i], &sig, nullptr) == JVMTI_ERROR_NONE && sig) {
+            // Lnet/minecraft/client/Minecraft;
+            if (sig[0] == 'L') {
+                size_t len = strlen(sig);
+                if (len > 2 &&
+                    strncmp(sig + 1, internalName, len - 2) == 0 &&
+                    internalName[len - 2] == '\0') {
+                    result = classes[i];
+                    jvmti->Deallocate((unsigned char*)sig);
+                    break;
+                }
+            }
+            jvmti->Deallocate((unsigned char*)sig);
+        }
+    }
+
+    jvmti->Deallocate((unsigned char*)classes);
+    return result;
+}
+
+/* =========================
+ * retransform by jclass
+ * ========================= */
+
+JNIEXPORT jboolean JNICALL
+Java_cn_xiaozhou233_juiceloader_JuiceLoader_retransformClass
+(JNIEnv* env, jclass, jclass clazz, jbyteArray classBytes, jint) {
+
+    if (!JuiceLoaderNative.jvmti || !clazz || !classBytes) {
         return JNI_FALSE;
     }
 
-    const char *name_dot = get_class_name(env, clazz);
-    char* name = _strdup(name_dot);
-    for (char* p = name; *p; ++p) if (*p == '.') *p = '/';
+    char* nameDot = get_class_name(env, clazz);
+    for (char* p = nameDot; *p; ++p)
+        if (*p == '.') *p = '/';
 
-    jbyte* bytes = env->GetByteArrayElements(classBytes, NULL);
+    jbyte* bytes = env->GetByteArrayElements(classBytes, nullptr);
     jint len = env->GetArrayLength(classBytes);
 
     if (RetransformClassCache.size >= RetransformClassCache.capacity) {
-        int new_capacity = RetransformClassCache.capacity == 0 ? 4 : RetransformClassCache.capacity * 2;
-        RetransformClassCache.arr = (ClassBytesCacheType*)realloc(RetransformClassCache.arr, new_capacity * sizeof(ClassBytesCacheType));
-        RetransformClassCache.capacity = new_capacity;
+        int newCap = RetransformClassCache.capacity == 0 ? 4 : RetransformClassCache.capacity * 2;
+        RetransformClassCache.arr =
+            (ClassBytesCacheType*)realloc(RetransformClassCache.arr, newCap * sizeof(ClassBytesCacheType));
+        RetransformClassCache.capacity = newCap;
     }
 
-    ClassBytesCacheType *entry = &RetransformClassCache.arr[RetransformClassCache.size++];
-    entry->name = _strdup(name);
+    ClassBytesCacheType* entry =
+        &RetransformClassCache.arr[RetransformClassCache.size++];
+
+    entry->name = _strdup(nameDot);
     entry->bytes = (unsigned char*)malloc(len);
     memcpy(entry->bytes, bytes, len);
     entry->len = len;
 
     env->ReleaseByteArrayElements(classBytes, bytes, JNI_ABORT);
 
-    jclass classes[1] = { clazz };
-    jvmtiError err = JuiceLoaderNative.jvmti->RetransformClasses(1, classes);
+    jclass arr[1] = { clazz };
+    jvmtiError err = JuiceLoaderNative.jvmti->RetransformClasses(1, arr);
+
+    free(nameDot);
+
     if (err != JVMTI_ERROR_NONE) {
-        PLOGE.printf("RetransformClasses failed! [err=%d]", err);
-        free(name);
+        PLOGE.printf("RetransformClasses failed: %d", err);
         return JNI_FALSE;
     }
 
-    PLOGI.printf("[retransformClass] Class retransformed: %s (len=%d)", entry->name, entry->len);
-    free(name);
+    PLOGI.printf("[retransformClass] OK: %s (%d)", entry->name, entry->len);
     return JNI_TRUE;
 }
 
-JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_retransformClassByName
-(JNIEnv *env, jclass loader_class, jstring className, jbyteArray classBytes, jint length) {
-    const char *name_dot = env->GetStringUTFChars(className, NULL);
-    char *name = _strdup(name_dot);
-    for (char *p = name; *p; ++p) if (*p == '.') *p = '/';
-    env->ReleaseStringUTFChars(className, name_dot);
+/* =========================
+ * retransform by name (NO FindClass)
+ * ========================= */
 
-    jclass target = env->FindClass(name);
-    free(name);
+JNIEXPORT jboolean JNICALL
+Java_cn_xiaozhou233_juiceloader_JuiceLoader_retransformClassByName
+(JNIEnv* env, jclass loader_class, jstring className, jbyteArray classBytes, jint length) {
 
-    if (!target) {
-        PLOGE << "FindClass failed in retransformClassByName";
+    if (!JuiceLoaderNative.jvmti || !className) {
         return JNI_FALSE;
     }
 
-    return Java_cn_xiaozhou233_juiceloader_JuiceLoader_retransformClass(env, loader_class, target, classBytes, length);
+    const char* utf = env->GetStringUTFChars(className, nullptr);
+    char internalName[512];
+    strncpy(internalName, utf, sizeof(internalName) - 1);
+    internalName[sizeof(internalName) - 1] = 0;
+
+    for (char* p = internalName; *p; ++p)
+        if (*p == '.') *p = '/';
+
+    env->ReleaseStringUTFChars(className, utf);
+
+    jclass target =
+        findLoadedClassByInternalName(JuiceLoaderNative.jvmti, internalName);
+
+    if (!target) {
+        PLOGE.printf("Class not loaded: %s", internalName);
+        return JNI_FALSE;
+    }
+
+    return Java_cn_xiaozhou233_juiceloader_JuiceLoader_retransformClass(
+        env, loader_class, target, classBytes, length
+    );
 }
