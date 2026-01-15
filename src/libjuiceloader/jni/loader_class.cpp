@@ -44,6 +44,49 @@ static char* get_class_name(JNIEnv* env, jclass clazz) {
     return result;
 }
 
+static jclass findLoadedClassByInternalName(
+        jvmtiEnv* jvmti,
+        JNIEnv* env,
+        const char* internalName
+) {
+    jint count = 0;
+    jclass* classes = nullptr;
+
+    if (jvmti->GetLoadedClasses(&count, &classes) != JVMTI_ERROR_NONE) {
+        return nullptr;
+    }
+
+    jclass result = nullptr;
+
+    for (jint i = 0; i < count; i++) {
+        char* signature = nullptr;
+
+        if (jvmti->GetClassSignature(classes[i], &signature, nullptr)
+            == JVMTI_ERROR_NONE) {
+
+            // signature example: Ljava/lang/String;
+            if (signature[0] == 'L') {
+                size_t len = strlen(signature);
+                if (len > 2) {
+                    // strip 'L' and ';'
+                    if (strncmp(signature + 1, internalName, len - 2) == 0 &&
+                        internalName[len - 2] == '\0') {
+                        result = classes[i];
+                        jvmti->Deallocate((unsigned char*)signature);
+                        break;
+                    }
+                }
+            }
+
+            jvmti->Deallocate((unsigned char*)signature);
+        }
+    }
+
+    jvmti->Deallocate((unsigned char*)classes);
+    return result;
+}
+
+
 JNIEXPORT jbyteArray JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_getClassBytes
 (JNIEnv *env, jclass loader_class, jclass clazz) {
     PLOGI << "getClassBytes Invoked!";
@@ -90,25 +133,49 @@ JNIEXPORT jbyteArray JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_getClas
     return result;
 }
 
-JNIEXPORT jbyteArray JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_getClassBytesByName
-(JNIEnv *env, jclass loader_class, jstring className) {
-    PLOGI << "getClassBytesByName Invoked!";
-    if (!JuiceLoaderNative.jvmti) {
-        PLOGE << "JuiceLoaderNative.jvmti is NULL!";
-        return NULL;
+JNIEXPORT jbyteArray JNICALL
+Java_cn_xiaozhou233_juiceloader_JuiceLoader_getClassBytesByName
+(JNIEnv* env, jclass loader_class, jstring className) {
+
+    PLOGI << "getClassBytesByName (JVMTI enumerate) Invoked";
+
+    if (!JuiceLoaderNative.jvmti || className == nullptr) {
+        PLOGE << "JVMTI or className is NULL";
+        return nullptr;
     }
 
-    const char* cname = env->GetStringUTFChars(className, NULL);
-    jclass clazz = env->FindClass(cname);
-    env->ReleaseStringUTFChars(className, cname);
-
-    if (!clazz) {
-        PLOGE.printf("Failed to find class %s", cname);
-        return NULL;
+    // jstring -> UTF-8
+    const char* nameUtf = env->GetStringUTFChars(className, nullptr);
+    if (!nameUtf) {
+        return nullptr;
     }
 
-    return Java_cn_xiaozhou233_juiceloader_JuiceLoader_getClassBytes(env, loader_class, clazz);
+    // normalize: dot -> slash
+    char internalName[512];
+    strncpy(internalName, nameUtf, sizeof(internalName) - 1);
+    internalName[sizeof(internalName) - 1] = '\0';
+
+    for (char* p = internalName; *p; ++p) {
+        if (*p == '.') *p = '/';
+    }
+
+    env->ReleaseStringUTFChars(className, nameUtf);
+
+    // find class via JVMTI
+    jclass targetClass =
+        findLoadedClassByInternalName(JuiceLoaderNative.jvmti, env, internalName);
+
+    if (!targetClass) {
+        PLOGE.printf("Class not loaded: %s", internalName);
+        return nullptr;
+    }
+
+    // reuse existing getClassBytes(Class)
+    return Java_cn_xiaozhou233_juiceloader_JuiceLoader_getClassBytes(
+        env, loader_class, targetClass
+    );
 }
+
 
 JNIEXPORT jclass JNICALL Java_cn_xiaozhou233_juiceloader_JuiceLoader_getClassByName
 (JNIEnv *env, jclass loader_class, jstring className) {
