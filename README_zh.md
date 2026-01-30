@@ -1,5 +1,5 @@
 # JuiceAgent
-[English]() | [中文]()
+[English](https://github.com/xiaozhou233/JuiceAgent/blob/main/README.md) | [中文](https://github.com/xiaozhou233/JuiceAgent/blob/main/README_zh.md)
 
 JuiceAgent —— 一个基于 **JVMTI** 的注入库，用于在 **DisableAttachMechanism 启用的情况下**，向目标 JVM 注入外部 JAR 并对 Java 字节码进行转换。
 

@@ -1,6 +1,7 @@
 
 # JuiceAgent
-[English]() | [中文]()
+[English](https://github.com/xiaozhou233/JuiceAgent/blob/main/README.md) | [中文](https://github.com/xiaozhou233/JuiceAgent/blob/main/README_zh.md)
+
 
 JuiceAgent — a JVMTI-based injection library for loading external JARs and transforming Java bytecode, even when DisableAttachMechanism is enabled.
 
