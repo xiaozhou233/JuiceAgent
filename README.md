@@ -13,12 +13,14 @@ JuiceAgent — a JVMTI-based injection library for loading external JARs and tra
 JuiceAgent is a JVMTI-native injection framework that injects native code into a target JVM to dynamically load external JARs and perform bytecode redefinition/transformations without requiring a javaagent (works when DisableAttachMechanism=true).
 ## Features
 ### JuiceAgent (src/libagent)
+Low-level injection implementation for loading JuiceLoader
  - Initialize JuiceLoader
  - Lightweight Library (No Javaagent)
  - Read Config File and Load JARs
  - Invoke JuiceLoader Bootstrap API
 
 ### libinjector (src/libinjector)
+Injector, supporting **ReflectiveDLLInjection** and CreateRemoteThread Inject.
  - Provides JNI functions for injecting DLLs into target processes
  - Get PID by process name
 
@@ -32,9 +34,11 @@ JuiceAgent is a JVMTI-native injection framework that injects native code into a
     - getLoadedClasses
     - getClassBytes (getClassBytesByName)
     - getClassByName
+    - AddToBootstrapClassLoaderSearch
+    - AddToSystemClassLoaderSearch
     - nativeGetThreadByName* (test function, myself-use)
     - nativeInjectJarToThread (test function, myself-use)
-## How To Use (For Version 2.2 Build 1)
+## How To Use (For Version 2.3 Build 1)
 
 ### 1. Download Files
 - Download `libagent`, `libinjector`, and `libjuiceloader` from the Release to the same directory.  
