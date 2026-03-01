@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
             printf("Warning: GetCurrentDirectory failed, using '.'\n");
             strncpy(cwd, ".", MAX_PATH_LEN - 1);
         }
-        snprintf(dll_path, MAX_PATH_LEN, "%s\\libagent.dll", cwd);
+        snprintf(dll_path, MAX_PATH_LEN, "%s\\libloader.dll", cwd);
         printf("Using DLL path: %s\n", dll_path);
     }
 

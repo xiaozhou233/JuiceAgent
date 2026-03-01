@@ -16,6 +16,6 @@ link_directories("$ENV{JAVA_HOME}/lib")
 add_subdirectory(${CMAKE_SOURCE_DIR}/includes/ReflectiveDLLInjection)
 
 # modules
-add_subdirectory(${SRC_DIR}/libagent)
+add_subdirectory(${SRC_DIR}/libloader)
 add_subdirectory(${SRC_DIR}/libinjector)
-add_subdirectory(${SRC_DIR}/libjuiceloader)
+add_subdirectory(${SRC_DIR}/libagent)

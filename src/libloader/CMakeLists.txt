@@ -1,22 +1,20 @@
 file(
     GLOB_RECURSE
-    libjuiceloader_sources
+    loader_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/*.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/jni/*.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/jni/*.cpp
 )
 
-add_library(juiceloader SHARED ${libjuiceloader_sources})
+add_library(loader SHARED ${loader_sources})
 
-target_include_directories(juiceloader PRIVATE
+target_include_directories(loader PRIVATE
     ${CMAKE_SOURCE_DIR}/includes
     ${CMAKE_SOURCE_DIR}/includes/jvm
     ${CMAKE_SOURCE_DIR}/includes/jvm/win32
     ${CMAKE_CURRENT_SOURCE_DIR}/includes
 )
 
-target_link_libraries(juiceloader PRIVATE
+target_link_libraries(loader PRIVATE
     ReflectiveDLLInjection
     jvm
 )  
