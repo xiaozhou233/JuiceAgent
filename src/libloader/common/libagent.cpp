@@ -2,7 +2,7 @@
 #include <jvm/jvmti.h>
 #include <stdio.h>
 #include <JuiceAgent/Logger.hpp>
-#include <libagent.h>
+#include <libloader.h>
 #include <thread>
 #include <tinytoml/toml.h>
 #include <JuiceAgent/JuiceAgent.h>
@@ -208,11 +208,9 @@ static int InvokeJuiceLoaderInit(const char* ConfigDir) {
 
 extern "C" __declspec(dllexport)
 bool InitJuiceAgent(const char* runtime_path) {
-    PLOGI << "--------> InitJuiceAgent Invoke <--------";
     PLOGD << "runtime_path: " << runtime_path;
 
     // Read Config
-    PLOGI << "ReadConfig ...";
     if (ReadConfig(runtime_path) != 0) {
         PLOGE << "ReadConfig failed";
         return false;
@@ -220,7 +218,6 @@ bool InitJuiceAgent(const char* runtime_path) {
     PLOGI << "[OK] ReadConfig";
     
     // Get JavaEnv
-    PLOGI << "Get JavaEnv ...";
     if (GetJavaEnv() != 0) {
         PLOGE << "GetJavaEnv failed";
         return false;
@@ -228,7 +225,6 @@ bool InitJuiceAgent(const char* runtime_path) {
     PLOGI << "[OK] Get JavaEnv";
 
     // Inject JuiceLoader jar
-    PLOGI << "Inject JuiceLoader jar ...";
     if (JuiceAgent.jvmti->AddToSystemClassLoaderSearch(InjectionInfo.JuiceLoaderJarPath) != JNI_OK) {
         PLOGE << "AddToSystemClassLoaderSearch failed";
         return false;
@@ -236,7 +232,6 @@ bool InitJuiceAgent(const char* runtime_path) {
     PLOGI << "[OK] Inject JuiceLoader jar";
 
     // Invoke JuiceLoader Init
-    PLOGI << "Invoke JuiceLoader Init ...";
     if (InvokeJuiceLoaderInit(runtime_path) != 0) {
         PLOGE << "Invoke JuiceLoader Init failed";
         return false;
