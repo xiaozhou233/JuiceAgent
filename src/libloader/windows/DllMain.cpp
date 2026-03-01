@@ -1,6 +1,6 @@
 #include <windows.h>
 #include <JuiceAgent/Logger.hpp>
-#include <libagent.h>
+#include <libloader.h>
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved ) {
     switch( fdwReason ) 
