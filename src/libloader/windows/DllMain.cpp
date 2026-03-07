@@ -1,6 +1,6 @@
 #include <windows.h>
 #include <JuiceAgent/Logger.hpp>
-#include <libloader.h>
+#include <libloader.hpp>
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved ) {
     switch( fdwReason ) 
@@ -11,7 +11,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved ) {
 
             const char* runtime_dir = (const char*)lpReserved;
 
-            InitJuiceAgent(runtime_dir);
+            libloader::entrypoint(runtime_dir);
 
             break;
         }
