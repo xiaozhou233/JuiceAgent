@@ -1,3 +1,4 @@
+#include <JuiceAgent/Logger.hpp>
 #include <libloader.hpp>
 #include <config.hpp>
 
@@ -7,9 +8,9 @@ namespace libloader
         config::Config cfg(runtime_dir);
         if (!cfg.is_valid()) {
             PLOGE << "Invalid config";
-            return;
         }
 
-        
+        InjectionInfo info = cfg.get_injection_info();
+        config::print_injection_info(info);
     }
 } // namespace libloader
