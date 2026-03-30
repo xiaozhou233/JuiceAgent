@@ -41,24 +41,20 @@ namespace config
         }
 
         template<typename T>
-        T get_or_default(const std::string& key, const T& default_value) const {
+        T get_or_default(const std::string& key, const T& default_value, bool use_default_if_empty = false) const {
             if (!valid) return default_value;
 
             const toml::Value* current = &config;
-
             size_t start = 0;
+
             while (true) {
                 size_t dot = key.find('.', start);
                 std::string part = key.substr(start, dot - start);
 
-                if (!current->is<toml::Table>()) {
-                    return default_value;
-                }
+                if (!current->is<toml::Table>()) return default_value;
 
                 auto it = current->as<toml::Table>().find(part);
-                if (it == current->as<toml::Table>().end()) {
-                    return default_value;
-                }
+                if (it == current->as<toml::Table>().end()) return default_value;
 
                 current = &it->second;
 
@@ -67,7 +63,13 @@ namespace config
             }
 
             try {
-                return current->as<T>();
+                if constexpr (std::is_same_v<T, std::string>) {
+                    std::string value = current->as<std::string>();
+                    if (use_default_if_empty && value.empty()) return default_value;
+                    return value;
+                } else {
+                    return current->as<T>();
+                }
             } catch (...) {
                 return default_value;
             }
@@ -85,21 +87,21 @@ namespace config
 
             // [JuiceAgent]
             // -- APIJarPath = "runtime_dir/JuiceAgent.jar"
-            info.JuiceAgentAPIJarPath = get_or_default<std::string>("JuiceAgent.JuiceAgentAPIJarPath", get_default_path("JuiceAgent.jar"));
+            info.JuiceAgentAPIJarPath = get_or_default<std::string>("JuiceAgent.JuiceAgentAPIJarPath", get_default_path("JuiceAgent.jar"), true);
             // -- JuiceAgentNativePath = "runtime_dir/libagent.dll/.so"
-            info.JuiceAgentNativePath = get_or_default<std::string>("JuiceAgent.JuiceAgentNativePath", get_default_path("libagent.dll"));
+            info.JuiceAgentNativePath = get_or_default<std::string>("JuiceAgent.JuiceAgentNativePath", get_default_path("libagent.dll"), true);
 
             // [Entry]
             // -- EntryJarPath = "runtime_dir/entry.jar"
-            info.EntryJarPath = get_or_default<std::string>("Entry.EntryJarPath", get_default_path("entry.jar"));
+            info.EntryJarPath = get_or_default<std::string>("Entry.EntryJarPath", get_default_path("entry.jar"), true);
             // -- EntryClass = "com.example.Entry"
-            info.EntryClass = get_or_default<std::string>("Entry.EntryClass", "com.example.Entry");
+            info.EntryClass = get_or_default<std::string>("Entry.EntryClass", "com.example.Entry", true);
             // -- EntryMethod = "start"
-            info.EntryMethod = get_or_default<std::string>("Entry.EntryMethod", "start");
+            info.EntryMethod = get_or_default<std::string>("Entry.EntryMethod", "start", true);
 
             // [Runtime]
             // -- InjectionDir = "runtime_dir/injection"
-            info.InjectionDir = get_or_default<std::string>("Runtime.InjectionDir", get_default_path("injection"));
+            info.InjectionDir = get_or_default<std::string>("Runtime.InjectionDir", get_default_path("injection"), true);
 
             return info;
         }
