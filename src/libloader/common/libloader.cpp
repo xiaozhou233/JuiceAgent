@@ -1,6 +1,7 @@
 #include <JuiceAgent/Logger.hpp>
 #include <libloader.hpp>
 #include <config.hpp>
+#include <jvm.hpp>
 
 namespace libloader
 {
@@ -12,5 +13,12 @@ namespace libloader
 
         InjectionInfo info = cfg.get_injection_info();
         config::print_injection_info(info);
+
+        jvm::Jvm jvm;
+
+        if (!jvm.attach()) {
+            PLOGE << "Attach failed";
+            return;
+        }
     }
 } // namespace libloader
