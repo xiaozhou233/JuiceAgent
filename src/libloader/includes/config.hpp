@@ -85,7 +85,7 @@ namespace config
 
             // [JuiceAgent]
             // -- APIJarPath = "runtime_dir/JuiceAgent.jar"
-            info.JuiceAgentAPIJarPath = get_or_default<std::string>("JuiceAgent.APIJarPath", get_default_path("JuiceAgent.jar"));
+            info.JuiceAgentAPIJarPath = get_or_default<std::string>("JuiceAgent.JuiceAgentAPIJarPath", get_default_path("JuiceAgent.jar"));
             // -- JuiceAgentNativePath = "runtime_dir/libagent.dll/.so"
             info.JuiceAgentNativePath = get_or_default<std::string>("JuiceAgent.JuiceAgentNativePath", get_default_path("libagent.dll"));
 
@@ -107,6 +107,7 @@ namespace config
     
     void print_injection_info(const InjectionInfo& info) {
         PLOGI << "JuiceAgent Injection Info:";
+        PLOGI << "  JuiceAgentAPIJarPath: " << info.JuiceAgentAPIJarPath;
         PLOGI << "  JuiceAgentNativePath: " << info.JuiceAgentNativePath;
         PLOGI << "  EntryJarPath: " << info.EntryJarPath;
         PLOGI << "  EntryClass: " << info.EntryClass;
