@@ -58,8 +58,8 @@ bool invoke_juiceagent_init(JNIEnv* env, const InjectionInfo& info) {
     PLOGD << "Invoke args: " << args;
 
     // Create Java string
-    LocalRef<jstring> jArgs(env, env->NewStringUTF(args.c_str()));
-    if (!jArgs.get() || check_and_clear_exception(env, "NewStringUTF")) {
+    jstring jArgs = env->NewStringUTF(args.c_str());
+    if (!jArgs || check_and_clear_exception(env, "NewStringUTF")) {
         PLOGE << "Failed to create jstring";
         return false;
     }
