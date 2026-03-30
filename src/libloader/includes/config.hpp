@@ -147,13 +147,16 @@ public:
         result.reserve(256);
         bool first = true;
 
-        append_kv(result, "version", "1", first);
-        append_kv(result, "juiceAgentAPIJarPath", info.JuiceAgentAPIJarPath, first);
-        append_kv(result, "juiceAgentNativePath", info.JuiceAgentNativePath, first);
-        append_kv(result, "entryJarPath", info.EntryJarPath, first);
-        append_kv(result, "entryClass", info.EntryClass, first);
-        append_kv(result, "entryMethod", info.EntryMethod, first);
-        append_kv(result, "injectionDir", info.InjectionDir, first);
+        append_kv(result, "Version", "1", first);
+
+        append_kv(result, "EntryJarPath", info.EntryJarPath, first);
+        append_kv(result, "EntryClass", info.EntryClass, first);
+        append_kv(result, "EntryMethod", info.EntryMethod, first);
+
+        append_kv(result, "JuiceAgentAPIJarPath", info.JuiceAgentAPIJarPath, first);
+        append_kv(result, "JuiceAgentNativePath", info.JuiceAgentNativePath, first);
+
+        append_kv(result, "InjectionDir", info.InjectionDir, first);
 
         PLOGD << "Serialized args: " << result;
         return result;
