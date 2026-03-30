@@ -1,5 +1,3 @@
-#pragma once
-
 #include <JuiceAgent/Logger.hpp>
 #include <libloader.hpp>
 #include <config.hpp>
