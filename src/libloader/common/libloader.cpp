@@ -1,115 +1,133 @@
+#pragma once
+
 #include <JuiceAgent/Logger.hpp>
 #include <libloader.hpp>
 #include <config.hpp>
 #include <jvm.hpp>
 
-namespace libloader
-{
-    // 累了，这几把的代码扔给AI算了 气死了
-    bool invoke_juiceagent_init(JNIEnv* env, const InjectionInfo& info) {
-        std::string bootstrap_class = "cn/xiaozhou233/juiceagent/api/JuiceAgentBootstrap";
-        std::string method_name = "start";
-        std::string method_desc = "([Ljava/lang/String;)V";
+namespace libloader {
 
-        // Find Class
-        jclass bootstrap_class_obj = env->FindClass(bootstrap_class.c_str());
-        if (!bootstrap_class_obj) {
-            if (env->ExceptionCheck()) {
-                env->ExceptionDescribe();
-                env->ExceptionClear();
-            }
-            PLOGE << "Failed to find JuiceAgentBootstrap class: " << bootstrap_class;
-            return false;
-        }
-
-        // Find Method
-        jmethodID method_id = env->GetStaticMethodID(bootstrap_class_obj, method_name.c_str(), method_desc.c_str());
-        if (!method_id) {
-            if (env->ExceptionCheck()) {
-                env->ExceptionDescribe();
-                env->ExceptionClear();
-            }
-            PLOGE << "Failed to find method: " << method_name;
-            return false;
-        }
-
-        // Prepare arguments (order matters)
-        const char* args[] = {
-            info.EntryJarPath.c_str(),
-            info.EntryClass.c_str(),
-            info.EntryMethod.c_str(),
-            info.InjectionDir.c_str(),
-            info.JuiceAgentNativePath.c_str()
-        };
-        int argCount = sizeof(args) / sizeof(args[0]);
-
-        jclass stringCls = env->FindClass("java/lang/String");
-        jobjectArray jArgs = env->NewObjectArray(argCount, stringCls, nullptr);
-        for (int i = 0; i < argCount; i++) {
-            env->SetObjectArrayElement(jArgs, i, env->NewStringUTF(args[i]));
-        }
-
-        // Invoke the method
-        env->CallStaticVoidMethod(bootstrap_class_obj, method_id, jArgs);
+namespace {
+    // Check for JNI exceptions and clear them
+    bool check_and_clear_exception(JNIEnv* env, const char* context) {
         if (env->ExceptionCheck()) {
+            PLOGE << "JNI Exception occurred at: " << context;
             env->ExceptionDescribe();
             env->ExceptionClear();
+            return true;
         }
-
-        // Cleanup
-        env->DeleteLocalRef(jArgs);
-        env->DeleteLocalRef(stringCls);
-
-        PLOGI << "JuiceAgentBootstrap.start invoked successfully";
-        return true;
+        return false;
     }
 
-
-    void entrypoint(const char* runtime_dir)
-    {
-        if (runtime_dir == nullptr) {
-            PLOGE << "runtime_dir is null, fallback may fail";
+    // RAII wrapper for local JNI references
+    template<typename T>
+    class LocalRef {
+    private:
+        JNIEnv* env;
+        T ref;
+    public:
+        LocalRef(JNIEnv* env, T ref) : env(env), ref(ref) {}
+        ~LocalRef() {
+            if (ref) env->DeleteLocalRef(ref);
         }
+        T get() const { return ref; }
+        operator T() const { return ref; }
+    };
+}
 
-        // Load Config (allow fallback)
-        config::Config cfg(runtime_dir);
-        if (!cfg.is_valid()) {
-            PLOGW << "Invalid config, using default values";
-        }
+// Invoke JuiceAgentBootstrap.start(String) via JNI
+bool invoke_juiceagent_init(JNIEnv* env, const InjectionInfo& info) {
+    const char* bootstrap_class = "cn/xiaozhou233/juiceagent/api/JuiceAgentBootstrap";
+    const char* method_name = "start";
+    const char* method_desc = "(Ljava/lang/String;)V";
 
-        InjectionInfo info = cfg.get_injection_info();
-        config::print_injection_info(info);
-
-        // Validate injection path early
-        if (info.JuiceAgentAPIJarPath.empty()) {
-            PLOGE << "JuiceAgentAPIJarPath is empty, abort injection";
-            return;
-        }
-
-        // Attach to JVM
-        jvm::Jvm jvm;
-        if (!jvm.attach()) {
-            PLOGE << "Attach to JVM failed";
-            return;
-        }
-
-        auto* jvmti = jvm.get_jvmti();
-        if (jvmti == nullptr) {
-            PLOGE << "JVMTI is null";
-            return;
-        }
-
-        // Inject JuiceAgentAPI.jar
-        const char* jar_path = info.JuiceAgentAPIJarPath.c_str();
-        jint status = jvmti->AddToSystemClassLoaderSearch(jar_path);
-
-        if (status != JNI_OK) {
-            PLOGE << "AddToSystemClassLoaderSearch failed: " << status;
-            return;
-        }
-
-        PLOGI << "Jar injected successfully: " << jar_path;
-
-        invoke_juiceagent_init(jvm.get_env(), info);
+    // Find Java class
+    LocalRef<jclass> cls(env, env->FindClass(bootstrap_class));
+    if (!cls.get() || check_and_clear_exception(env, "FindClass")) {
+        PLOGE << "Failed to find class: " << bootstrap_class;
+        return false;
     }
+
+    // Find static method
+    jmethodID method_id = env->GetStaticMethodID(cls, method_name, method_desc);
+    if (!method_id || check_and_clear_exception(env, "GetStaticMethodID")) {
+        PLOGE << "Failed to find method: " << method_name;
+        return false;
+    }
+
+    // Serialize InjectionInfo to string
+    std::string args = config::Config::serialize(info);
+    PLOGD << "Invoke args: " << args;
+
+    // Create Java string
+    LocalRef<jstring> jArgs(env, env->NewStringUTF(args.c_str()));
+    if (!jArgs.get() || check_and_clear_exception(env, "NewStringUTF")) {
+        PLOGE << "Failed to create jstring";
+        return false;
+    }
+
+    // Call the static method
+    env->CallStaticVoidMethod(cls, method_id, jArgs);
+
+    // Check for exceptions
+    if (check_and_clear_exception(env, "CallStaticVoidMethod")) {
+        return false;
+    }
+
+    PLOGI << "JuiceAgentBootstrap.start invoked successfully";
+    return true;
+}
+
+// Entrypoint function for loader
+void entrypoint(const char* runtime_dir) {
+    if (!runtime_dir) {
+        PLOGW << "runtime_dir is null, using empty path";
+    }
+
+    // Load configuration
+    config::Config cfg(runtime_dir);
+    if (!cfg.is_valid()) {
+        PLOGW << "Invalid config, using default values";
+    }
+
+    // Get InjectionInfo
+    InjectionInfo info = cfg.get_injection_info();
+    config::print_injection_info(info);
+
+    // Validate essential paths
+    if (info.JuiceAgentAPIJarPath.empty()) {
+        PLOGE << "JuiceAgentAPIJarPath is empty, abort injection";
+        return;
+    }
+
+    // Attach to JVM
+    jvm::Jvm jvm;
+    if (!jvm.attach()) {
+        PLOGE << "Attach to JVM failed";
+        return;
+    }
+
+    JNIEnv* env = jvm.get_env();
+    auto* jvmti = jvm.get_jvmti();
+
+    if (!env || !jvmti) {
+        PLOGE << "JNIEnv or JVMTI is null";
+        return;
+    }
+
+    // Inject JuiceAgent jar into system class loader
+    jint status = jvmti->AddToSystemClassLoaderSearch(info.JuiceAgentAPIJarPath.c_str());
+    if (status != JNI_OK) {
+        PLOGE << "AddToSystemClassLoaderSearch failed: " << status;
+        return;
+    }
+
+    PLOGI << "Jar injected successfully: " << info.JuiceAgentAPIJarPath;
+
+    // Invoke JuiceAgent initialization
+    if (!invoke_juiceagent_init(env, info)) {
+        PLOGE << "invoke_juiceagent_init failed";
+    }
+}
+
 } // namespace libloader
