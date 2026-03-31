@@ -5,7 +5,7 @@
 #include <jvmti.h>
 #include <juiceloader.h>
 #include <JuiceAgent/Logger.hpp>
-#include <cn_xiaozhou233_juiceloader_JuiceLoader.h>
+#include <cn_xiaozhou233_juiceagent_api_JuiceAgent.h>
 
 // Variables
 extern const char* g_target_internal_name;
