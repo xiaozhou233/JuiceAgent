@@ -1,4 +1,5 @@
 #include <libagent.hpp>
+#include <jni_impl.hpp>
 
 namespace JuiceAgent {
     // ===== Singleton =====
@@ -44,6 +45,20 @@ namespace JuiceAgent {
         }
         
         PLOGI << "Abilities added successfully";
+
+        // ======== Register callbacks ========
+        jvmtiEventCallbacks callbacks{};
+        callbacks.ClassFileLoadHook = &ClassFileLoadHook;
+        result = jvmti->SetEventCallbacks(&callbacks, sizeof(callbacks));
+        if (result != JNI_OK) {
+            PLOGE << "Failed to set event callbacks: " << result;
+        }
+
+        // Enable events
+        result = jvmti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, NULL);
+        if (result != JNI_OK) {
+            PLOGE << "Failed to enable event notification: " << result;
+        }
 
         return true;
     }
