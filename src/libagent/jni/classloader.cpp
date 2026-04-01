@@ -170,3 +170,24 @@ FALLBACK:
 
     return JNI_TRUE;
 }
+
+// TODO: Safety and Compatibility: Define Class
+// Define class using target classloader
+JNIEXPORT jclass JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_defineClass
+  (JNIEnv *env, jclass, jobject target_classloader, jbyteArray bytes) {
+    auto& agent = JuiceAgent::Agent::instance();
+
+    if (!check_env(agent))
+        return nullptr;
+    
+    jclass clClass = env->FindClass("java/lang/ClassLoader");
+    jmethodID defineClass = env->GetMethodID(clClass, "defineClass", "([BII)Ljava/lang/Class;");
+    jobject classDefined = env->CallObjectMethod(target_classloader, defineClass, bytes, 0,
+                                                    env->GetArrayLength(bytes));
+    if (env->ExceptionCheck()) {
+        env->ExceptionDescribe();
+        env->ExceptionClear();
+        return nullptr;
+    }
+    return (jclass)classDefined;
+  }
