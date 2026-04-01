@@ -1,0 +1,50 @@
+#include <libagent.hpp>
+
+namespace JuiceAgent {
+    // ===== Singleton =====
+    Agent& Agent::instance() {
+        static Agent instance;
+        return instance;
+    }
+    
+    bool Agent::init(JavaVM* jvm, JNIEnv* env, jvmtiEnv* jvmti) {
+        PLOGI << "JuiceAgent Native EntryPoint Invoked!";
+
+        // ======== neccessary environment check ========
+        if (jvm == nullptr) {
+            PLOGE << "Failed to initialize JuiceAgent: jvm is null";
+            return false;
+        }
+        if (env == nullptr) {
+            PLOGE << "Failed to initialize JuiceAgent: env is null";
+            return false;
+        }
+        if (jvmti == nullptr) {
+            PLOGE << "Failed to initialize JuiceAgent: jvmti is null";
+            return false;
+        }
+
+        set_jvm(jvm);
+        set_jvmti(jvmti);
+
+        PLOGD << "env: " << env << ", jvmti: " << jvmti;
+
+        // ======== Application ability ========
+        jvmtiCapabilities caps{};
+        caps.can_get_bytecodes = 1;
+        caps.can_redefine_classes = 1;
+        caps.can_redefine_any_class = 1;
+        caps.can_retransform_classes = 1;
+        caps.can_retransform_any_class = 1;    
+        caps.can_generate_all_class_hook_events = 1;
+        jint result = jvmti->AddCapabilities(&caps);
+        if (result != JNI_OK) {
+            PLOGE << "Failed to add capabilities: " << result;
+            return false;
+        }
+        
+        PLOGI << "Abilities added successfully";
+
+        return true;
+    }
+}
