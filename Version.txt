@@ -1,1 +1,1 @@
-VERSION = Version 3.0 Build 1
+VERSION = Version 3.0 Build 2
