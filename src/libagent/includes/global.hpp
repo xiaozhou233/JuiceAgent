@@ -16,7 +16,7 @@ struct ClassFileData {
         // ======== Global references to prevent GC ========
         // Remember to release these references when they are no longer needed, otherwise it will cause memory leaks
         jclass clazz;
-        jclass classloader;
+        jobject classloader;
         jobject protection_domain;
         
 };
