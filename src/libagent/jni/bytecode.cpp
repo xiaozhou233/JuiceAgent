@@ -199,3 +199,130 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_redefin
         env, loader_class, clazz, class_bytes, class_bytes_len
     );
 }
+
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_retransformClass
+  (JNIEnv* env, jclass, jclass clazz, jbyteArray bytecodes, jint length) {
+    auto& agent = JuiceAgent::Agent::instance();
+
+    // =========================
+    // 1. Check environment & parameters
+    // =========================
+    if (!check_env(agent) || !clazz || !bytecodes) {
+        return JNI_FALSE;
+    }
+
+    // =========================
+    // 2. Get class internal name
+    // =========================
+    std::string nameDot = get_class_name(env, clazz);
+    if (nameDot.empty()) {
+        PLOGE << "Failed to get class name for retransform";
+        return JNI_FALSE;
+    }
+
+    // Convert '.' to '/' for internal name
+    for (auto& c : nameDot) if (c == '.') c = '/';
+
+    // =========================
+    // 3. Extract bytecode from jbyteArray
+    // =========================
+    jbyte* bytes = env->GetByteArrayElements(bytecodes, nullptr);
+    jint len = env->GetArrayLength(bytecodes);
+    if (!bytes || len <= 0) {
+        return JNI_FALSE;
+    }
+
+    // =========================
+    // 4. Cache bytecode & class info for ClassFileLoadHook
+    // =========================
+    {
+        std::lock_guard<std::mutex> lock(classDataMutex);
+
+        ClassFileData data;
+        data.classname = nameDot;
+        data.bytecode.assign(bytes, bytes + len);
+        data.clazz = static_cast<jclass>(env->NewGlobalRef(clazz)); // prevent GC
+        data.classloader = nullptr;                                  // optional
+        data.protection_domain = nullptr;                            
+
+        classFileDataMap[nameDot] = std::move(data);
+    }
+
+    env->ReleaseByteArrayElements(bytecodes, bytes, JNI_ABORT);
+
+    // =========================
+    // 5. Trigger JVMTI retransform
+    // =========================
+    jclass classes[1] = { clazz };
+    jvmtiError err = agent.get_jvmti()->RetransformClasses(1, classes);
+
+    if (err != JVMTI_ERROR_NONE) {
+        PLOGE << "[retransformClass] failed: " << err << " for " << nameDot;
+        return JNI_FALSE;
+    }
+
+    PLOGI << "[retransformClass] OK: " << nameDot << " (" << len << " bytes)";
+    return JNI_TRUE;
+}
+
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_retransformClassByName
+  (JNIEnv* env, jclass, jstring className, jbyteArray bytecodes, jint length) {
+
+    auto& agent = JuiceAgent::Agent::instance();
+
+    if (!check_env(agent) || !className || !bytecodes) {
+        return JNI_FALSE;
+    }
+
+    // =========================
+    // 1. Get UTF string from jstring
+    // =========================
+    const char* utf = env->GetStringUTFChars(className, nullptr);
+    if (!utf) return JNI_FALSE;
+
+    std::string internalName(utf);
+    env->ReleaseStringUTFChars(className, utf);
+
+    // Convert '.' to '/' for internal name
+    for (auto& c : internalName) if (c == '.') c = '/';
+
+    // =========================
+    // 2. Find loaded class by internal name (inline)
+    // =========================
+    jclass target = nullptr;
+    {
+        jint classCount = 0;
+        jclass* loadedClasses = nullptr;
+
+        if (agent.get_jvmti()->GetLoadedClasses(&classCount, &loadedClasses) == JVMTI_ERROR_NONE && classCount > 0) {
+            for (jint i = 0; i < classCount; ++i) {
+                char* sig = nullptr;
+                if (agent.get_jvmti()->GetClassSignature(loadedClasses[i], &sig, nullptr) == JVMTI_ERROR_NONE && sig) {
+                    // sig: "Lnet/minecraft/client/Minecraft;"
+                    if (sig[0] == 'L') {
+                        size_t len = strlen(sig);
+                        if (len > 2 && internalName == std::string(sig + 1, len - 2)) {
+                            target = loadedClasses[i];
+                            agent.get_jvmti()->Deallocate(reinterpret_cast<unsigned char*>(sig));
+                            break;
+                        }
+                    }
+                    agent.get_jvmti()->Deallocate(reinterpret_cast<unsigned char*>(sig));
+                }
+            }
+            agent.get_jvmti()->Deallocate(reinterpret_cast<unsigned char*>(loadedClasses));
+        }
+    }
+
+    if (!target) {
+        PLOGE << "[retransformClassByName] class not loaded: " << internalName;
+        return JNI_FALSE;
+    }
+
+    // =========================
+    // 3. Delegate to retransformClass
+    // =========================
+    return Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_retransformClass(
+        env, nullptr, target, bytecodes, length
+    );
+}

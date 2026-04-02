@@ -42,4 +42,23 @@ void JNICALL ClassFileLoadHook(
                     PLOGI << "Captured class: " << name << " (length: " << class_data_len << ")";
                 }
             }
+
+            /* =========================
+             * 2. Apply patches
+            * ========================= */
+            if (pendingRetransform.contains(name)) {
+                auto& bytes = pendingRetransform[name];
+
+                unsigned char* new_buf = nullptr;
+                jvmti_env->Allocate(bytes.size(), &new_buf);
+
+                memcpy(new_buf, bytes.data(), bytes.size());
+
+                *new_class_data_len = (jint)bytes.size();
+                *new_classbytes = new_buf;
+
+                pendingRetransform.erase(name);
+
+                PLOGI << "Retransformed: " << name << " (new length: " << bytes.size() << ")";
+            }
         }

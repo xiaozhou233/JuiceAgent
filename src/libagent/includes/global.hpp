@@ -9,6 +9,10 @@
 #include <mutex>
 
 // Data Structures
+struct ClassRetransformRequest {
+        std::string classname;
+        std::vector<unsigned char> bytecode;
+};
 struct ClassFileData {
         std::string classname;
         std::vector<unsigned char> bytecode;
@@ -29,3 +33,6 @@ extern std::unordered_map<std::string, ClassFileData> classFileDataMap;
 
 // Mutex protecting access to classToCapture and classFileDataMap (thread-safe for JVMTI callbacks)
 extern std::mutex classDataMutex;
+
+extern std::unordered_map<std::string, std::vector<unsigned char>> pendingRetransform;
+extern std::mutex pendingRetransformMutex;
