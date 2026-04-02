@@ -27,7 +27,7 @@ void JNICALL ClassFileLoadHook(
                 if (!classFileDataMap.contains(name)) {
                     ClassFileData data;
 
-                    data.className = name;
+                    data.classname = name;
                     data.bytecode.assign(classbytes, classbytes + class_data_len);
                     // Experimental: class/classloader/protection_domain references (to be used in future features, e.g. dynamic patching)
                     data.clazz = class_being_redefined;

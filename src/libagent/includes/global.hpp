@@ -10,7 +10,7 @@
 
 // Data Structures
 struct ClassFileData {
-        std::string className;
+        std::string classname;
         std::vector<unsigned char> bytecode;
 
         // ======== Global references to prevent GC ========
