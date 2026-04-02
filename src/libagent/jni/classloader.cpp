@@ -191,3 +191,85 @@ JNIEXPORT jclass JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_defineCla
     }
     return (jclass)classDefined;
   }
+
+JNIEXPORT jobjectArray JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getLoadedClasses
+  (JNIEnv *env, jclass) {
+    auto& agent = JuiceAgent::Agent::instance();
+
+    if (!check_env(agent))
+        return nullptr;
+
+    jint count = 0;
+    jclass* classes = nullptr;
+    jvmtiError err = agent.get_jvmti()->GetLoadedClasses(&count, &classes);
+    if (err != JVMTI_ERROR_NONE) {
+        PLOGE.printf("GetLoadedClasses failed: %d", err);
+        return nullptr;
+    }
+
+    jclass classClass = env->FindClass("java/lang/Class");
+    jobjectArray classesArray = env->NewObjectArray(count, classClass, nullptr);
+
+    for (int i = 0; i < count; i++) {
+        env->SetObjectArrayElement(classesArray, i, classes[i]);
+    }
+
+    agent.get_jvmti()->Deallocate((unsigned char*)classes);
+    return classesArray;
+  }
+
+JNIEXPORT jclass JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getClassByName
+(JNIEnv *env, jclass, jstring name) {
+    auto& agent = JuiceAgent::Agent::instance();
+
+    if (!check_env(agent))
+        return nullptr;
+
+    const char* utf = env->GetStringUTFChars(name, nullptr);
+    if (!utf) {
+        PLOGE << "Class name is NULL!";
+        return nullptr;
+    }
+
+    // Convert Java name to internal name: a.b.C -> a/b/C
+    std::string internal_name(utf);
+    std::replace(internal_name.begin(), internal_name.end(), '.', '/');
+    env->ReleaseStringUTFChars(name, utf);
+
+    // Get all loaded classes
+    jint count = 0;
+    jclass* classes = nullptr;
+    if (agent.get_jvmti()->GetLoadedClasses(&count, &classes) != JVMTI_ERROR_NONE || count == 0) {
+        PLOGE << "GetLoadedClasses failed or no classes loaded";
+        return nullptr;
+    }
+
+    jclass result = nullptr;
+
+    for (jint i = 0; i < count; i++) {
+        char* signature = nullptr;
+        if (agent.get_jvmti()->GetClassSignature(classes[i], &signature, nullptr) != JVMTI_ERROR_NONE || !signature)
+            continue;
+
+        size_t sig_len = strlen(signature);
+        if (sig_len > 2 && signature[0] == 'L' && signature[sig_len - 1] == ';' &&
+            internal_name.size() == sig_len - 2 &&
+            strncmp(signature + 1, internal_name.c_str(), sig_len - 2) == 0) {
+            result = classes[i];
+            agent.get_jvmti()->Deallocate((unsigned char*)signature);
+            break;
+        }
+
+        agent.get_jvmti()->Deallocate((unsigned char*)signature);
+    }
+
+    if (classes) {
+        agent.get_jvmti()->Deallocate((unsigned char*)classes);
+    }
+
+    if (!result) {
+        PLOGE << "Failed to find loaded class: " << internal_name;
+    }
+
+    return result;
+}
