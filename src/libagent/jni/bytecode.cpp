@@ -126,3 +126,76 @@ JNIEXPORT jbyteArray JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getCl
     // ============================
     return Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getClassBytes(env, loader_class, targetClass);
 }
+
+// ============================
+// Redefine class using jclass
+// ============================
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_redefineClass
+  (JNIEnv *env, jclass loader_class, jclass clazz, jbyteArray class_bytes, jint class_bytes_len) {
+
+    // Get singleton agent instance
+    auto& agent = JuiceAgent::Agent::instance();
+    if (!check_env(agent))
+        return JNI_FALSE;
+
+    // Get byte array elements
+    jbyte* buf = env->GetByteArrayElements(class_bytes, nullptr);
+    if (!buf) {
+        PLOGE << "Cannot get class bytes";
+        return JNI_FALSE;
+    }
+
+    // Prepare JVMTI class definition
+    jvmtiClassDefinition defs[1];
+    defs[0].klass = clazz;
+    defs[0].class_byte_count = class_bytes_len;
+    defs[0].class_bytes = reinterpret_cast<const unsigned char*>(buf);
+
+    // Redefine class via JVMTI
+    jvmtiError result = agent.get_jvmti()->RedefineClasses(1, defs);
+
+    // Release byte array (no need to copy back)
+    env->ReleaseByteArrayElements(class_bytes, buf, JNI_ABORT);
+
+    if (result != JVMTI_ERROR_NONE) {
+        PLOGE << "Redefine class failed: " << result;
+        return JNI_FALSE;
+    }
+
+    PLOGD << "Class redefined successfully!";
+    return JNI_TRUE;
+}
+
+// ============================================
+// Redefine class using its fully qualified name
+// Supports automatic '.' -> '/' conversion
+// ============================================
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_redefineClassByName
+  (JNIEnv *env, jclass loader_class, jstring class_name, jbyteArray class_bytes, jint class_bytes_len) {
+
+    // Convert jstring to C string
+    const char* cname = env->GetStringUTFChars(class_name, nullptr);
+    if (!cname) {
+        PLOGE << "Class name is NULL!";
+        return JNI_FALSE;
+    }
+
+    // Copy and replace '.' with '/' for JVM internal class name
+    std::string internal_name(cname);
+    std::replace(internal_name.begin(), internal_name.end(), '.', '/');
+
+    // Release the original Java string
+    env->ReleaseStringUTFChars(class_name, cname);
+
+    // Find class by internal name
+    jclass clazz = env->FindClass(internal_name.c_str());
+    if (!clazz) {
+        PLOGE << "Cannot find class: " << internal_name;
+        return JNI_FALSE;
+    }
+
+    // Call redefineClass with the found class
+    return Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_redefineClass(
+        env, loader_class, clazz, class_bytes, class_bytes_len
+    );
+}
