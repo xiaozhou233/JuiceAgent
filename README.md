@@ -7,101 +7,97 @@ JuiceAgent — a JVMTI-based injection library for loading external JARs and tra
 
 **NOTICE:** Currently only supports **Windows**, and plans to support **Linux** in the future.
 
+**NOTICE:** **Version 2.3 Build 1** is the current **stable release and is no longer being updated.** Version 3.0 and later have been rewritten and may contain unknown issues.
+
 **WARNING:** This project is still in the experimental stage and is not recommended for production use.
 **Use this at your own risk.**
 
 ## Summary
 JuiceAgent is a JVMTI-native injection framework that injects native code into a target JVM to dynamically load external JARs and perform bytecode redefinition/transformations without requiring a javaagent (works when DisableAttachMechanism=true).
 ## Features
-### JuiceAgent (src/libagent)
-Low-level injection implementation for loading JuiceLoader
- - Initialize JuiceLoader
- - Lightweight Library (No Javaagent)
- - Read Config File and Load JARs
- - Invoke JuiceLoader Bootstrap API
+This project is an implementation of the JuiceAgent-API. For more details, please see [This](https://github.com/xiaozhou233/JuiceAgent-API/blob/master/src/main/java/cn/xiaozhou233/juiceagent/api/JuiceAgent.java)
 
-### libinjector (src/libinjector)
-Injector, supporting **ReflectiveDLLInjection** and CreateRemoteThread Inject.
- - Provides JNI functions for injecting DLLs into target processes
- - Get PID by process name
+- addToBootstrapClassLoaderSearch
+- addToSystemClassLoaderSearch
+- addToClassLoader
+- defineClass
+- redefineClass(ByName)
+- retransformClass(ByName)
+- getLoadedClasses
+- getClassByName
+- getClassBytes(ByName)
 
-### JuiceLoader Native (src/juiceloader)
- Native library for [JuiceLoader](https://github.com/xiaozhou233/JuiceLoader) , Inject Jars/ Redefine class Low-level implementation.
-- Implements JuiceLoader's native API
-    - init
-    - injectJar
-    - redefineClass (redefineClassByName)
-    - retransformClass (retransformClassByName)
-    - getLoadedClasses
-    - getClassBytes (getClassBytesByName)
-    - getClassByName
-    - AddToBootstrapClassLoaderSearch
-    - AddToSystemClassLoaderSearch
-    - nativeGetThreadByName* (test function, myself-use)
-    - nativeInjectJarToThread (test function, myself-use)
-## How To Use (For Version 2.3 Build 1)
+## How To Use (**For Version 3.0 Build 2**)
 
-### 1. Download Files
-- Download `libagent`, `libinjector`, and `libjuiceloader` from the Release to the same directory.  
-- Download JARs `bootstrap-api.jar`, `JuiceLoader.jar`, and `Entry.jar` (or your own JAR) to the same directory.
+### 1. ⬇️ Download Files 
+- Download `libagent.dll` `libinject.dll` `libloader.dll` `injector.exe` from [Release](https://github.com/xiaozhou233/JuiceAgent/releases) and put them in `YourDir`
+- Download JARs `JuiceAgent-API-X.X.X+build.X.jar` from [JuiceAgent-API Release] (https://github.com/xiaozhou233/JuiceAgent-API/releases) and put them in `YourDir`
 
-### 2. Write Config File
-Create a config file named `AgentConfig.toml` in the same directory. Example:
+### 2. ✍️ Write Config File
+Create a config file named `config.toml` in `YourDir`
 
 ```toml
-# Leave empty to use default values
-# Default values: <Current Directory>/default-name
+[JuiceAgent]
+# Default value: YourDir/JuiceAgent-API.jar
+JuiceAgentAPIJarPath = ""
+# Default value: YourDir/libagent.dll
+JuiceAgentNativePath = ""
 
-# Example: JuiceLoaderJarPath = "D:\\Development\\JuiceSky\\build\\libs\\JuiceLoader-1.0.jar"
-# Default: <Current Directory>/JuiceLoader.jar
-JuiceLoaderJarPath = ""
-# Default: <Current Directory>/libjuiceloader.dll
-JuiceLoaderLibraryPath = ""
-# Default: <Current Directory>/injection/
-InjectionDir = ""
-# Default: <Current Directory>/Entry.jar
-EntryJarPath = "D:\\Development\\JuiceSky\\build\\libs\\JuiceSky-1.0-Hooked.jar"
-EntryClass = "cn.xiaozhou233.juicesky.LoaderEntry"
+[Entry]
+# Default value: YourDir/Entry.jar
+EntryJarPath = ""
+# Default value: com.example.Entry
+EntryClass = ""
+# Default value: start
 EntryMethod = "start"
+
+[Runtime]
+# Default value: YourDir/injection
+InjectionDir = ""
 ```
-| Method| Usage|
-| - | -|
-| **Reflective Inject** | Uses `libinjector`. Pass the config directory as a parameter. </br></br> Example: config file at `<YourDir>/AgentConfig.toml`, </br></br>pass `<YourDir>` as parameter.</br></br> Example:</br>`C/C++:  libinjector.dll -> inject(pid, agentpath, configpath)`</br>`Java: See 3. Invoke Inject Function`|
-| **Normal Inject**     | Uses `LoadLibraryA + CreateRemoteThread`. Keep `AgentConfig.toml` and all DLLs/JARs in the same directory.</br>
 
-### 3. Invoke Inject Function
- C/C++ Use libinjector and invoke inject(int pid, char* path, InjectParameters *params)
+### 3. 💉 Run Injector
+#### **Method A** : Use `injector.exe`
+Run `injector.exe`
+```
+114514 loop
+Input PID:
+```
 
- Java Use `Injecor.jar`: `java -jar Injecor.jar`  or
- ``` 
- package cn.xiaozhou233.juiceagent.injector;
+Input PID of target process and press Enter
+
+#### **Method B** : Use JNI to call `inject` function
+Create a file named cn/xiaozhou233/juiceagent/injector.java in your project
+```java
+package cn.xiaozhou233.juiceagent.injector;
 
 public class InjectorNative {
-    /*
-     * @param pid target process id
-     */
-    public native boolean inject(int pid, String path);
+   /*
+    * @param pid target process id
+    */
+   public native boolean inject(int pid, String path);
 
-    /*
-     * @param pid target process id
-     * @param path injection dll path
-     * @param configPath config file path
-     */
-    public native boolean inject(int pid, String path, String configPath);
+   /*
+    * @param pid target process id
+    * @param path injection dll path
+    * @param configPath config file path
+    */
+   public native boolean inject(int pid, String path, String configPath);
 }
 ```
-```
+Then write it down somewhere
+```java
 // Your class
 import cn.xiaozhou233.juiceagent.injector.InjectorNative;
 
-System.load("<path-to-libinjector>");
+System.load("<path-to-libinject>");
 InjectorNative injectorNative = new InjectorNative();
 
-injectorNative.inject(<pid>, "<path-to-libagent>", "<path-to-toml-config-dir>");
+injectorNative.inject(<pid>, "<path-to-libloader>", "<path-to-toml-config-dir>");
 ```
+### 4. ✅ Done!
+if injection is successful, target process will load `Entry.jar` (or `EntryClass` in config file) and run `EntryMethod` method(or `start` method in config file)
 
-### 4. Done!
-If the injection is successful, EntryClass .EntryMethod() of <EntryJarPath> will be executed.
 ## Hot To Build
 ### Environment
 - Java 8+
@@ -115,9 +111,10 @@ cd JuiceAgent
 mkdir -p build
 cmake --build build --
 ```
-dlls: build/bin/
 
-jars: see [JuiceLoader](https://github.com/xiaozhou233/JuiceLoader)
+Dlls will be generated in `build/bin` directory
+
+Jars can be build or download in project [JuiceAgent-API](https://github.com/xiaozhou233/JuiceAgent-API)
 
 ## Full Disclaimer/ 完整免责声明
 Disclaimer: This project is intended for learning and research in controlled environments only. The author is not responsible for any consequences arising from unauthorized use, modification, cracking, or violation of any applicable agreements or laws. Users are responsible for ensuring their actions are legal and compliant.
