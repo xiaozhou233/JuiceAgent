@@ -121,13 +121,13 @@ public:
         };
 
         info.JuiceAgentAPIJarPath = get_or_default<std::string>(
-            "JuiceAgent.JuiceAgentAPIJarPath", get_default_path("JuiceAgent.jar"), true);
+            "JuiceAgent.JuiceAgentAPIJarPath", get_default_path("JuiceAgent-API.jar"), true);
 
         info.JuiceAgentNativePath = get_or_default<std::string>(
             "JuiceAgent.JuiceAgentNativePath", get_default_path("libagent.dll"), true);
 
         info.EntryJarPath = get_or_default<std::string>(
-            "Entry.EntryJarPath", get_default_path("entry.jar"), true);
+            "Entry.EntryJarPath", get_default_path("Entry.jar"), true);
 
         info.EntryClass = get_or_default<std::string>(
             "Entry.EntryClass", "com.example.Entry", true);
