@@ -12,5 +12,7 @@ void JNICALL ClassFileLoadHook(
         const unsigned char* classbytes,
         jint* new_class_data_len,
         unsigned char** new_classbytes) {
+            // Delete this log when the hook is stable, or it will cause performance issues
             std::cout << "ClassFileLoadHook: " << name << std::endl;
+
         }
