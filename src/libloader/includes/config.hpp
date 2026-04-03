@@ -91,7 +91,7 @@ public:
 
     // Get value by key with default
     template<typename T>
-    T get_or_default(const std::string& key, const T& default_value, bool use_default_if_empty = false) const {
+    T get_or_default(const std::string& key, const T& default_value, bool use_default_if_empty = false, bool is_path = false) const {
         const toml::Value* val = find_value(key);
         if (!val) return default_value;
 
@@ -100,7 +100,7 @@ public:
                 std::string s = val->as<std::string>();
                 if (use_default_if_empty && s.empty()) return default_value;
                 // Check if string starts with '.'
-                if (s.starts_with('.')) {
+                if (is_path && .starts_with('.')) {
                     // remove '.'
                     s.erase(0, 1);
 
@@ -135,22 +135,22 @@ public:
         };
 
         info.JuiceAgentAPIJarPath = get_or_default<std::string>(
-            "JuiceAgent.JuiceAgentAPIJarPath", get_default_path("JuiceAgent-API.jar"), true);
+            "JuiceAgent.JuiceAgentAPIJarPath", get_default_path("JuiceAgent-API.jar"), true, true);
 
         info.JuiceAgentNativePath = get_or_default<std::string>(
-            "JuiceAgent.JuiceAgentNativePath", get_default_path("libagent.dll"), true);
+            "JuiceAgent.JuiceAgentNativePath", get_default_path("libagent.dll"), true, true);
 
         info.EntryJarPath = get_or_default<std::string>(
-            "Entry.EntryJarPath", get_default_path("Entry.jar"), true);
+            "Entry.EntryJarPath", get_default_path("Entry.jar"), true, true);
 
         info.EntryClass = get_or_default<std::string>(
-            "Entry.EntryClass", "com.example.Entry", true);
+            "Entry.EntryClass", "com.example.Entry", true, false);
 
         info.EntryMethod = get_or_default<std::string>(
-            "Entry.EntryMethod", "start", true);
+            "Entry.EntryMethod", "start", true, false);
 
         info.InjectionDir = get_or_default<std::string>(
-            "Runtime.InjectionDir", get_default_path("injection"), true);
+            "Runtime.InjectionDir", get_default_path("injection"), true, true);
 
         return info;
     }
