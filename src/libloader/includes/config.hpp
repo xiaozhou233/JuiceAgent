@@ -99,6 +99,20 @@ public:
             if constexpr (std::is_same_v<T, std::string>) {
                 std::string s = val->as<std::string>();
                 if (use_default_if_empty && s.empty()) return default_value;
+                // Check if string starts with '.'
+                if (s.starts_with('.')) {
+                    // remove '.'
+                    s.erase(0, 1);
+
+                    // Check if string starts with '/'
+                    // MUST REMOVE '/', or it will cause path error (root directory)
+                    if (s.starts_with('/')) {
+                        s.erase(0, 1);
+                    }
+
+                    // runtime_dir + s
+                    s = (std::filesystem::path(runtime_dir) / s).string();
+                }
                 return s;
             } else {
                 return val->as<T>();
