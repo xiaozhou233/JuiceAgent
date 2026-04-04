@@ -15,3 +15,16 @@ struct EventClassFileLoadHook {
     jint* new_class_data_len;
     unsigned char** new_classbytes;
 };
+
+// JuiceAgent PreLoad/PostLoad
+struct EventPreLoad {
+    JavaVM* jvm;
+    JNIEnv* env;
+    jvmtiEnv* jvmti;
+};
+
+struct EventLoaded {
+    JavaVM* jvm;
+    JNIEnv* env;
+    jvmtiEnv* jvmti;
+};
