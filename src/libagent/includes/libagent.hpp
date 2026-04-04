@@ -3,12 +3,14 @@
 #include <JuiceAgent/Logger.hpp>
 #include <jni.h>
 #include <jvmti.h>
+#include <event/eventbus.hpp>
 
 namespace JuiceAgent {
     class Agent {
         private:
             JavaVM* jvm;
             jvmtiEnv* jvmti;
+            EventBus eventbus;
     
         private:
             Agent() = default;
@@ -27,6 +29,7 @@ namespace JuiceAgent {
             // getters
             JavaVM* get_jvm() const { return jvm; }
             jvmtiEnv* get_jvmti() const { return jvmti; }
+            EventBus& get_eventbus() { return eventbus; }
 
             // setters
             void set_jvm(JavaVM* jvm) { this->jvm = jvm; }

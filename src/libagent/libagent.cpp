@@ -1,5 +1,8 @@
 #include <libagent.hpp>
 #include <jni_impl.hpp>
+#include <bytecodes_opt.hpp>
+#include <event/event_type.hpp>
+#include <event/eventbus.hpp>
 
 namespace JuiceAgent {
     // ===== Singleton =====
@@ -10,6 +13,13 @@ namespace JuiceAgent {
     
     bool Agent::init(JavaVM* jvm, JNIEnv* env, jvmtiEnv* jvmti) {
         PLOGI << "JuiceAgent Native EntryPoint Invoked!";
+
+        // PreLoad Event
+        eventbus.post(EventPreLoad{
+            .jvm = jvm,
+            .env = env,
+            .jvmti = jvmti
+        });
 
         // ======== neccessary environment check ========
         if (jvm == nullptr) {
@@ -60,6 +70,16 @@ namespace JuiceAgent {
             PLOGE << "Failed to enable event notification: " << result;
         }
 
+        // register bytecodes_opt
+        JuiceAgent::Bytecodes::register_bytecodes();
+
+
+        // Loaded Event
+        eventbus.post(EventLoaded{
+            .jvm = jvm,
+            .env = env,
+            .jvmti = jvmti
+        });
         return true;
     }
 }
