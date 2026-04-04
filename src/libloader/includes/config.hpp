@@ -100,7 +100,7 @@ public:
                 std::string s = val->as<std::string>();
                 if (use_default_if_empty && s.empty()) return default_value;
                 // Check if string starts with '.'
-                if (is_path && .starts_with('.')) {
+                if (is_path && s.starts_with('.')) {
                     // remove '.'
                     s.erase(0, 1);
 
