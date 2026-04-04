@@ -1,5 +1,6 @@
 #include <libagent.hpp>
 #include <jni_impl.hpp>
+#include <bytecodes_opt.hpp>
 
 namespace JuiceAgent {
     // ===== Singleton =====
@@ -59,6 +60,9 @@ namespace JuiceAgent {
         if (result != JNI_OK) {
             PLOGE << "Failed to enable event notification: " << result;
         }
+
+        // register bytecodes_opt
+        JuiceAgent::Bytecodes::register_bytecodes();
 
         return true;
     }
