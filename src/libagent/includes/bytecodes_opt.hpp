@@ -1,6 +1,6 @@
 #pragma once
 
-#include "event_type.hpp"
+#include "event/event_type.hpp"
 
 namespace JuiceAgent::Bytecodes {
     void register_bytecodes();

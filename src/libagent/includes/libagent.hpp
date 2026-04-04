@@ -3,7 +3,7 @@
 #include <JuiceAgent/Logger.hpp>
 #include <jni.h>
 #include <jvmti.h>
-#include <eventbus.hpp>
+#include <event/eventbus.hpp>
 
 namespace JuiceAgent {
     class Agent {

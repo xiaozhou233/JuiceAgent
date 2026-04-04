@@ -1,5 +1,5 @@
 #include <jni_impl.hpp>
-#include <event_type.hpp>
+#include <event/event_type.hpp>
 
 void JNICALL ClassFileLoadHook(
         jvmtiEnv* jvmti_env,

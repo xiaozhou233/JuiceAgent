@@ -1,11 +1,11 @@
 #include <bytecodes_opt.hpp>
 #include <jni_impl.hpp>
-#include <event_type.hpp>
+#include <event/event_type.hpp>
 
 namespace JuiceAgent::Bytecodes {
     void register_bytecodes() {
         auto& agent = JuiceAgent::Agent::instance();
-        
+
         agent.get_eventbus().subscribe<EventClassFileLoadHook>(capture_bytecodes);
         agent.get_eventbus().subscribe<EventClassFileLoadHook>(patch_bytecodes);
     }
