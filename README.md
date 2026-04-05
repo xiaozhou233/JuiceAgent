@@ -126,4 +126,4 @@ Disclaimer: This project is intended for learning and research in controlled env
  - [ReflectiveDLLInjection](https://github.com/stephenfewer/ReflectiveDLLInjection) - DLL Inject
  - [plog](https://github.com/SergiusTheBest/plog) - portable, simple and extensible C++ logging library
  - [tinytoml](https://github.com/mayah/tinytoml) - A header only C++11 library for parsing TOML.
-
+ - [eventpp](https://github.com/wqking/eventpp) - C++ library for event dispatcher and callback list

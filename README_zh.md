@@ -175,3 +175,4 @@ JAR 可在 JuiceAgent-API 项目中构建或下载。
 - ReflectiveDLLInjection — DLL 注入实现  
 - plog — 轻量级 C++ 日志库  
 - tinytoml — C++11 TOML 解析库  
+- [eventpp](https://github.com/wqking/eventpp) - 用于事件分发器和回调列表的 C++ 库
