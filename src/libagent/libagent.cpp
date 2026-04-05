@@ -14,13 +14,6 @@ namespace JuiceAgent {
     bool Agent::init(JavaVM* jvm, JNIEnv* env, jvmtiEnv* jvmti) {
         PLOGI << "JuiceAgent Native EntryPoint Invoked!";
 
-        // PreLoad Event
-        eventbus.post(EventPreLoad{
-            .jvm = jvm,
-            .env = env,
-            .jvmti = jvmti
-        });
-
         // ======== neccessary environment check ========
         if (jvm == nullptr) {
             PLOGE << "Failed to initialize JuiceAgent: jvm is null";
@@ -37,8 +30,14 @@ namespace JuiceAgent {
 
         set_jvm(jvm);
         set_jvmti(jvmti);
-
         PLOGD << "env: " << env << ", jvmti: " << jvmti;
+
+        // PreLoad Event
+        eventbus.post(EventPreLoad{
+            .jvm = jvm,
+            .env = env,
+            .jvmti = jvmti
+        });
 
         // ======== Application ability ========
         jvmtiCapabilities caps{};
