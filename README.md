@@ -96,7 +96,7 @@ InjectorNative injectorNative = new InjectorNative();
 injectorNative.inject(<pid>, "<path-to-libloader>", "<path-to-toml-config-dir>");
 ```
 ### 4. ✅ Done!
-if injection is successful, target process will load `Entry.jar` (or `EntryClass` in config file) and run `EntryMethod` method(or `start` method in config file)
+if injection is successful, target process will load `Entry.jar` (or `EntryJarPath` in config file) and run `EntryClass`.`EntryMethod` method(or `start` method in config file)
 
 ## Hot To Build
 ### Environment

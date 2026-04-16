@@ -132,8 +132,8 @@ injectorNative.inject(<pid>, "<path-to-libloader>", "<path-to-toml-config-dir>")
 
 注入成功后，目标进程将加载：
 
-- Entry.jar（或配置中的 EntryClass）
-- 并执行 EntryMethod（默认 start）
+- Entry.jar（或配置中的 EntryJarPath）
+- 并执行 EntryClass.EntryMethod（默认 com.example.Entry.start() ）
 
 ---
 
