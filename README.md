@@ -7,7 +7,7 @@ JuiceAgent — a JVMTI-based injection library for loading external JARs and tra
 
 **NOTICE:** Currently only supports **Windows**, and plans to support **Linux** in the future.
 
-**NOTICE:** **Version 2.3 Build 1** is the current **stable release and is no longer being updated.** Version 3.0 and later have been rewritten and may contain unknown issues.
+**NOTICE:** **Version 3.1 Build 1 +** is the current **stable release .** Version 3.0 and later have been rewritten and may contain unknown issues.
 
 **WARNING:** This project is still in the experimental stage and is not recommended for production use.
 **Use this at your own risk.**
@@ -27,7 +27,7 @@ This project is an implementation of the JuiceAgent-API. For more details, pleas
 - getClassByName
 - getClassBytes(ByName)
 
-## How To Use (**For Version 3.0 Build 2**)
+## How To Use (**For Version 3.1 Build 2**)
 
 ### 1. ⬇️ Download Files 
 - Download `libagent.dll` `libinject.dll` `libloader.dll` `injector.exe` from [Release](https://github.com/xiaozhou233/JuiceAgent/releases) and put them in `YourDir`
