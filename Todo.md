@@ -3,8 +3,8 @@
 ---
 
 ## 2026-04-16
- - [ ] 把读取toml的库换成支持toml 1.0的库
- - [ ] 在  `includes/JuiceAgent` 文件夹下实现 `Config.hpp` 配置系统
- - [ ] 新建测试 读取配置文件
+ - [*] 把读取toml的库换成支持toml 1.0的库 (放弃)
+ - [x] 在  `includes/JuiceAgent` 文件夹下实现 `Config.hpp` 配置系统
+ - [*] 新建测试 读取配置文件 (放弃)
 
  - [ ] 重构 `libloader` 的配置系统

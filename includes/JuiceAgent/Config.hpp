@@ -7,7 +7,7 @@
 #include <fstream>
 #include <string>
 
-namespace config {
+namespace JuiceAgent::Config {
 
 class Config {
 private:

@@ -1,6 +1,6 @@
 #include <JuiceAgent/Logger.hpp>
 #include <libloader.hpp>
-#include <config.hpp>
+#include <JuiceAgent/Config.hpp>
 #include <jvm.hpp>
 
 namespace libloader {
@@ -54,7 +54,7 @@ bool invoke_juiceagent_init(JNIEnv* env, const InjectionInfo& info) {
     }
 
     // Serialize InjectionInfo to string
-    std::string args = config::Config::serialize(info);
+    std::string args = JuiceAgent::Config::Config::serialize(info);
     PLOGD << "Invoke args: " << args;
 
     // Create Java string
@@ -83,14 +83,14 @@ void entrypoint(const char* runtime_dir) {
     }
 
     // Load configuration
-    config::Config cfg(runtime_dir);
+    JuiceAgent::Config::Config cfg(runtime_dir);
     if (!cfg.is_valid()) {
         PLOGW << "Invalid config, using default values";
     }
 
     // Get InjectionInfo
     InjectionInfo info = cfg.get_injection_info();
-    config::print_injection_info(info);
+    JuiceAgent::Config::print_injection_info(info);
 
     // Validate essential paths
     if (info.JuiceAgentAPIJarPath.empty()) {
