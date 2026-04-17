@@ -13,3 +13,5 @@
  - [ ] 重构项目为模块化项目
     - [ ] `libloader` 模块只负责加载`JuiceAgent-API`和`JuiceAgent`, Jar文件由`JuiceAgent`接管
     - [ ] `libloader` 读取配置文件并传参`JuiceAgentNativePath`和`ConfigDir`到 `JuiceAgent` 中，由`JuiceAgent`读取配置文件继续进行操作
+ - [ ] 替换toml库
+ - [ ] 重构 `libloader` 的配置系统
