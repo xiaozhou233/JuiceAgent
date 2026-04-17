@@ -1,6 +1,6 @@
 #include <JuiceAgent/Logger.hpp>
 #include <libloader.hpp>
-#include <JuiceAgent/Config.hpp>
+#include <config.hpp>
 #include <jvm.hpp>
 
 namespace libloader {
