@@ -1,195 +1,184 @@
 #pragma once
 
-#include <JuiceAgent/Logger.hpp>
-#include <JuiceAgent/JuiceAgent.hpp>
-#include <tinytoml/toml.h>
 #include <filesystem>
-#include <fstream>
+#include <sstream>
 #include <string>
+#include <vector>
+
+#include <JuiceAgent/Logger.hpp>
+#include <toml.hpp>
 
 namespace JuiceAgent::Config {
 
 class Config {
+
 private:
-    std::string runtime_dir; // Runtime directory
-    toml::Value config{};    // Parsed TOML configuration
-    bool valid = false;      // Whether the config is successfully loaded
+    std::filesystem::path config_dir_;
+    toml::value data_;
+    bool valid_ = false;
 
-    // Escape special characters ';' = '\'
-    static std::string escape(const std::string& s) {
-        std::string out;
-        out.reserve(s.size());
-        for (char c : s) {
-            if (c == ';' || c == '=' || c == '\\') {
-                out += '\\';
+private:
+    // Split "A.B.C" -> {"A", "B", "C"}
+    static std::vector<std::string> split_path(const std::string& path) {
+        std::vector<std::string> result;
+        std::stringstream stream(path);
+        std::string token;
+
+        while (std::getline(stream, token, '.')) {
+            if (!token.empty()) {
+                result.push_back(token);
             }
-            out += c;
         }
-        return out;
+
+        return result;
     }
 
-    // Append key=value pair to string
-    static void append_kv(std::string& out, const char* key, const std::string& value, bool& first) {
-        if (!first) out += ';';
-        first = false;
-        out += key;
-        out += '=';
-        out += escape(value);
-    }
+    // Find node by dot path
+    const toml::value* find(const std::string& path) const {
+        const toml::value* current = &data_;
 
-    // Helper function: find value by dot-separated key
-    const toml::Value* find_value(const std::string& key) const {
-        if (!valid) return nullptr;
-        const toml::Value* current = &config;
-        size_t start = 0;
-        while (true) {
-            size_t dot = key.find('.', start);
-            std::string part = key.substr(start, dot - start);
+        for (const auto& key : split_path(path)) {
+            if (!current->is_table()) {
+                return nullptr;
+            }
 
-            if (!current->is<toml::Table>()) return nullptr;
+            if (!current->contains(key)) {
+                return nullptr;
+            }
 
-            const auto& table = current->as<toml::Table>();
-            auto it = table.find(part);
-            if (it == table.end()) return nullptr;
-
-            current = &it->second;
-
-            if (dot == std::string::npos) break;
-            start = dot + 1;
+            current = &current->at(key);
         }
+
         return current;
     }
 
-public:
-    explicit Config(const char* c_runtime_dir)
-        : runtime_dir(c_runtime_dir ? c_runtime_dir : "") 
-    {
-        if (runtime_dir.empty()) {
-            PLOGW << "runtime_dir is empty";
-            return;
+    // Load and parse config file
+    void load() {
+        if (!std::filesystem::exists(config_dir_)) {
+            PLOGE << "Config directory not found: " << config_dir_;
+            config_dir_ = std::filesystem::current_path();
+            PLOGW << "Using runtime directory: " << std::filesystem::current_path();
         }
 
-        std::filesystem::path path = std::filesystem::path(runtime_dir) / "config.toml";
-        std::ifstream ifs(path);
-        if (!ifs.is_open()) {
-            PLOGE << "Failed to open config file: " << path;
+        const auto path = config_dir_ / "config.toml";
+
+        if (!std::filesystem::exists(path)) {
+            PLOGE << "Config file not found: " << path;
             return;
         }
 
         try {
-            auto pr = toml::parse(ifs);
-            if (!pr.valid()) {
-                PLOGE << "Invalid TOML file: " << pr.errorReason;
-                return;
-            }
-            config = pr.value;
-            valid = true;
+            data_ = toml::parse(path);
+            valid_ = true;
         } catch (const std::exception& e) {
-            PLOGE << "TOML parse error: " << e.what();
+            PLOGE << "Failed to parse config: " << e.what();
         }
     }
 
-    // Get value by key with default
+public:
+    explicit Config(std::filesystem::path dir)
+        : config_dir_(std::move(dir)) {
+        load();
+    }
+
+public:
+    bool is_valid() const {
+        return valid_;
+    }
+
+    bool contains(const std::string& path) const {
+        return find(path) != nullptr;
+    }
+
     template<typename T>
-    T get_or_default(const std::string& key, const T& default_value, bool use_default_if_empty = false, bool is_path = false) const {
-        const toml::Value* val = find_value(key);
-        if (!val) return default_value;
+    T get(const std::string& path) const {
+        const auto* node = find(path);
+
+        if (!node) {
+            throw std::runtime_error("Config key not found: " + path);
+        }
+
+        return toml::get<T>(*node);
+    }
+
+    template<typename T>
+    T get_or(const std::string& path, const T& default_value) const {
+        const auto* node = find(path);
+
+        if (!node) {
+            return default_value;
+        }
 
         try {
-            if constexpr (std::is_same_v<T, std::string>) {
-                std::string s = val->as<std::string>();
-                if (use_default_if_empty && s.empty()) return default_value;
-                // Check if string starts with '.'
-                if (is_path && s.starts_with('.')) {
-                    // remove '.'
-                    s.erase(0, 1);
-
-                    // Check if string starts with '/'
-                    // MUST REMOVE '/', or it will cause path error (root directory)
-                    if (s.starts_with('/')) {
-                        s.erase(0, 1);
-                    }
-
-                    // runtime_dir + s
-                    s = (std::filesystem::path(runtime_dir) / s).string();
-                }
-                return s;
-            } else {
-                return val->as<T>();
-            }
+            auto result = toml::get<T>(*node);
+            if (result.empty())
+                return default_value;
+            return result;
         } catch (...) {
             return default_value;
         }
     }
 
-    bool is_valid() const {
-        return valid;
+    std::string get_path_or_default(const std::string& path, const std::string& default_value) const {
+        std::string result = get_or<std::string>(path, default_value);
+        if(result.starts_with(".")) {
+            result.erase(0, 1);
+
+            // Check if string starts with '/'
+            // MUST REMOVE '/', or it will cause path error (root directory)
+            if (result.starts_with('/')) {
+                result.erase(0, 1);
+            }
+
+            result = (config_dir_ / result).string();
+        }
+
+        return result;
     }
 
-    // Get InjectionInfo struct from config
     InjectionInfo get_injection_info() const {
         InjectionInfo info;
 
         auto get_default_path = [&](const std::string& name) {
-            return (std::filesystem::path(runtime_dir) / name).string();
+            return (std::filesystem::path(config_dir_) / name).string();
         };
 
-        info.JuiceAgentAPIJarPath = get_or_default<std::string>(
-            "JuiceAgent.JuiceAgentAPIJarPath", get_default_path("JuiceAgent-API.jar"), true, true);
-
-        info.JuiceAgentNativePath = get_or_default<std::string>(
-            "JuiceAgent.JuiceAgentNativePath", get_default_path("libagent.dll"), true, true);
-
-        info.EntryJarPath = get_or_default<std::string>(
-            "Entry.EntryJarPath", get_default_path("Entry.jar"), true, true);
-
-        info.EntryClass = get_or_default<std::string>(
-            "Entry.EntryClass", "com.example.Entry", true, false);
-
-        info.EntryMethod = get_or_default<std::string>(
-            "Entry.EntryMethod", "start", true, false);
-
-        info.InjectionDir = get_or_default<std::string>(
-            "Runtime.InjectionDir", get_default_path("injection"), true, true);
+        info.JuiceAgentAPIJarPath = get_path_or_default("Loader.JuiceAgentAPIJarPath", get_default_path("JuiceAgentAPI.jar"));
+        info.JuiceAgentNativeLibraryPath = get_path_or_default("Loader.JuiceAgentNativeLibraryPath", get_default_path("libagent.dll"));
+        info.ConfigDir = config_dir_.string();
 
         return info;
     }
 
-    // Serialize InjectionInfo to key=value; format
-    static std::string serialize(const InjectionInfo& info) {
-        std::string result;
-        result.reserve(256);
-        bool first = true;
+    static std::string serialize(InjectionInfo info) {
 
-        append_kv(result, "Version", "1", first);
+        auto escape = [](const std::string& value) -> std::string {
+            std::string result;
+            result.reserve(value.size());
 
-        append_kv(result, "EntryJarPath", info.EntryJarPath, first);
-        append_kv(result, "EntryClass", info.EntryClass, first);
-        append_kv(result, "EntryMethod", info.EntryMethod, first);
+            for (char ch : value) {
+                if (ch == ';' || ch == '=' || ch == '\\') {
+                    result += '\\';
+                }
+                result += ch;
+            }
 
-        append_kv(result, "JuiceAgentAPIJarPath", info.JuiceAgentAPIJarPath, first);
-        append_kv(result, "JuiceAgentNativePath", info.JuiceAgentNativePath, first);
+            return result;
+        };
 
-        append_kv(result, "InjectionDir", info.InjectionDir, first);
-
-        PLOGD << "Serialized args: " << result;
-        return result;
-    }
-
-    std::string serialize() const {
-        return serialize(get_injection_info());
+        return
+            "JuiceAgentAPIJarPath=" + escape(info.JuiceAgentAPIJarPath) + ";" +
+            "JuiceAgentNativeLibraryPath=" + escape(info.JuiceAgentNativeLibraryPath) + ";" +
+            "ConfigDir=" + escape(info.ConfigDir);
     }
 };
 
-// Print InjectionInfo (debug)
-inline void print_injection_info(const InjectionInfo& info) {
-    PLOGI << "JuiceAgent Injection Info:";
-    PLOGI << "  JuiceAgentAPIJarPath: " << info.JuiceAgentAPIJarPath;
-    PLOGI << "  JuiceAgentNativePath: " << info.JuiceAgentNativePath;
-    PLOGI << "  EntryJarPath: " << info.EntryJarPath;
-    PLOGI << "  EntryClass: " << info.EntryClass;
-    PLOGI << "  EntryMethod: " << info.EntryMethod;
-    PLOGI << "  InjectionDir: " << info.InjectionDir;
+void print_injection_info(const InjectionInfo& info) {
+    
+    PLOGI << "JuiceAgentAPIJarPath: " << info.JuiceAgentAPIJarPath;
+    PLOGI << "JuiceAgentNativeLibraryPath: " << info.JuiceAgentNativeLibraryPath;
+    PLOGI << "ConfigDir: " << info.ConfigDir;
 }
 
-} // namespace config
+
+} // namespace JuiceAgent::Config

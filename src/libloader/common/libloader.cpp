@@ -88,15 +88,16 @@ void entrypoint(const char* runtime_dir) {
         PLOGW << "Invalid config, using default values";
     }
 
+    PLOGI << cfg.get_path_or_default("Loader.JuiceAgentAPIJarPath", "NONE");
     // Get InjectionInfo
     InjectionInfo info = cfg.get_injection_info();
     JuiceAgent::Config::print_injection_info(info);
 
     // Validate essential paths
-    if (info.JuiceAgentAPIJarPath.empty()) {
-        PLOGE << "JuiceAgentAPIJarPath is empty, abort injection";
-        return;
-    }
+     if (info.JuiceAgentAPIJarPath.empty()) {
+         PLOGE << "JuiceAgentAPIJarPath is empty, abort injection";
+         return;
+     }
 
     // Attach to JVM
     jvm::Jvm jvm;
