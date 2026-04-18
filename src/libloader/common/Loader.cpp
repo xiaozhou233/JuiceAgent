@@ -1,10 +1,10 @@
 #include <JuiceAgent/Logger.hpp>
-#include <libloader.hpp>
+#include <Loader.hpp>
 #include <JuiceAgent/Config.hpp>
-#include <jvm.hpp>
+#include <JvmManager.hpp>
 #include <JuiceAgent/Utils.hpp>
 
-namespace libloader {
+namespace JuiceAgent::Loader {
 
 // Invoke JuiceAgentBootstrap.start(String) via JNI
 bool invoke_juiceagent_init(JNIEnv* env, const InjectionInfo& info) {

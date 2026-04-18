@@ -6,12 +6,12 @@
 #include <jvm/jni.h>
 #include <jvm/jvmti.h>
 
-namespace libloader
+namespace JuiceAgent::Loader
 {
     void entrypoint(const char* runtime_dir);    
 
     bool invoke_juiceagent_init(JNIEnv* env, const InjectionInfo& info);
-} // namespace libloader
+} // namespace JuiceAgent::Loader
 
 namespace {
     // RAII wrapper for local JNI references
