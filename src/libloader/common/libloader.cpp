@@ -2,36 +2,9 @@
 #include <libloader.hpp>
 #include <JuiceAgent/Config.hpp>
 #include <jvm.hpp>
+#include <JuiceAgent/Utils.hpp>
 
 namespace libloader {
-
-namespace {
-    // Check for JNI exceptions and clear them
-    bool check_and_clear_exception(JNIEnv* env, const char* context) {
-        if (env->ExceptionCheck()) {
-            PLOGE << "JNI Exception occurred at: " << context;
-            env->ExceptionDescribe();
-            env->ExceptionClear();
-            return true;
-        }
-        return false;
-    }
-
-    // RAII wrapper for local JNI references
-    template<typename T>
-    class LocalRef {
-    private:
-        JNIEnv* env;
-        T ref;
-    public:
-        LocalRef(JNIEnv* env, T ref) : env(env), ref(ref) {}
-        ~LocalRef() {
-            if (ref) env->DeleteLocalRef(ref);
-        }
-        T get() const { return ref; }
-        operator T() const { return ref; }
-    };
-}
 
 // Invoke JuiceAgentBootstrap.start(String) via JNI
 bool invoke_juiceagent_init(JNIEnv* env, const InjectionInfo& info) {
