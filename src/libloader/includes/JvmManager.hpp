@@ -6,7 +6,7 @@
 #include <thread>
 #include <chrono>
 
-namespace jvm
+namespace JuiceAgent::Loader::JvmManager
 {
     class Jvm {
     private:
@@ -119,4 +119,4 @@ namespace jvm
 
     thread_local JNIEnv* Jvm::env = nullptr;
 
-} // namespace jvm
+} // namespace JuiceAgent::Loader::JvmManager

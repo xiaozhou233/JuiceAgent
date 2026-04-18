@@ -72,7 +72,7 @@ void entrypoint(const char* runtime_dir) {
     }
 
     // Attach to JVM
-    jvm::Jvm jvm;
+    JuiceAgent::Loader::JvmManager::Jvm jvm;
     if (!jvm.attach()) {
         PLOGE << "Attach to JVM failed";
         return;
@@ -101,4 +101,4 @@ void entrypoint(const char* runtime_dir) {
     }
 }
 
-} // namespace libloader
+} // namespace JuiceAgent::Loader
