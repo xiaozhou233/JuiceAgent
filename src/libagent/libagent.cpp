@@ -41,11 +41,11 @@ namespace JuiceAgent {
             set_config(cfg);
             PLOGD << "env: " << env << ", jvmti: " << jvmti;
             
-            // temporary register modules
-            // TODO: remove this, implement a better way to register modules
-            JuiceAgent::Core::Modules::JarLoaderModule jarloader;
-            jarloader.init();
+            // Register Modules
+            module_manager.register_module(std::make_unique<JuiceAgent::Core::Modules::JarLoaderModule>());
             
+            // Initialize Modules
+            module_manager.init_all();
 
             // PreLoad Event
             eventbus.post(EventPreLoad{
@@ -87,9 +87,8 @@ namespace JuiceAgent {
             // register bytecodes_opt
             JuiceAgent::Bytecodes::register_bytecodes();
 
-            // Temporary startup modules
-            // TODO: remove this, implement a better way to startup modules
-            jarloader.start();
+            // Start Modules
+            module_manager.start_all();
 
 
             // Loaded Event
