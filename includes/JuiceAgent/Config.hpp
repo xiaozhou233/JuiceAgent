@@ -14,6 +14,22 @@ private:
     toml::value _config;
     bool _valid = false;
 
+private:
+    template<typename T>
+    static T _read_value(const toml::value& v) {
+        if constexpr (std::is_same_v<T, std::string>) {
+            return v.as_string();
+        } else if constexpr (std::is_same_v<T, bool>) {
+            return v.as_boolean();
+        } else if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {
+            return static_cast<T>(v.as_integer());
+        } else if constexpr (std::is_floating_point_v<T>) {
+            return static_cast<T>(v.as_floating());
+        } else {
+            static_assert(sizeof(T) == 0, "Unsupported config type");
+        }
+    }
+
 public:
     explicit Config(const std::filesystem::path& runtime_dir = {})
     {
@@ -45,6 +61,40 @@ public:
 
     const std::filesystem::path& runtime_dir() const noexcept {
         return _runtime_dir;
+    }
+
+    template<typename T>
+    T get(const std::string& path, const T& default_value) const {
+        if (!_valid) {
+            return default_value;
+        }
+
+        try {
+            const toml::value* current = &_config;
+            std::size_t start = 0;
+
+            while (start < path.size()) {
+                const std::size_t end = path.find('.', start);
+                const std::string key = path.substr(
+                    start,
+                    end == std::string::npos ? std::string::npos : end - start
+                );
+
+                current = &current->at(key);
+
+                if (end == std::string::npos) {
+                    break;
+                }
+
+                start = end + 1;
+            }
+
+            return _read_value<T>(*current);
+        }
+        catch (const std::exception& e) {
+            PLOGW << "Config get failed: " << path << ", using default value";
+            return default_value;
+        }
     }
 };
 

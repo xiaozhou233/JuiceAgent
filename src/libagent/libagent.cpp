@@ -39,7 +39,6 @@ namespace JuiceAgent {
             set_jvmti(jvmti);
             set_config(cfg);
             PLOGD << "env: " << env << ", jvmti: " << jvmti;
-            PLOGD << "config: " << &cfg.get_config();
             
 
             // PreLoad Event
