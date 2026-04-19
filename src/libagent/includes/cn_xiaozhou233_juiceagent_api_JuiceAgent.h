@@ -10,10 +10,10 @@ extern "C" {
 /*
  * Class:     cn_xiaozhou233_juiceagent_api_JuiceAgent
  * Method:    init
- * Signature: ()Z
+ * Signature: (Ljava/lang/String;)Z
  */
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_init
-  (JNIEnv *, jclass);
+  (JNIEnv *, jclass, jstring);
 
 /*
  * Class:     cn_xiaozhou233_juiceagent_api_JuiceAgent

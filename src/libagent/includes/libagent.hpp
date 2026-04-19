@@ -4,6 +4,7 @@
 #include <jni.h>
 #include <jvmti.h>
 #include <event/eventbus.hpp>
+#include <JuiceAgent/Config.hpp>
 
 namespace JuiceAgent {
     class Agent {
@@ -11,6 +12,7 @@ namespace JuiceAgent {
             JavaVM* jvm;
             jvmtiEnv* jvmti;
             EventBus eventbus;
+            JuiceAgent::Config::Config config;
     
         private:
             Agent() = default;
@@ -24,15 +26,17 @@ namespace JuiceAgent {
             Agent& operator=(const Agent&) = delete;
 
             // EntryPoint
-            bool init(JavaVM* jvm, JNIEnv* env, jvmtiEnv* jvmti);
+            bool init(JavaVM* jvm, JNIEnv* env, jvmtiEnv* jvmti, std::string& runtime_dir);
 
             // getters
             JavaVM* get_jvm() const { return jvm; }
             jvmtiEnv* get_jvmti() const { return jvmti; }
             EventBus& get_eventbus() { return eventbus; }
+            JuiceAgent::Config::Config& get_config() { return config; }
 
             // setters
             void set_jvm(JavaVM* jvm) { this->jvm = jvm; }
             void set_jvmti(jvmtiEnv* jvmti) { this->jvmti = jvmti; }
+            void set_config(JuiceAgent::Config::Config& config) { this->config = config; }
     };
 }

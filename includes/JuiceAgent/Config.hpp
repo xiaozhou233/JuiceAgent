@@ -49,7 +49,7 @@ public:
 };
 
 namespace Utils {
-    LoaderConfig get_loader_config(const Config& config) {
+    inline LoaderConfig get_loader_config(const Config& config) {
         auto cfg = config.get_config().at("JuiceAgent").at("Loader");
         
         LoaderConfig loader_config = LoaderConfig();
@@ -60,13 +60,13 @@ namespace Utils {
         return loader_config;
     }
 
-    void print_loader_config(const LoaderConfig& config) {
+    inline void print_loader_config(const LoaderConfig& config) {
         PLOGI << "JuiceAgentAPIJarPath: " << config.JuiceAgentAPIJarPath;
         PLOGI << "JuiceAgentNativeLibraryPath: " << config.JuiceAgentNativeLibraryPath;
         PLOGI << "RuntimeDir: " << config.RuntimeDir;
     }
 
-    std::string serialize_loader_config(const LoaderConfig& config) {
+    inline std::string serialize_loader_config(const LoaderConfig& config) {
         std::string result = "";
 
         result += "Version=2;";
