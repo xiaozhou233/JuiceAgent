@@ -12,6 +12,7 @@ namespace JuiceAgent {
         private:
             JavaVM* jvm;
             jvmtiEnv* jvmti;
+            JNIEnv* env;
             EventBus eventbus;
             JuiceAgent::Config::Config config;
             JuiceAgent::Core::Modules::ModuleManager module_manager;
@@ -33,12 +34,14 @@ namespace JuiceAgent {
             // getters
             JavaVM* get_jvm() const { return jvm; }
             jvmtiEnv* get_jvmti() const { return jvmti; }
+            JNIEnv* get_env() const { return env; }
             EventBus& get_eventbus() { return eventbus; }
             JuiceAgent::Config::Config& get_config() { return config; }
 
             // setters
             void set_jvm(JavaVM* jvm) { this->jvm = jvm; }
             void set_jvmti(jvmtiEnv* jvmti) { this->jvmti = jvmti; }
+            void set_env(JNIEnv* env) { this->env = env; }
             void set_config(JuiceAgent::Config::Config& config) { this->config = config; }
     };
 }

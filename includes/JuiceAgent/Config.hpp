@@ -64,7 +64,7 @@ public:
     }
 
     template<typename T>
-    T get(const std::string& path, const T& default_value) const {
+    T get(const std::string& path, const T& default_value, bool is_path = false) const {
         if (!_valid) {
             return default_value;
         }
@@ -89,7 +89,33 @@ public:
                 start = end + 1;
             }
 
-            return _read_value<T>(*current);
+            T value = _read_value<T>(*current);
+
+            if constexpr (std::is_same_v<T, std::string>) {
+                if (value.empty()) {
+                    return default_value;
+                }
+
+                // Handle relative paths
+                if (is_path) {
+                    // Check if starts with "."
+                    if (value.starts_with(".")) {
+                        // Remove "."
+                        value = value.substr(1);
+                        // Check if starts with "/"
+                        if (value.starts_with("/")) {
+                            // Remove "/"
+                            value = value.substr(1);
+                        }
+
+                        // runtime_dir + value
+                        value = (_runtime_dir / value).string();
+                    }
+                }
+
+            }
+
+            return value;
         }
         catch (const std::exception& e) {
             PLOGW << "Config get failed: " << path << ", using default value";

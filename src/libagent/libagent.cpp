@@ -38,6 +38,7 @@ namespace JuiceAgent {
 
             set_jvm(jvm);
             set_jvmti(jvmti);
+            set_env(env);
             set_config(cfg);
             PLOGD << "env: " << env << ", jvmti: " << jvmti;
             
