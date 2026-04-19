@@ -4,6 +4,7 @@
 #include <event/event_type.hpp>
 #include <event/eventbus.hpp>
 #include <JuiceAgent/Config.hpp>
+#include <modules/Modules.hpp>
 
 namespace JuiceAgent {
     // ===== Singleton =====
@@ -39,6 +40,11 @@ namespace JuiceAgent {
             set_jvmti(jvmti);
             set_config(cfg);
             PLOGD << "env: " << env << ", jvmti: " << jvmti;
+            
+            // temporary register modules
+            // TODO: remove this, implement a better way to register modules
+            JuiceAgent::Core::Modules::JarLoaderModule jarloader;
+            jarloader.init();
             
 
             // PreLoad Event
@@ -80,6 +86,10 @@ namespace JuiceAgent {
 
             // register bytecodes_opt
             JuiceAgent::Bytecodes::register_bytecodes();
+
+            // Temporary startup modules
+            // TODO: remove this, implement a better way to startup modules
+            jarloader.start();
 
 
             // Loaded Event
