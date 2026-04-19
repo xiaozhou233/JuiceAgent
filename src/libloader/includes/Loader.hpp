@@ -10,7 +10,7 @@ namespace JuiceAgent::Loader
 {
     void entrypoint(const char* runtime_dir);    
 
-    bool invoke_juiceagent_init(JNIEnv* env, const InjectionInfo& info);
+    bool invoke_juiceagent_init(JNIEnv* env, const LoaderConfig& info);
 } // namespace JuiceAgent::Loader
 
 namespace {
