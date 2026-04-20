@@ -16,4 +16,4 @@
 
 ## 2026-04-19
  - [x] 在 `JuiceAgent/Utils.hpp`做序列化操作
- - [ ] 统一调用 module的Java实现
+ - [x] 统一调用 module的Java实现
