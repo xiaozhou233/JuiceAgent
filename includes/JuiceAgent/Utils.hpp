@@ -21,6 +21,50 @@ inline bool check_and_clear_exception(JNIEnv* env, const char* context) {
 
 namespace JuiceAgent::Utils
 {
+    inline bool call_java_impl(JNIEnv* env, const char* clazz, const char* method, const char* params) {
+        if (!env || !clazz || !method) {
+            PLOGE << "Invalid JNI arguments";
+            return false;
+        }
+
+        constexpr const char* method_signature = "(Ljava/lang/String;)V";
+
+        PLOGD << "Calling Java method: " << clazz << "." << method << " " << method_signature;
+
+        jclass cls = env->FindClass(clazz);
+        if (!cls) {
+            check_and_clear_exception(env, "FindClass failed");
+            PLOGE << "Class not found: " << clazz;
+            return false;
+        }
+
+        jmethodID mid = env->GetStaticMethodID(cls, method, method_signature);
+        if (!mid) {
+            check_and_clear_exception(env, "GetStaticMethodID failed");
+            PLOGE << "Method not found: " << method;
+            env->DeleteLocalRef(cls);
+            return false;
+        }
+
+        jstring j_params = env->NewStringUTF(params ? params : "");
+        if (!j_params) {
+            PLOGE << "Failed to create jstring";
+            env->DeleteLocalRef(cls);
+            return false;
+        }
+
+        env->CallStaticVoidMethod(cls, mid, j_params);
+
+        bool success = !env->ExceptionCheck();
+
+        check_and_clear_exception(env, "CallStaticVoidMethod failed");
+
+        env->DeleteLocalRef(j_params);
+        env->DeleteLocalRef(cls);
+
+        return success;
+    }
+
     class Serializer {
     private:
         std::string s;
@@ -77,7 +121,7 @@ namespace JuiceAgent::Utils
     };
 
 
-        class Deserializer {
+    class Deserializer {
     private:
         std::unordered_map<std::string, std::string> data;
 

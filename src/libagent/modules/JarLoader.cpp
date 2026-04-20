@@ -17,7 +17,6 @@ static JuiceAgent::Agent& agent = JuiceAgent::Agent::instance();
 
 static const char* MODULE_CLASS = "cn/xiaozhou233/juiceagent/api/modules/JarLoader";
 static const char* MODULE_METHOD = "loadJar";
-static const char* MODULE_METHOD_DESC = "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V";
 
 bool JarLoaderModule::init() {
     if (_initialized) return true;
@@ -27,7 +26,7 @@ bool JarLoaderModule::init() {
     JuiceAgent::Config::Config& cfg = agent.get_config();
 
     Config.Enabled = cfg.get<bool>("JuiceAgent.Modules.JarLoader.Enabled", false);
-    Config.InjectionDir = cfg.get<std::string>("JuiceAgent.Modules.JarLoader.InjectionDir", (agent.get_config().runtime_dir() / "injection").string());
+    Config.InjectionDir = cfg.get<std::string>("JuiceAgent.Modules.JarLoader.InjectionDir", (agent.get_config().runtime_dir() / "injection").string(), true);
     Config.JarPath = cfg.get<std::string>("JuiceAgent.Modules.JarLoader.JarPath", "./Entry.jar", true);
     Config.EntryClass = cfg.get<std::string>("JuiceAgent.Modules.JarLoader.EntryClass", "Example.Main", false);
     Config.EntryMethod = cfg.get<std::string>("JuiceAgent.Modules.JarLoader.EntryMethod", "start", false);
@@ -59,25 +58,19 @@ bool JarLoaderModule::start() {
         return false;
     }
 
+    JuiceAgent::Utils::Serializer ser;
+
+    ser.add_kv("InjectionDir", Config.InjectionDir);
+    ser.add_kv("JarPath", Config.JarPath);
+    ser.add_kv("EntryClass", Config.EntryClass);
+    ser.add_kv("EntryMethod", Config.EntryMethod);
+
+    std::string serialized = ser.serialize();
+
+    PLOGD << "Serialized config: " << serialized;
+
     JNIEnv* env = agent.get_env();
-    jclass cls = env->FindClass(MODULE_CLASS);
-    if (!cls) {
-        PLOGE << "JarLoader class not found";
-        return false;
-    }
-
-    jmethodID mid = env->GetStaticMethodID(cls, MODULE_METHOD, MODULE_METHOD_DESC);
-    if (!mid) {
-        PLOGE << "JarLoader method not found";
-        return false;
-    }
-
-    env->CallStaticVoidMethod(cls, mid, 
-        env->NewStringUTF(Config.InjectionDir.c_str()),
-        env->NewStringUTF(Config.JarPath.c_str()),
-        env->NewStringUTF(Config.EntryClass.c_str()),
-        env->NewStringUTF(Config.EntryMethod.c_str()));
-    check_and_clear_exception(env, "Invoke JarLoader");
+    JuiceAgent::Utils::call_java_impl(env, MODULE_CLASS, MODULE_METHOD, serialized.c_str());
 
     PLOGI << "JarLoader is running";
     _running = true;
