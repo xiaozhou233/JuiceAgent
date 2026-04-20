@@ -1,0 +1,16 @@
+[JuiceAgent]
+Version = 1
+
+[JuiceAgent.Loader]
+JuiceAgentAPIJarPath = ""
+JuiceAgentNativeLibraryPath = ""
+
+[JuiceAgent.Modules]
+
+[JuiceAgent.Modules.JarLoader]
+Enabled = true
+InjectionDir = ""
+JarPath = ""
+EntryClass = ""
+EntryMethod = ""
+

@@ -7,7 +7,7 @@
 namespace JuiceAgent::Loader {
 
 // Invoke JuiceAgentBootstrap.start(String) via JNI
-bool invoke_juiceagent_init(JNIEnv* env, const InjectionInfo& info) {
+bool invoke_juiceagent_init(JNIEnv* env, const LoaderConfig& config) {
     const char* bootstrap_class = "cn/xiaozhou233/juiceagent/api/JuiceAgentBootstrap";
     const char* method_name = "start";
     const char* method_desc = "(Ljava/lang/String;)V";
@@ -27,7 +27,7 @@ bool invoke_juiceagent_init(JNIEnv* env, const InjectionInfo& info) {
     }
 
     // Serialize InjectionInfo to string
-    std::string args = JuiceAgent::Config::Config::serialize(info);
+    std::string args = JuiceAgent::Config::Utils::serialize_loader_config(config);
     PLOGD << "Invoke args: " << args;
 
     // Create Java string
@@ -59,14 +59,18 @@ void entrypoint(const char* runtime_dir) {
     JuiceAgent::Config::Config cfg(runtime_dir);
     if (!cfg.is_valid()) {
         PLOGW << "Invalid config, using default values";
+
+        // TODO: Use default values
+        // Before impl TODO, must return, or crash will happen
+        return;
     }
 
     // Get InjectionInfo
-    InjectionInfo info = cfg.get_injection_info();
-    JuiceAgent::Config::print_injection_info(info);
+    LoaderConfig config = JuiceAgent::Config::Utils::get_loader_config(cfg);
+    JuiceAgent::Config::Utils::print_loader_config(config);
 
     // Validate essential paths
-    if (info.JuiceAgentAPIJarPath.empty()) {
+    if (config.JuiceAgentAPIJarPath.empty()) {
         PLOGE << "JuiceAgentAPIJarPath is empty, abort injection";
         return;
     }
@@ -87,16 +91,16 @@ void entrypoint(const char* runtime_dir) {
     }
 
     // Inject JuiceAgent jar into system class loader
-    jint status = jvmti->AddToSystemClassLoaderSearch(info.JuiceAgentAPIJarPath.c_str());
+    jint status = jvmti->AddToSystemClassLoaderSearch(config.JuiceAgentAPIJarPath.c_str());
     if (status != JNI_OK) {
         PLOGE << "AddToSystemClassLoaderSearch failed: " << status;
         return;
     }
 
-    PLOGI << "Jar injected successfully: " << info.JuiceAgentAPIJarPath;
+    PLOGI << "Jar injected successfully: " << config.JuiceAgentAPIJarPath;
 
     // Invoke JuiceAgent initialization
-    if (!invoke_juiceagent_init(env, info)) {
+    if (!invoke_juiceagent_init(env, config)) {
         PLOGE << "invoke_juiceagent_init failed";
     }
 }
