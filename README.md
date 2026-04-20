@@ -5,7 +5,7 @@ JuiceAgent is a JVMTI-based injection library for loading external JARs and tran
 
 **Notice:** Currently, only **Windows** is supported. **Linux** support may be added in the future.
 
-**Notice:** The current repository version is **Version 3.1 Build 3**.
+**Notice:** The current repository version is **Version 3.3 Build 1**.
 
 **Warning:** This project is still experimental and is not recommended for production use. Use it at your own risk.
 
@@ -42,22 +42,20 @@ Create a file named `config.toml` in `YourDir`.
 
 ```toml
 [JuiceAgent]
-# Default value: YourDir/JuiceAgent-API.jar
+Version = 1
+
+[JuiceAgent.Loader]
 JuiceAgentAPIJarPath = ""
-# Default value: YourDir/libagent.dll
-JuiceAgentNativePath = ""
+JuiceAgentNativeLibraryPath = ""
 
-[Entry]
-# Default value: YourDir/Entry.jar
-EntryJarPath = ""
-# Default value: com.example.Entry
-EntryClass = ""
-# Default value: start
-EntryMethod = "start"
+[JuiceAgent.Modules]
 
-[Runtime]
-# Default value: YourDir/injection
+[JuiceAgent.Modules.JarLoader]
+Enabled = true
 InjectionDir = ""
+JarPath = ""
+EntryClass = ""
+EntryMethod = ""
 ```
 
 ### 3. Run the Injector

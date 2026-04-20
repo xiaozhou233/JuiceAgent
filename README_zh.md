@@ -5,7 +5,7 @@ JuiceAgent 是一个基于 JVMTI 的注入库，用于加载外部 JAR 并对 Ja
 
 **注意：** 当前仅支持 **Windows**，未来可能会支持 **Linux**。
 
-**注意：** 当前仓库版本为 **Version 3.1 Build 3**。
+**注意：** 当前仓库版本为 **Version 3.3 Build 1**。
 
 **警告：** 本项目仍处于实验阶段，不建议在生产环境中使用。使用风险请自行承担。
 
@@ -42,22 +42,20 @@ JuiceAgent 是一个基于 JVMTI 的原生注入框架。它通过向目标 JVM 
 
 ```toml
 [JuiceAgent]
-# 默认值: YourDir/JuiceAgent-API.jar
+Version = 1
+
+[JuiceAgent.Loader]
 JuiceAgentAPIJarPath = ""
-# 默认值: YourDir/libagent.dll
-JuiceAgentNativePath = ""
+JuiceAgentNativeLibraryPath = ""
 
-[Entry]
-# 默认值: YourDir/Entry.jar
-EntryJarPath = ""
-# 默认值: com.example.Entry
-EntryClass = ""
-# 默认值: start
-EntryMethod = "start"
+[JuiceAgent.Modules]
 
-[Runtime]
-# 默认值: YourDir/injection
+[JuiceAgent.Modules.JarLoader]
+Enabled = true
 InjectionDir = ""
+JarPath = ""
+EntryClass = ""
+EntryMethod = ""
 ```
 
 ### 3. 执行注入
