@@ -5,6 +5,7 @@
 #include <toml.hpp>
 #include <filesystem>
 #include <string>
+#include <JuiceAgent/Utils.hpp>
 
 namespace JuiceAgent::Config {
 
@@ -143,14 +144,20 @@ namespace Utils {
     }
 
     inline std::string serialize_loader_config(const LoaderConfig& config) {
-        std::string result = "";
+        // std::string result = "";
 
-        result += "Version=2;";
-        result += "JuiceAgentAPIJarPath=" + config.JuiceAgentAPIJarPath + ";";
-        result += "JuiceAgentNativeLibraryPath=" + config.JuiceAgentNativeLibraryPath + ";";
-        result += "RuntimeDir=" + config.RuntimeDir + ";";
-        
-        return result;
+        // result += "Version=2;";
+        // result += "JuiceAgentAPIJarPath=" + config.JuiceAgentAPIJarPath + ";";
+        // result += "JuiceAgentNativeLibraryPath=" + config.JuiceAgentNativeLibraryPath + ";";
+        // result += "RuntimeDir=" + config.RuntimeDir + ";";
+
+        JuiceAgent::Utils::Serializer ser;
+        ser.add_kv("Version", 2);
+        ser.add_kv("JuiceAgentAPIJarPath", config.JuiceAgentAPIJarPath);
+        ser.add_kv("JuiceAgentNativeLibraryPath", config.JuiceAgentNativeLibraryPath);
+        ser.add_kv("RuntimeDir", config.RuntimeDir);
+
+        return ser.serialize();
     }
 }
 
