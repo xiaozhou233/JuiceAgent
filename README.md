@@ -1,64 +1,113 @@
 # JuiceAgent
-[English](https://github.com/xiaozhou233/JuiceAgent/blob/main/README.md) | [中文](https://github.com/xiaozhou233/JuiceAgent/blob/main/README_zh.md)
 
-JuiceAgent is a JVMTI-based injection library for loading external JARs and transforming Java bytecode, even when `DisableAttachMechanism` is enabled.
+JuiceAgent is an advanced JVMTI-based injection framework designed for runtime JAR loading, bytecode transformation, and deep JVM instrumentation, even with DisableAttachMechanism enabled.
 
-**Notice:** Currently, only **Windows** is supported. **Linux** support may be added in the future.
+![License](https://img.shields.io/github/license/xiaozhou233/JuiceAgent)
+![Release](https://img.shields.io/github/v/release/xiaozhou233/JuiceAgent)
+![GitHub last commit](https://img.shields.io/github/last-commit/xiaozhou233/JuiceAgent)
+![GitHub repo size](https://img.shields.io/github/repo-size/xiaozhou233/JuiceAgent)
 
-**Notice:** The current repository version is **Version 3.3 Build 1**.
+![Java](https://img.shields.io/badge/Java-8+-orange)
+![C++](https://img.shields.io/badge/C++-20-blue)
+![JNI](https://img.shields.io/badge/JNI-Native-green)
+![CMake](https://img.shields.io/badge/CMake-Build-red)
+![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)
 
-**Warning:** This project is still experimental and is not recommended for production use. Use it at your own risk.
+![JVMTI](https://img.shields.io/badge/JVMTI-Agent-success)
+![Injection](https://img.shields.io/badge/Runtime-Injection-blueviolet)
+![Bytecode](https://img.shields.io/badge/Bytecode-Transform-blue)
+![Attach](https://img.shields.io/badge/DisableAttach-Bypass-important)
 
-## Summary
-JuiceAgent is a JVMTI-native injection framework that injects native code into a target JVM to dynamically load external JARs and perform bytecode redefinition or retransformation without requiring a `javaagent`. It can still work when `DisableAttachMechanism=true`.
+## Introduction
+JuiceAgent is a JVMTI-native injection framework for loading external JARs and redefining or retransformation Java bytecode in a target JVM without requiring a javaagent. It also works when DisableAttachMechanism=true.
+
+With JuiceAgent, developers can:
+ - Dynamically load external JARs into a running JVM process
+ - Execute custom Java code after injection
+ - Redefine already loaded classes at runtime
+ - Retransform bytecode for instrumentation or modification
+ - And more...
+
+## Index
 
 ## Features
-This project is the native implementation of JuiceAgent-API. For the API definition, see [JuiceAgent.java](https://github.com/xiaozhou233/JuiceAgent-API/blob/master/src/main/java/cn/xiaozhou233/juiceagent/api/JuiceAgent.java).
+This project is the native implementation of JuiceAgent-API. See [JuiceAgent.java](https://github.com/xiaozhou233/JuiceAgent-API/blob/master/src/main/java/cn/xiaozhou233/juiceagent/api/JuiceAgent.java) for the API definition.
 
-- `addToBootstrapClassLoaderSearch`
-- `addToSystemClassLoaderSearch`
-- `addToClassLoader`
-- `defineClass`
-- `redefineClass(ByName)`
-- `retransformClass(ByName)`
-- `getLoadedClasses`
-- `getClassByName`
-- `getClassBytes(ByName)`
+- Load JARs into the Bootstrap or System ClassLoader
+- Define classes dynamically
+- Redefine classes by name or class reference
+- Retransform classes by name or class reference
+- Get all loaded classes
+- Find classes by name
+- Get class bytecode by name or class reference
 
-## How To Use
+## Quick Start
+### 1. Download Release
+Download `libagent.dll` `libinject.dll` `libloader.dll` and `injector.exe` from the [releases](https://github.com/xiaozhou233/JuiceAgent/releases) page.
 
-### 1. Download Files
-Download the following files from [Releases](https://github.com/xiaozhou233/JuiceAgent/releases) and place them in `YourDir`:
+Download `JuiceAgent-API-x.x.x+build.x.jar` from the [JuiceAgent-API](https://github.com/xiaozhou233/JuiceAgent-API/releases) page.
 
-- `libagent.dll`
-- `libinject.dll`
-- `libloader.dll`
-- `injector.exe`
+Put the downloaded files into the same directory.
+- YourDir
+  - JuiceAgent-API-x.x.x+build.x.jar
+  - libagent.dll
+  - libinject.dll
+  - libloader.dll
+  - injector.exe
 
-Download `JuiceAgent-API-X.X.X+build.X.jar` from [JuiceAgent-API Releases](https://github.com/xiaozhou233/JuiceAgent-API/releases) and place it in `YourDir`.
+### 2. Copy your custom JAR/Dependencies to Directory
+- YourDir
+  - JuiceAgent-API-x.x.x+build.x.jar
+  - libagent.dll
+  - libinject.dll
+  - libloader.dll
+  - injector.exe
+  - **MyCustonJar.jar**
+  - **injection**
+    - **Dependencies1.jar**
+    - **Dependencies2.jar**
 
-### 2. Write the Config File
-Create a file named `config.toml` in `YourDir`.
+### 3. Write Config
 
 ```toml
 [JuiceAgent]
 Version = 1
 
 [JuiceAgent.Loader]
-JuiceAgentAPIJarPath = ""
+# Path to JuiceAgent-API-x.x.x+build.x.jar
+JuiceAgentAPIJarPath = "./JuiceAgent-API-x.x.x+build.x.jar"
+# Path to libagent.dll, default is "./libagent.dll"
 JuiceAgentNativeLibraryPath = ""
 
 [JuiceAgent.Modules]
 
 [JuiceAgent.Modules.JarLoader]
 Enabled = true
-InjectionDir = ""
-JarPath = ""
-EntryClass = ""
-EntryMethod = ""
+# Path to the Injection JAR files to be loaded
+InjectionDir = "./injection"
+# Path to the JAR file to be loaded
+JarPath = "./MyCustonJar.jar"
+# Entry class to be executed after loading the JAR
+EntryClass = "Example.Main"
+# Entry method to be executed after loading the JAR
+EntryMethod = "run"
 ```
 
-### 3. Run the Injector
+Save the config file as `config.toml`.
+
+- YourDir
+  - **config.toml**
+  - JuiceAgent-API-x.x.x+build.x.jar
+  - libagent.dll
+  - libinject.dll
+  - libloader.dll
+  - injector.exe
+  - MyCustonJar.jar
+  - injection
+    - Dependencies1.jar
+    - Dependencies2.jar
+
+### 4. Run the Injector
 
 #### Method A: Use `injector.exe`
 Run `injector.exe` from `YourDir`.
@@ -71,40 +120,11 @@ Input PID:
 Enter the PID of the target JVM process and press Enter.
 
 #### Method B: Use JNI to call `inject`
-Create `cn/xiaozhou233/juiceagent/injector/InjectorNative.java` in your project:
 
-```java
-package cn.xiaozhou233.juiceagent.injector;
+See [Documents](https://github.com/xiaozhou233/JuiceAgent/blob/master/docs/Inject.md) for details.
 
-public class InjectorNative {
-    /*
-     * @param pid target process id
-     * @param path injection DLL path
-     */
-    public native boolean inject(int pid, String path);
-
-    /*
-     * @param pid target process id
-     * @param path injection DLL path
-     * @param configDir directory containing config.toml
-     */
-    public native boolean inject(int pid, String path, String configDir);
-}
-```
-
-Example:
-
-```java
-import cn.xiaozhou233.juiceagent.injector.InjectorNative;
-
-System.load("<path-to-libinject>");
-InjectorNative injectorNative = new InjectorNative();
-
-injectorNative.inject(<pid>, "<path-to-libloader>", "<path-to-config-directory>");
-```
-
-### 4. Done
-If the injection succeeds, the target process will load `Entry.jar` (or the file specified by `EntryJarPath`) and invoke `EntryClass.EntryMethod` (default: `com.example.Entry.start`).
+### 5. Done
+The target JVM will load the specified JAR and execute the specified entry class and method.
 
 ## How To Build
 
@@ -142,5 +162,5 @@ This project is intended for learning and research in controlled environments on
 ## Acknowledgements
 - [ReflectiveDLLInjection](https://github.com/stephenfewer/ReflectiveDLLInjection) - DLL injection implementation
 - [plog](https://github.com/SergiusTheBest/plog) - Portable, simple, and extensible C++ logging library
-- [tinytoml](https://github.com/mayah/tinytoml) - Header-only C++11 TOML parser
+- [toml11](https://github.com/ToruNiina/toml11) - TOML for Modern C++
 - [eventpp](https://github.com/wqking/eventpp) - C++ library for event dispatchers and callback lists
