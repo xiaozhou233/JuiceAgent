@@ -1,6 +1,8 @@
 # JuiceAgent
 
-JuiceAgent is an advanced JVMTI-based injection framework designed for runtime JAR loading, bytecode transformation, and deep JVM instrumentation, even with DisableAttachMechanism enabled.
+JuiceAgent is an advanced JVMTI-based injection framework designed for runtime JAR loading, bytecode transformation, and runtime JVM instrumentation, even when DisableAttachMechanism is enabled.
+
+**Warning**: This project is still experimental and is not recommended for production use. Use it at your own risk.
 
 ![License](https://img.shields.io/github/license/xiaozhou233/JuiceAgent)
 ![Release](https://img.shields.io/github/v/release/xiaozhou233/JuiceAgent)
@@ -19,16 +21,34 @@ JuiceAgent is an advanced JVMTI-based injection framework designed for runtime J
 ![Attach](https://img.shields.io/badge/DisableAttach-Bypass-important)
 
 ## Introduction
-JuiceAgent is a JVMTI-native injection framework for loading external JARs and redefining or retransformation Java bytecode in a target JVM without requiring a javaagent. It also works when DisableAttachMechanism=true.
+JuiceAgent is a JVMTI-native injection framework for loading external JARs and redefining or retransformation of Java classes in a target JVM without requiring -javaagent startup arguments or attach javaagent. It also works when DisableAttachMechanism=true.
 
 With JuiceAgent, developers can:
  - Dynamically load external JARs into a running JVM process
- - Execute custom Java code after injection
+ - Invoke a specified entry class and method after injection    
  - Redefine already loaded classes at runtime
  - Retransform bytecode for instrumentation or modification
  - And more...
 
 ## Index
+- [JuiceAgent](#juiceagent)
+  - [Introduction](#introduction)
+  - [Index](#index)
+  - [Features](#features)
+  - [Quick Start](#quick-start)
+    - [1. Download Release](#1-download-release)
+    - [2. Copy your custom JAR/Dependencies to Directory](#2-copy-your-custom-jardependencies-to-directory)
+    - [3. Write Config](#3-write-config)
+    - [4. Run the Injector](#4-run-the-injector)
+      - [Method A: Use `injector.exe`](#method-a-use-injectorexe)
+      - [Method B: Use JNI to call `inject`](#method-b-use-jni-to-call-inject)
+    - [5. Done](#5-done)
+  - [How To Build](#how-to-build)
+    - [Requirements](#requirements)
+    - [Build with CMake Presets](#build-with-cmake-presets)
+    - [Manual Build](#manual-build)
+  - [Full Disclaimer](#full-disclaimer)
+  - [Acknowledgements](#acknowledgements)
 
 ## Features
 This project is the native implementation of JuiceAgent-API. See [JuiceAgent.java](https://github.com/xiaozhou233/JuiceAgent-API/blob/master/src/main/java/cn/xiaozhou233/juiceagent/api/JuiceAgent.java) for the API definition.
@@ -62,7 +82,7 @@ Put the downloaded files into the same directory.
   - libinject.dll
   - libloader.dll
   - injector.exe
-  - **MyCustonJar.jar**
+  - **MyCustomJar.jar**
   - **injection**
     - **Dependencies1.jar**
     - **Dependencies2.jar**
@@ -86,7 +106,7 @@ Enabled = true
 # Path to the Injection JAR files to be loaded
 InjectionDir = "./injection"
 # Path to the JAR file to be loaded
-JarPath = "./MyCustonJar.jar"
+JarPath = "./MyCustomJar.jar"
 # Entry class to be executed after loading the JAR
 EntryClass = "Example.Main"
 # Entry method to be executed after loading the JAR
@@ -102,7 +122,7 @@ Save the config file as `config.toml`.
   - libinject.dll
   - libloader.dll
   - injector.exe
-  - MyCustonJar.jar
+  - MyCustomJar.jar
   - injection
     - Dependencies1.jar
     - Dependencies2.jar
