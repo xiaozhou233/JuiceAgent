@@ -1,5 +1,6 @@
 #include <modules/ModuleManager.hpp>
 #include <JuiceAgent/Logger.hpp>
+#include <modules/Modules.hpp>
 
 namespace JuiceAgent::Core::Modules {
 
@@ -47,6 +48,21 @@ IModule* ModuleManager::find_module(const std::string& name) {
         }
     }
     return nullptr;
+}
+
+bool ModuleManager::loadAllRegisteredModules() {
+    auto moduleNames = ModuleRegistry::getRegisteredModuleNames();
+    for (const auto& name : moduleNames) {
+        PLOGI << "Loading registered module: " << name;
+        auto module = ModuleRegistry::createModule(name);
+        if (module) {
+            register_module(std::move(module));
+        } else {
+            PLOGE << "Failed to create module: " << name;
+            return false;
+        }
+    }
+    return true;
 }
 
 }

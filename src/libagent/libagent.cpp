@@ -42,8 +42,11 @@ namespace JuiceAgent {
             set_config(cfg);
             PLOGD << "env: " << env << ", jvmti: " << jvmti;
             
-            // Register Modules
-            module_manager.register_module(std::make_unique<JuiceAgent::Core::Modules::JarLoaderModule>());
+            // Load All Registered Modules
+            if (!module_manager.loadAllRegisteredModules()) {
+                PLOGE << "Failed to load registered modules";
+                return false;
+            }
             
             // Initialize Modules
             module_manager.init_all();
