@@ -30,6 +30,8 @@ With JuiceAgent, developers can:
  - Retransform bytecode for instrumentation or modification
  - And more...
 
+**If you have any questions or suggestions, please feel free to open an issue or submit a pull request. =D**
+
 ## Index
 - [JuiceAgent](#juiceagent)
   - [Introduction](#introduction)
