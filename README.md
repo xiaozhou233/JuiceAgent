@@ -143,7 +143,7 @@ Enter the PID of the target JVM process and press Enter.
 
 #### Method B: Use JNI to call `inject`
 
-See [Documents](https://github.com/xiaozhou233/JuiceAgent/blob/master/docs/Inject.md) for details.
+See [Documents](https://github.com/xiaozhou233/JuiceAgent/blob/main/docs/Inject.md) for details.
 
 ### 5. Done
 The target JVM will load the specified JAR and execute the specified entry class and method.
