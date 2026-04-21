@@ -42,28 +42,27 @@ private:
     }
 };
 
-class JarLoaderModule : public IModule {
-public:
-    JarLoaderModule() = default;
-    ~JarLoaderModule() override = default;
-
-    std::string name() const override {
-        return "JarLoader";
-    }
-
-    bool init() override;
-    bool start() override;
-    void stop() override;
-
-private:
-    bool _initialized = false;
-    bool _running = false;
+#define DEFINE_MODULE(ModuleName) \
+class ModuleName##Module : public IModule { \
+public: \
+    ModuleName##Module() = default; \
+    ~ModuleName##Module() override = default; \
+    \
+    std::string name() const override { \
+        return #ModuleName; \
+    } \
+    \
+    bool init() override; \
+    bool start() override; \
+    void stop() override; \
+    \
+private: \
+    bool _initialized = false; \
+    bool _running = false; \
 };
 
-#define REGISTER_MODULE(ModuleClass) \
-    static bool _registered_##ModuleClass = []() { \
-        ModuleRegistry::registerModule(#ModuleClass, []() { return std::make_unique<ModuleClass>(); }); \
-        return true; \
-    }()
+
+DEFINE_MODULE(JarLoader)
+DEFINE_MODULE(Example)
 
 } // namespace JuiceAgent::Core::Modules
