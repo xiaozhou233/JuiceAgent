@@ -12,7 +12,7 @@ public:
     ModuleManager() = default;
     ~ModuleManager() = default;
 
-    void register_module(std::unique_ptr<IModule> module);
+    void load_all();
 
     bool init_all();
     bool start_all();

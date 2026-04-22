@@ -1,13 +1,21 @@
 #include <modules/ModuleManager.hpp>
+#include <modules/ModuleRegistry.hpp>
 #include <JuiceAgent/Logger.hpp>
 
 namespace JuiceAgent::Core::Modules {
 
-void ModuleManager::register_module(std::unique_ptr<IModule> module) {
-    if (!module) return;
+void ModuleManager::load_all() {
+    for (const auto& entry : ModuleRegistry::instance().entries()) {
+        auto module = entry.factory();
 
-    PLOGI << "Register module: " << module->name();
-    _modules.push_back(std::move(module));
+        if (!module) {
+            PLOGE << "Failed to create module: " << entry.name;
+            continue;
+        }
+
+        PLOGI << "Register module: " << module->name();
+        _modules.push_back(std::move(module));
+    }
 }
 
 bool ModuleManager::init_all() {
@@ -19,6 +27,7 @@ bool ModuleManager::init_all() {
             return false;
         }
     }
+
     return true;
 }
 
@@ -31,11 +40,13 @@ bool ModuleManager::start_all() {
             return false;
         }
     }
+
     return true;
 }
 
 void ModuleManager::stop_all() {
     for (auto it = _modules.rbegin(); it != _modules.rend(); ++it) {
+        PLOGI << "Stop module: " << (*it)->name();
         (*it)->stop();
     }
 }
@@ -46,6 +57,7 @@ IModule* ModuleManager::find_module(const std::string& name) {
             return module.get();
         }
     }
+
     return nullptr;
 }
 

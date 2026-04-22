@@ -4,7 +4,6 @@
 #include <event/event_type.hpp>
 #include <event/eventbus.hpp>
 #include <JuiceAgent/Config.hpp>
-#include <modules/Modules.hpp>
 
 namespace JuiceAgent {
     // ===== Singleton =====
@@ -42,8 +41,9 @@ namespace JuiceAgent {
             set_config(cfg);
             PLOGD << "env: " << env << ", jvmti: " << jvmti;
             
-            // Register Modules
-            module_manager.register_module(std::make_unique<JuiceAgent::Core::Modules::JarLoaderModule>());
+            // Load and Initialize Modules
+            module_manager.load_all();
+            module_manager.init_all();
             
             // Initialize Modules
             module_manager.init_all();
