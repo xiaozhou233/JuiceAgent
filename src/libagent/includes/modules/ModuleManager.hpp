@@ -4,7 +4,6 @@
 #include <vector>
 #include <string>
 #include <modules/IModule.hpp>
-#include <JuiceAgent/Config.hpp>
 
 namespace JuiceAgent::Core::Modules {
 
@@ -20,8 +19,6 @@ public:
     void stop_all();
 
     IModule* find_module(const std::string& name);
-
-    bool loadAllRegisteredModules();
 
 private:
     std::vector<std::unique_ptr<IModule>> _modules;

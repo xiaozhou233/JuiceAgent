@@ -84,13 +84,4 @@ void JarLoaderModule::stop() {
     _running = false;
 }
 
-} // namespace JuiceAgent::Core::Modules
-
-namespace {
-    bool registerJarLoader = []() {
-        JuiceAgent::Core::Modules::ModuleRegistry::registerModule("JarLoader", []() {
-            return std::make_unique<JuiceAgent::Core::Modules::JarLoaderModule>();
-        });
-        return true;
-    }();
 }
