@@ -111,6 +111,54 @@ JNIEXPORT jbyteArray JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getCl
 JNIEXPORT jbyteArray JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getClassBytesByName
   (JNIEnv *, jclass, jstring);
 
+/*
+ * Class:     cn_xiaozhou233_juiceagent_api_JuiceAgent
+ * Method:    addRemapperWhiteList
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_addRemapperWhiteList
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     cn_xiaozhou233_juiceagent_api_JuiceAgent
+ * Method:    addRemapperBlackList
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_addRemapperBlackList
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     cn_xiaozhou233_juiceagent_api_JuiceAgent
+ * Method:    removeRemapperWhiteList
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_removeRemapperWhiteList
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     cn_xiaozhou233_juiceagent_api_JuiceAgent
+ * Method:    removeRemapperBlackList
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_removeRemapperBlackList
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     cn_xiaozhou233_juiceagent_api_JuiceAgent
+ * Method:    clearRemapperWhiteList
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_clearRemapperWhiteList
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     cn_xiaozhou233_juiceagent_api_JuiceAgent
+ * Method:    clearRemapperBlackList
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_clearRemapperBlackList
+  (JNIEnv *, jclass);
+
 #ifdef __cplusplus
 }
 #endif
