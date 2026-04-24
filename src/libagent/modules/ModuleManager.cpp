@@ -24,7 +24,7 @@ bool ModuleManager::init_all() {
 
         if (!module->init()) {
             PLOGE << "Failed to init module: " << module->name();
-            return false;
+            continue;
         }
     }
 
@@ -37,7 +37,7 @@ bool ModuleManager::start_all() {
 
         if (!module->start()) {
             PLOGE << "Failed to start module: " << module->name();
-            return false;
+            continue;
         }
     }
 
