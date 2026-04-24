@@ -1,69 +1,128 @@
 #pragma once
 
-#include <eventpp/eventdispatcher.h>
 #include <unordered_map>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <typeindex>
+#include <vector>
+#include <algorithm>
+#include <atomic>
+#include <cstdint>
 
 class EventBus {
 public:
+    using Token = std::uint64_t;
+
     template<typename Event>
     using Listener = std::function<void(const Event&)>;
 
     template<typename Event>
-    void subscribe(Listener<Event> listener, int priority = 0) {
+    Token subscribe(Listener<Event> listener, int priority = 0) {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto& dispatcher = getDispatcher<Event>();
-        dispatcher.appendListener(priority, std::move(listener));
+
+        auto& vec = getListeners<Event>();
+
+        Token token = nextToken_++;
+
+        vec.push_back({
+            token,
+            priority,
+            std::move(listener)
+        });
+
+        std::sort(vec.begin(), vec.end(),
+            [](const auto& a, const auto& b) {
+                return a.priority > b.priority;
+            });
+
+        return token;
+    }
+
+    template<typename Event>
+    bool unsubscribe(Token token) {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        auto type = std::type_index(typeid(Event));
+        auto it = listeners_.find(type);
+        if (it == listeners_.end()) {
+            return false;
+        }
+
+        auto& vec =
+            *std::static_pointer_cast<std::vector<Node<Event>>>(it->second);
+
+        auto oldSize = vec.size();
+
+        vec.erase(
+            std::remove_if(vec.begin(), vec.end(),
+                [token](const Node<Event>& node) {
+                    return node.token == token;
+                }),
+            vec.end()
+        );
+
+        return vec.size() != oldSize;
+    }
+
+    template<typename Event>
+    void post(const Event& event) {
+        std::vector<Node<Event>> copy;
+
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+
+            auto type = std::type_index(typeid(Event));
+            auto it = listeners_.find(type);
+
+            if (it == listeners_.end()) {
+                return;
+            }
+
+            copy =
+                *std::static_pointer_cast<std::vector<Node<Event>>>(it->second);
+        }
+
+        for (auto& node : copy) {
+            node.callback(event);
+        }
     }
 
     template<typename Event>
     void clear() {
         std::lock_guard<std::mutex> lock(mutex_);
-        dispatchers_.erase(std::type_index(typeid(Event)));
+        listeners_.erase(std::type_index(typeid(Event)));
     }
 
-    template<typename Event>
-    void post(const Event& event) {
-        std::shared_ptr<void> dispatcherPtr;
-
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            auto it = dispatchers_.find(std::type_index(typeid(Event)));
-            if(it == dispatchers_.end()) return;
-            dispatcherPtr = it->second;
-        }
-
-        auto dispatcher = std::static_pointer_cast<
-            eventpp::EventDispatcher<int, void(const Event&)>
-        >(dispatcherPtr);
-
-        dispatcher->dispatch(0, event);
+    void clearAll() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        listeners_.clear();
     }
 
 private:
-    std::mutex mutex_;
+    template<typename Event>
+    struct Node {
+        Token token;
+        int priority;
+        Listener<Event> callback;
+    };
 
-    std::unordered_map<std::type_index, std::shared_ptr<void>> dispatchers_;
+    std::mutex mutex_;
+    std::atomic<Token> nextToken_ {1};
+
+    std::unordered_map<std::type_index, std::shared_ptr<void>> listeners_;
 
     template<typename Event>
-    eventpp::EventDispatcher<int, void(const Event&)>& getDispatcher() {
-        auto typeIdx = std::type_index(typeid(Event));
-        auto it = dispatchers_.find(typeIdx);
+    std::vector<Node<Event>>& getListeners() {
+        auto type = std::type_index(typeid(Event));
+        auto it = listeners_.find(type);
 
-        if(it == dispatchers_.end()) {
-            auto dispatcher = std::make_shared<
-                eventpp::EventDispatcher<int, void(const Event&)>
-            >();
-
-            dispatchers_[typeIdx] = dispatcher;
-            return *dispatcher;
+        if (it == listeners_.end()) {
+            auto ptr = std::make_shared<std::vector<Node<Event>>>();
+            listeners_[type] = ptr;
+            return *ptr;
         }
 
-        return *std::static_pointer_cast<
-            eventpp::EventDispatcher<int, void(const Event&)>
-        >(it->second);
+        return *std::static_pointer_cast<std::vector<Node<Event>>>(it->second);
     }
 };
