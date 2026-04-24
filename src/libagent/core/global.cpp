@@ -6,3 +6,5 @@ std::mutex classDataMutex;
 
 std::unordered_map<std::string, std::vector<unsigned char>> pendingRetransform;
 std::mutex pendingRetransformMutex;
+
+std::unordered_set<std::string> remapperWhiteList;
