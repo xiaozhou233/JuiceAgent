@@ -24,3 +24,17 @@ void JNICALL ClassFileLoadHook(
         const unsigned char* classbytes,
         jint* new_class_data_len,
         unsigned char** new_classbytes);
+
+// See https://docs.oracle.com/javase/8/docs/platform/jvmti/jvmti.html#MethodEntry
+void JNICALL MethodEntry(jvmtiEnv *jvmti_env,
+            JNIEnv* jni_env,
+            jthread thread,
+            jmethodID method);
+
+// See https://docs.oracle.com/javase/8/docs/platform/jvmti/jvmti.html#MethodExit
+void JNICALL MethodExit(jvmtiEnv *jvmti_env,
+            JNIEnv* jni_env,
+            jthread thread,
+            jmethodID method,
+            jboolean was_popped_by_exception,
+            jvalue return_value);

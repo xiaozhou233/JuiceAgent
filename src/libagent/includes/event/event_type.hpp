@@ -16,6 +16,24 @@ struct EventClassFileLoadHook {
     unsigned char** new_classbytes;
 };
 
+// MethodEntry
+struct EventMethodEntry {
+    jvmtiEnv* jvmti_env;
+    JNIEnv* jni_env;
+    jthread thread;
+    jmethodID method;
+};
+
+// MethodExit
+struct EventMethodExit {
+    jvmtiEnv* jvmti_env;
+    JNIEnv* jni_env;
+    jthread thread;
+    jmethodID method;
+    jboolean was_popped_by_exception;
+    jvalue return_value;
+};
+
 // JuiceAgent PreLoad/PostLoad
 struct EventPreLoad {
     JavaVM* jvm;
