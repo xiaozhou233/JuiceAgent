@@ -3,7 +3,7 @@
 #include <jni_impl.hpp>
 
 // ClassFileLoadHook
-struct EventClassFileLoadHook {
+struct      EventClassFileLoadHook {
     jvmtiEnv* jvmti_env;
     JNIEnv* jni_env;
     jclass class_being_redefined;
