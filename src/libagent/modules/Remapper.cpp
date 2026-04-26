@@ -178,76 +178,68 @@ private:
     void on_class_file_load_hook(const EventClassFileLoadHook& event) {
         std::string_view name = event.name ? event.name : "";
 
-        if (name.starts_with("cn/xiaozhou233/juiceremapper/"))
+        if (name.starts_with("cn/xiaozhou233/juiceremapper/")) {
             return;
+        }
 
-        for (const auto& prefix : remapperWhiteList) {
-            if (!name.starts_with(prefix)) {
-                continue;
-            }
+        JNIEnv* env = event.jni_env;
 
-            JNIEnv* env = event.jni_env;
+        std::string className(name);
+        jstring jName = env->NewStringUTF(className.c_str());
+        if (jName == nullptr) {
+            return;
+        }
 
-            std::string className(name);
-            jstring jName = env->NewStringUTF(className.c_str());
-            if (jName == nullptr) {
-                return;
-            }
-
-            jbyteArray input = env->NewByteArray(event.class_data_len);
-            if (input == nullptr) {
-                env->DeleteLocalRef(jName);
-                return;
-            }
-
-            env->SetByteArrayRegion(
-                input,
-                0,
-                event.class_data_len,
-                reinterpret_cast<const jbyte*>(event.classbytes)
-            );
-
-            jbyteArray output = static_cast<jbyteArray>(
-                env->CallStaticObjectMethod(
-                    Remapper.handler_class,
-                    Remapper.onClassFileLoadMethod,
-                    event.class_being_redefined,
-                    event.loader,
-                    jName,
-                    event.protection_domain,
-                    event.class_data_len,
-                    input
-                )
-            );
-
-            check_and_clear_exception(env, "on_class_file_load_hook");
-
-            if (output != nullptr) {
-                jsize len = env->GetArrayLength(output);
-
-                unsigned char* buffer = nullptr;
-
-                if (event.jvmti_env->Allocate(len, &buffer) == JVMTI_ERROR_NONE) {
-                    env->GetByteArrayRegion(
-                        output,
-                        0,
-                        len,
-                        reinterpret_cast<jbyte*>(buffer)
-                    );
-
-                    *event.new_class_data_len = len;
-                    *event.new_classbytes = buffer;
-                }
-
-                env->DeleteLocalRef(output);
-            }
-
-            env->DeleteLocalRef(input);
+        jbyteArray input = env->NewByteArray(event.class_data_len);
+        if (input == nullptr) {
             env->DeleteLocalRef(jName);
             return;
         }
-    }
 
+        env->SetByteArrayRegion(
+            input,
+            0,
+            event.class_data_len,
+            reinterpret_cast<const jbyte*>(event.classbytes)
+        );
+
+        jbyteArray output = static_cast<jbyteArray>(
+            env->CallStaticObjectMethod(
+                Remapper.handler_class,
+                Remapper.onClassFileLoadMethod,
+                event.class_being_redefined,
+                event.loader,
+                jName,
+                event.protection_domain,
+                event.class_data_len,
+                input
+            )
+        );
+
+        check_and_clear_exception(env, "on_class_file_load_hook");
+
+        if (output != nullptr) {
+            jsize len = env->GetArrayLength(output);
+            unsigned char* buffer = nullptr;
+
+            if (event.jvmti_env->Allocate(len, &buffer) == JVMTI_ERROR_NONE) {
+                env->GetByteArrayRegion(
+                    output,
+                    0,
+                    len,
+                    reinterpret_cast<jbyte*>(buffer)
+                );
+
+                *event.new_class_data_len = len;
+                *event.new_classbytes = buffer;
+            }
+
+            env->DeleteLocalRef(output);
+        }
+
+        env->DeleteLocalRef(input);
+        env->DeleteLocalRef(jName);
+    }
     void on_method_entry_hook(const EventMethodEntry& event) {
         // event.jni_env->CallStaticVoidMethod(
         //     Remapper.handler_class,
