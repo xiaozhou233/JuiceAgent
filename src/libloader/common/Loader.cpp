@@ -71,11 +71,20 @@ void entrypoint(const char* runtime_dir) {
     JuiceAgent::Config::Utils::print_loader_config(config);
 
     // Save bytes to file
-    std::string juiceagent_api_path = JuiceAgent::Utils::File::write_to_tempfile(
-        JuiceAgent::Resource::juiceagent_api_bytes,
-        JuiceAgent::Resource::juiceagent_api_bytes_len,
-        JuiceAgent::Resource::juiceagent_api_bytes_name
-    );
+    std::string hash =
+        JuiceAgent::Resource::juiceagent_api_bytes_sha256;
+
+    std::string file_name =
+        hash.substr(0, 8) + "_" +
+        JuiceAgent::Resource::juiceagent_api_bytes_name;
+
+    std::string juiceagent_api_path =
+        JuiceAgent::Utils::File::write_to_tempfile(
+            JuiceAgent::Resource::juiceagent_api_bytes,
+            JuiceAgent::Resource::juiceagent_api_bytes_len,
+            file_name
+        );
+        
     PLOGD << "Saved JuiceAgent-API to: " << juiceagent_api_path;
     PLOGD << "JuiceAgent-API size: " << JuiceAgent::Resource::juiceagent_api_bytes_len;
     PLOGD << "JuiceAgent-API SHA256: " << JuiceAgent::Resource::juiceagent_api_bytes_sha256;
