@@ -7,6 +7,10 @@
 #include <unordered_map>
 #include <type_traits>
 #include <cstdlib>
+#include <fstream>
+#include <filesystem>
+#include <chrono>
+#include <stdexcept>
 
 // Check for JNI exceptions and clear them
 inline bool check_and_clear_exception(JNIEnv* env, const char* context) {
@@ -261,6 +265,42 @@ namespace JuiceAgent::Utils
 
         std::size_t size() const {
             return data.size();
+        }
+    };
+
+    class File {
+    public:
+        static inline std::string make_timestamp_filename(const std::string& name) {
+            using namespace std::chrono;
+
+            auto ms = duration_cast<milliseconds>(
+                system_clock::now().time_since_epoch()
+            ).count();
+
+            return std::to_string(ms) + "_" + name;
+        }
+
+        static inline std::string write_to_tempfile(
+            const unsigned char* data,
+            std::size_t size,
+            const std::string& name
+        ) {
+    #ifdef _WIN32
+            const char* env = std::getenv("TEMP");
+            std::filesystem::path dir = env ? env : ".";
+    #else
+            const char* env = std::getenv("TMPDIR");
+            std::filesystem::path dir = env ? env : "/tmp";
+    #endif
+
+            auto path = dir / make_timestamp_filename(name);
+
+            std::ofstream out(path, std::ios::binary);
+            if (!out)
+                throw std::runtime_error("Failed to create temp file");
+
+            out.write(reinterpret_cast<const char*>(data), size);
+            return path.string();
         }
     };
 } // namespace JuiceAgent::Utils
