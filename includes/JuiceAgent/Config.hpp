@@ -130,7 +130,6 @@ namespace Utils {
         auto cfg = config.get_config().at("JuiceAgent").at("Loader");
         
         LoaderConfig loader_config = LoaderConfig();
-        loader_config.JuiceAgentAPIJarPath = cfg.at("JuiceAgentAPIJarPath").as_string();
         loader_config.JuiceAgentNativeLibraryPath = cfg.at("JuiceAgentNativeLibraryPath").as_string();
         loader_config.RuntimeDir = config.runtime_dir().string();
 
@@ -138,7 +137,6 @@ namespace Utils {
     }
 
     inline void print_loader_config(const LoaderConfig& config) {
-        PLOGI << "JuiceAgentAPIJarPath: " << config.JuiceAgentAPIJarPath;
         PLOGI << "JuiceAgentNativeLibraryPath: " << config.JuiceAgentNativeLibraryPath;
         PLOGI << "RuntimeDir: " << config.RuntimeDir;
     }
@@ -153,7 +151,6 @@ namespace Utils {
 
         JuiceAgent::Utils::Serializer ser;
         ser.add_kv("Version", 2);
-        ser.add_kv("JuiceAgentAPIJarPath", config.JuiceAgentAPIJarPath);
         ser.add_kv("JuiceAgentNativeLibraryPath", config.JuiceAgentNativeLibraryPath);
         ser.add_kv("RuntimeDir", config.RuntimeDir);
 
