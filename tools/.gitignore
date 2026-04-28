@@ -1,0 +1,4 @@
+*.h
+*.hpp
+JuiceAgent-API*.jar
+*.class
