@@ -270,16 +270,6 @@ namespace JuiceAgent::Utils
 
     class File {
     public:
-        static inline std::string make_timestamp_filename(const std::string& name) {
-            using namespace std::chrono;
-
-            auto ms = duration_cast<milliseconds>(
-                system_clock::now().time_since_epoch()
-            ).count();
-
-            return std::to_string(ms) + "_" + name;
-        }
-
         static inline std::string write_to_tempfile(
             const unsigned char* data,
             std::size_t size,
@@ -293,11 +283,13 @@ namespace JuiceAgent::Utils
             std::filesystem::path dir = env ? env : "/tmp";
     #endif
 
-            auto path = dir / make_timestamp_filename(name);
+            auto path = dir / name;
 
-            std::ofstream out(path, std::ios::binary);
-            if (!out)
-                throw std::runtime_error("Failed to create temp file");
+            std::ofstream out(path, std::ios::binary | std::ios::trunc);
+            if (!out) {
+                PLOGE << "Failed to create temp file " << path;
+                return "";
+            }
 
             out.write(reinterpret_cast<const char*>(data), size);
             return path.string();
