@@ -1,4 +1,5 @@
 #include <modules/ModuleRegistry.hpp>
+#include <modules/ModuleBase.hpp>
 #include <JuiceAgent/Logger.hpp>
 #include <libagent.hpp>
 #include <event/eventbus.hpp>
@@ -21,17 +22,16 @@ struct DumperConfig {
 static DumperConfig config;
 static JuiceAgent::Agent& agent = JuiceAgent::Agent::instance();
 
-class Dumper : public IModule {
+class Dumper : public ModuleBase {
+    using super = ModuleBase;
+
 public:
     std::string name() const override {
         return "Dumper";
     }
 
-    bool init() override {
-        if (_initialized) {
-            return true;
-        }
-
+protected:
+    bool on_init() override {
         auto& cfg = agent.get_config();
 
         config.enabled = cfg.get<bool>(
@@ -45,19 +45,10 @@ public:
             true
         );
 
-        _initialized = true;
         return true;
     }
 
-    bool start() override {
-        if (!_initialized) {
-            return false;
-        }
-
-        if (_running) {
-            return true;
-        }
-
+    bool on_start() override {
         if (!config.enabled) {
             return true;
         }
@@ -70,27 +61,30 @@ public:
             }
         );
 
-        _running = true;
         return true;
     }
 
-    void stop() override {
-        if (!_running) {
+    void on_stop() override {
+        if (!config.enabled) {
             return;
         }
 
         auto& bus = agent.get_eventbus();
-        bus.unsubscribe<EventClassFileLoadHook>(_classFileToken);
 
-        _running = false;
+        if (_classFileToken != 0) {
+            bus.unsubscribe<EventClassFileLoadHook>(_classFileToken);
+            _classFileToken = 0;
+        }
     }
 
+private:
     void on_class_file_load_hook(const EventClassFileLoadHook& event) {
         if (!event.classbytes || event.class_data_len <= 0) {
             return;
         }
 
         std::string_view name = event.name ? event.name : "";
+
         if (name.empty()) {
             return;
         }
@@ -104,6 +98,7 @@ public:
             }
 
             std::ofstream file(output, std::ios::binary);
+
             if (!file.is_open()) {
                 PLOGW << "Dumper: Failed to open file: " << output.string();
                 return;
@@ -113,28 +108,19 @@ public:
                 reinterpret_cast<const char*>(event.classbytes),
                 static_cast<std::streamsize>(event.class_data_len)
             );
-
-            file.close();
         } catch (const std::exception& e) {
             PLOGE << "Dumper: " << e.what();
         }
     }
 
-private:
-    fs::path build_class_path(std::string_view className) {
+    fs::path build_class_path(std::string_view class_name) {
         fs::path path(config.DumpDir);
-
-        // JVM name format: cn/xiaozhou233/Test
-        path /= fs::path(className);
+        path /= fs::path(class_name);
         path += ".class";
-
         return path;
     }
 
 private:
-    bool _initialized = false;
-    bool _running = false;
-
     EventBus::Token _classFileToken = 0;
     std::mutex _mutex;
 };

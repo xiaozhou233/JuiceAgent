@@ -1,4 +1,5 @@
 #include <modules/ModuleRegistry.hpp>
+#include <modules/ModuleBase.hpp>
 #include <JuiceAgent/Logger.hpp>
 #include <libagent.hpp>
 #include <JuiceAgent/Utils.hpp>
@@ -16,20 +17,21 @@ struct JarLoaderConfig {
 static JarLoaderConfig config;
 static JuiceAgent::Agent& agent = JuiceAgent::Agent::instance();
 
-static const char* MODULE_CLASS = "cn/xiaozhou233/juiceagent/api/modules/JarLoader";
+static const char* MODULE_CLASS =
+    "cn/xiaozhou233/juiceagent/api/modules/JarLoader";
+
 static const char* MODULE_METHOD = "loadJar";
 
-class JarLoaderModule : public IModule {
+class JarLoaderModule : public ModuleBase {
+    using super = ModuleBase;
+
 public:
     std::string name() const override {
         return "JarLoader";
     }
 
-    bool init() override {
-        if (_initialized) {
-            return true;
-        }
-
+protected:
+    bool on_init() override {
         auto& cfg = agent.get_config();
 
         config.enabled = cfg.get<bool>(
@@ -62,20 +64,16 @@ public:
         );
 
         PLOGI << "JarLoader init";
-        _initialized = true;
         return true;
     }
 
-    bool start() override {
-        if (!_initialized) {
-            return false;
-        }
-
-        if (_running || !config.enabled) {
+    bool on_start() override {
+        if (!config.enabled) {
             return true;
         }
 
         JuiceAgent::Utils::Serializer ser;
+
         ser.add_kv("InjectionDir", config.injection_dir);
         ser.add_kv("JarPath", config.jar_path);
         ser.add_kv("EntryClass", config.entry_class);
@@ -91,22 +89,12 @@ public:
         );
 
         PLOGI << "JarLoader start";
-        _running = true;
         return true;
     }
 
-    void stop() override {
-        if (!_running) {
-            return;
-        }
-
+    void on_stop() override {
         PLOGI << "JarLoader stop";
-        _running = false;
     }
-
-private:
-    bool _initialized = false;
-    bool _running = false;
 };
 
 }

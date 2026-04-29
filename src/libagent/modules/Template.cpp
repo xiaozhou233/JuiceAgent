@@ -1,58 +1,28 @@
-#include <modules/ModuleRegistry.hpp>
+#include <modules/ModuleBase.hpp>
 #include <JuiceAgent/Logger.hpp>
 
 namespace JuiceAgent::Core::Modules {
 
-class TemplateModule : public IModule {
+class TemplateModule : public ModuleBase {
 public:
     std::string name() const override {
         return "Template";
     }
 
-    bool init() override {
-        if (_initialized) {
-            return true;
-        }
-
+protected:
+    bool on_init() override {
         // load config / prepare resource
-
-        _initialized = true;
         return true;
     }
 
-    bool start() override {
-        if (!_initialized) {
-            return false;
-        }
-
-        if (_running) {
-            return true;
-        }
-
-        // start logic
-
-        _running = true;
+    bool on_start() override {
+        // start module
         return true;
     }
 
-    void stop() override {
-        if (!_running) {
-            return;
-        }
-
-        // cleanup logic
-
-        _running = false;
+    void on_stop() override {
+        // stop module
     }
-
-private:
-    bool _initialized = false;
-    bool _running = false;
 };
 
 }
-
-JUICEAGENT_REGISTER_MODULE(
-    JuiceAgent::Core::Modules::TemplateModule,
-    Template
-)

@@ -1,4 +1,5 @@
 #include <modules/ModuleRegistry.hpp>
+#include <modules/ModuleBase.hpp>
 #include <JuiceAgent/Logger.hpp>
 #include <libagent.hpp>
 #include <event/event_type.hpp>
@@ -17,7 +18,9 @@ struct RemapperConfig {
 static RemapperConfig config;
 static JuiceAgent::Agent& agent = JuiceAgent::Agent::instance();
 
-class RemapperModule : public IModule {
+class RemapperModule : public ModuleBase {
+    using super = ModuleBase;
+
     struct _Remapper {
         jclass handler_class = nullptr;
         jmethodID onClassFileLoadMethod = nullptr;
@@ -30,11 +33,8 @@ public:
         return "Remapper";
     }
 
-    bool init() override {
-        if (_initialized) {
-            return true;
-        }
-
+protected:
+    bool on_init() override {
         auto& cfg = agent.get_config();
 
         config.enabled = cfg.get<bool>(
@@ -49,7 +49,6 @@ public:
         );
 
         if (!config.enabled) {
-            _initialized = true;
             return true;
         }
 
@@ -114,21 +113,11 @@ public:
             return false;
         }
 
-        _initialized = true;
         return true;
     }
 
-    bool start() override {
-        if (!_initialized) {
-            return false;
-        }
-
-        if (_running) {
-            return true;
-        }
-
+    bool on_start() override {
         if (!config.enabled) {
-            _running = true;
             return true;
         }
 
@@ -152,26 +141,38 @@ public:
             }
         );
 
-        _running = true;
         return true;
     }
 
-    void stop() override {
-        if (!_running) {
+    void on_stop() override {
+        if (!config.enabled) {
             return;
         }
 
         auto& bus = agent.get_eventbus();
 
-        bus.unsubscribe<EventClassFileLoadHook>(_classFileToken);
-        bus.unsubscribe<EventMethodEntry>(_methodEntryToken);
-        bus.unsubscribe<EventMethodExit>(_methodExitToken);
+        if (_classFileToken != 0) {
+            bus.unsubscribe<EventClassFileLoadHook>(_classFileToken);
+        }
+
+        if (_methodEntryToken != 0) {
+            bus.unsubscribe<EventMethodEntry>(_methodEntryToken);
+        }
+
+        if (_methodExitToken != 0) {
+            bus.unsubscribe<EventMethodExit>(_methodExitToken);
+        }
 
         _classFileToken = 0;
         _methodEntryToken = 0;
         _methodExitToken = 0;
 
-        _running = false;
+        JNIEnv* env = agent.get_env();
+
+        if (env != nullptr && Remapper.handler_class != nullptr) {
+            env->DeleteGlobalRef(Remapper.handler_class);
+            Remapper.handler_class = nullptr;
+        }
     }
 
 private:
@@ -184,15 +185,16 @@ private:
 
         JNIEnv* env = event.jni_env;
 
-        std::string className(name);
-        jstring jName = env->NewStringUTF(className.c_str());
-        if (jName == nullptr) {
+        std::string class_name(name);
+
+        jstring j_name = env->NewStringUTF(class_name.c_str());
+        if (j_name == nullptr) {
             return;
         }
 
         jbyteArray input = env->NewByteArray(event.class_data_len);
         if (input == nullptr) {
-            env->DeleteLocalRef(jName);
+            env->DeleteLocalRef(j_name);
             return;
         }
 
@@ -209,7 +211,7 @@ private:
                 Remapper.onClassFileLoadMethod,
                 event.class_being_redefined,
                 event.loader,
-                jName,
+                j_name,
                 event.protection_domain,
                 event.class_data_len,
                 input
@@ -238,8 +240,9 @@ private:
         }
 
         env->DeleteLocalRef(input);
-        env->DeleteLocalRef(jName);
+        env->DeleteLocalRef(j_name);
     }
+
     void on_method_entry_hook(const EventMethodEntry& event) {
         // event.jni_env->CallStaticVoidMethod(
         //     Remapper.handler_class,
@@ -265,9 +268,6 @@ private:
     }
 
 private:
-    bool _initialized = false;
-    bool _running = false;
-
     EventBus::Token _classFileToken = 0;
     EventBus::Token _methodEntryToken = 0;
     EventBus::Token _methodExitToken = 0;

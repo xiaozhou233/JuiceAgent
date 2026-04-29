@@ -12,6 +12,9 @@ public:
     virtual bool init() = 0;
     virtual bool start() = 0;
     virtual void stop() = 0;
+
+    virtual bool initialized() const = 0;
+    virtual bool running() const = 0;
 };
 
 }
