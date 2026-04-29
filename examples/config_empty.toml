@@ -13,10 +13,6 @@ JarPath = ""
 EntryClass = ""
 EntryMethod = ""
 
-[JuiceAgent.Modules.Remapper]
-Enabled = false
-JuiceRemapperJarPath = ""
-
 [JuiceAgent.Modules.Dumper]
 Enabled = false
 DumpDir = ""
