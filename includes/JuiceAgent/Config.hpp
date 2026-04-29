@@ -94,7 +94,7 @@ public:
 
             if constexpr (std::is_same_v<T, std::string>) {
                 if (value.empty()) {
-                    return default_value;
+                    value = default_value;
                 }
 
                 // Handle relative paths
