@@ -127,10 +127,11 @@ public:
 
 namespace Utils {
     inline LoaderConfig get_loader_config(const Config& config) {
-        auto cfg = config.get_config().at("JuiceAgent").at("Loader");
         
         LoaderConfig loader_config = LoaderConfig();
-        loader_config.JuiceAgentNativeLibraryPath = cfg.at("JuiceAgentNativeLibraryPath").as_string();
+        loader_config.JuiceAgentNativeLibraryPath = config.get<std::string>("JuiceAgent.Loader.JuiceAgentNativeLibraryPath", 
+            (config.runtime_dir()/"libagent.dll").string(),
+            true);
         loader_config.RuntimeDir = config.runtime_dir().string();
 
         return loader_config;
