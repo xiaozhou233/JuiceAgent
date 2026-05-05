@@ -8,6 +8,9 @@
 #include <string>
 #include <string_view>
 #include <cstring>
+#include <unordered_set>
+
+#include <global.hpp>
 
 namespace JuiceAgent::Core::Modules {
 
@@ -26,7 +29,60 @@ jmethodID RemapperBridge::remap_method = nullptr;
 static JuiceAgent::Agent& agent = JuiceAgent::Agent::instance();
 static RemapperConfig config;
 
-// 防递归
+// ===== match result =====
+struct MatchResult {
+    size_t length = 0;   // length of matched prefix
+    bool matched = false;
+};
+
+// ===== find longest prefix match =====
+static MatchResult match_longest(
+    const std::unordered_set<std::string>& list,
+    std::string_view name
+) {
+    MatchResult result;
+
+    for (const auto& prefix : list) {
+        if (name.starts_with(prefix)) {
+            if (!result.matched || prefix.length() > result.length) {
+                result.matched = true;
+                result.length = prefix.length();
+            }
+        }
+    }
+
+    return result;
+}
+
+// ===== final decision =====
+static bool should_remap(std::string_view name) {
+    auto white = match_longest(remapperWhiteList, name);
+    auto black = match_longest(remapperBlackList, name);
+
+    // no match at all -> deny
+    if (!white.matched && !black.matched) {
+        return false;
+    }
+
+    // only white matched
+    if (white.matched && !black.matched) {
+        return true;
+    }
+
+    // only black matched
+    if (!white.matched && black.matched) {
+        return false;
+    }
+
+    // both matched -> choose longer prefix
+    if (white.length >= black.length) {
+        return true;   // whitelist wins
+    } else {
+        return false;  // blacklist wins (more specific)
+    }
+}
+
+// recursion guard
 static thread_local bool in_remap = false;
 
 class RemapperModule : public ModuleBase {
@@ -50,11 +106,9 @@ protected:
 
         JNIEnv* env = agent.get_env();
 
-        // === 找类 ===
         jclass local_class = env->FindClass(
             "cn/xiaozhou233/juiceremapper/bridge/JuiceAgentBridge"
         );
-
         if (!local_class) {
             PLOGE << "Failed to find JuiceAgentBridge";
             return false;
@@ -64,13 +118,11 @@ protected:
             reinterpret_cast<jclass>(env->NewGlobalRef(local_class));
         env->DeleteLocalRef(local_class);
 
-        // === 找方法 ===
         RemapperBridge::remap_method = env->GetStaticMethodID(
             RemapperBridge::bridge_class,
             "remap",
             "(Ljava/lang/Class;Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Object;I[B)[B"
         );
-
         if (!RemapperBridge::remap_method) {
             PLOGE << "Failed to find remap method";
             return false;
@@ -105,7 +157,6 @@ protected:
             _classFileToken = 0;
         }
 
-        // 释放 GlobalRef
         JNIEnv* env = agent.get_env();
         if (RemapperBridge::bridge_class) {
             env->DeleteGlobalRef(RemapperBridge::bridge_class);
@@ -115,7 +166,6 @@ protected:
 
 private:
     void on_class_file_load_hook(EventClassFileLoadHook& event) {
-        // === 基础检查 ===
         if (!event.classbytes || event.class_data_len <= 0) {
             return;
         }
@@ -123,15 +173,10 @@ private:
         std::string_view name = event.name ? event.name : "";
         if (name.empty()) return;
 
-        // === 防递归 ===
         if (in_remap) return;
 
-        // === 过滤系统类 ===
-        if (name.starts_with("java/") ||
-            name.starts_with("javax/") ||
-            name.starts_with("sun/") ||
-            name.starts_with("jdk/") ||
-            name.starts_with("cn/xiaozhou233/juiceremapper")) {
+        // ===== apply whitelist/blacklist decision =====
+        if (!should_remap(name)) {
             return;
         }
 
@@ -142,7 +187,6 @@ private:
 
         in_remap = true;
 
-        // === 构造输入 byte[] ===
         jbyteArray inputArray = env->NewByteArray(event.class_data_len);
         if (!inputArray) {
             in_remap = false;
@@ -156,10 +200,8 @@ private:
             reinterpret_cast<const jbyte*>(event.classbytes)
         );
 
-        // class name
         jstring jname = env->NewStringUTF(name.data());
 
-        // === 调用 Java remap ===
         jobject result = env->CallStaticObjectMethod(
             RemapperBridge::bridge_class,
             RemapperBridge::remap_method,
@@ -171,7 +213,6 @@ private:
             inputArray
         );
 
-        // === 异常处理 ===
         if (env->ExceptionCheck()) {
             env->ExceptionDescribe();
             env->ExceptionClear();
@@ -197,7 +238,6 @@ private:
             return;
         }
 
-        // === JVMTI 分配 ===
         unsigned char* new_class_data = nullptr;
 
         if (jvmti->Allocate(new_len, &new_class_data) != JVMTI_ERROR_NONE) {
@@ -209,11 +249,9 @@ private:
 
         std::memcpy(new_class_data, new_bytes, new_len);
 
-        // === 写回 ===
         *event.new_classbytes = new_class_data;
         *event.new_class_data_len = new_len;
 
-        // === 清理 ===
         env->ReleaseByteArrayElements(outputArray, new_bytes, JNI_ABORT);
         cleanup(env, inputArray, jname, outputArray);
 
