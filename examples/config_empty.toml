@@ -16,3 +16,6 @@ EntryMethod = ""
 [JuiceAgent.Modules.Dumper]
 Enabled = false
 DumpDir = ""
+
+[JuiceAgent.Modules.Remapper]
+Enabled = false
