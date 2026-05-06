@@ -4,6 +4,8 @@ JuiceAgent is an advanced JVMTI-based injection framework designed for runtime J
 
 **Warning**: This project is still experimental and is not recommended for production use. Use it at your own risk.
 
+**Note**: This project is designed for a regular JVM. Custom JVMs may not be able to run it.
+
 ![License](https://img.shields.io/github/license/xiaozhou233/JuiceAgent)
 ![Release](https://img.shields.io/github/v/release/xiaozhou233/JuiceAgent)
 ![GitHub last commit](https://img.shields.io/github/last-commit/xiaozhou233/JuiceAgent)
