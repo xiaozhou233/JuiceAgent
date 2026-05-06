@@ -16,6 +16,7 @@ namespace JuiceAgent::Core::Modules {
 
 struct RemapperConfig {
     bool enabled = false;
+    std::string JuiceRemapperJarPath;
 };
 
 struct RemapperBridge {
@@ -100,11 +101,24 @@ protected:
             false
         );
 
+        config.JuiceRemapperJarPath =  cfg.get<std::string>(
+            "JuiceAgent.Modules.Remapper.JuiceRemapperJarPath",
+            "./JuiceRemapper.jar",
+            true
+        );
+
         if (!config.enabled) {
             return true;
         }
 
         JNIEnv* env = agent.get_env();
+        jvmtiEnv* jvmti = agent.get_jvmti();
+
+        // Load JuiceRemapper
+        if (jvmti->AddToSystemClassLoaderSearch(config.JuiceRemapperJarPath.c_str()) != JNI_OK) {
+            PLOGE << "Failed to add JuiceRemapper to system class loader search";
+            return false;
+        }
 
         jclass local_class = env->FindClass(
             "cn/xiaozhou233/juiceremapper/bridge/JuiceAgentBridge"

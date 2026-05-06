@@ -19,3 +19,4 @@ DumpDir = ""
 
 [JuiceAgent.Modules.Remapper]
 Enabled = false
+JuiceRemapperJarPath = ""
