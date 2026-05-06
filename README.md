@@ -31,6 +31,7 @@ With JuiceAgent, developers can:
  - Invoke a specified entry class and method after injection    
  - Redefine already loaded classes at runtime
  - Retransform bytecode for instrumentation or modification
+ - Dump classes to disk by -agentpath:libagent.dll flags
  - And more...
 
 **If you have any questions or suggestions, please feel free to open an issue or submit a pull request. =D**
@@ -68,13 +69,10 @@ This project is the native implementation of JuiceAgent-API. See [JuiceAgent.jav
 
 ## Quick Start
 ### 1. Download Release
-Download `libagent.dll` `libinject.dll` `libloader.dll` and `injector.exe` from the [releases](https://github.com/xiaozhou233/JuiceAgent/releases) page.
+Download `JuiceAgent_vx.x.x_x64.zip` from the [releases](https://github.com/xiaozhou233/JuiceAgent/releases) page.
 
-Download `JuiceAgent-API-x.x.x+build.x.jar` from the [JuiceAgent-API](https://github.com/xiaozhou233/JuiceAgent-API/releases) page.
-
-Put the downloaded files into the same directory.
+Extract the ZIP file to a directory.
 - YourDir
-  - JuiceAgent-API-x.x.x+build.x.jar
   - libagent.dll
   - libinject.dll
   - libloader.dll
@@ -82,7 +80,6 @@ Put the downloaded files into the same directory.
 
 ### 2. Copy your custom JAR/Dependencies to Directory
 - YourDir
-  - JuiceAgent-API-x.x.x+build.x.jar
   - libagent.dll
   - libinject.dll
   - libloader.dll
@@ -115,6 +112,7 @@ JarPath = "./MyCustomJar.jar"
 # Entry class to be executed after loading the JAR
 EntryClass = "Example.Main"
 # Entry method to be executed after loading the JAR
+# Method: public static void run()
 EntryMethod = "run"
 ```
 
@@ -122,7 +120,6 @@ Save the config file as `config.toml`.
 
 - YourDir
   - **config.toml**
-  - JuiceAgent-API-x.x.x+build.x.jar
   - libagent.dll
   - libinject.dll
   - libloader.dll
