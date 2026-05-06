@@ -1,3 +1,4 @@
+#include <modules/ModuleRegistry.hpp>
 #include <modules/ModuleBase.hpp>
 #include <JuiceAgent/Logger.hpp>
 
@@ -24,5 +25,11 @@ protected:
         // stop module
     }
 };
+
+// If you want to register the module, uncomment the following lines
+// JUICEAGENT_REGISTER_MODULE(
+//     JuiceAgent::Core::Modules::TemplateModule,
+//     TemplateModule
+// )
 
 }

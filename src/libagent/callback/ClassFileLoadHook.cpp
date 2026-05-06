@@ -18,7 +18,8 @@ void JNICALL ClassFileLoadHook(
             }
 
             auto& agent = JuiceAgent::Agent::instance();
-            agent.get_eventbus().post(EventClassFileLoadHook{
+
+            EventClassFileLoadHook event{
                 .jvmti_env = jvmti_env,
                 .jni_env = jni_env,
                 .class_being_redefined = class_being_redefined,
@@ -29,5 +30,9 @@ void JNICALL ClassFileLoadHook(
                 .classbytes = classbytes,
                 .new_class_data_len = new_class_data_len,
                 .new_classbytes = new_classbytes
-            });
+            };
+
+            agent.get_eventbus().post(event);
+
+            agent.get_eventbus().post_mutable(event);
         }
