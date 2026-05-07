@@ -3,7 +3,7 @@
 #include <jni.h>
 #include <jvmti.h>
 #include <JuiceAgent/Logger.hpp>
-#include <libagent.hpp>
+#include <JuiceAgent.hpp>
 #include <utils.hpp>
 #include <global.hpp>
 #include <algorithm>

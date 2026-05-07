@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libagent.hpp>
+#include <JuiceAgent.hpp>
 
 inline bool check_env(JuiceAgent::Agent& agent) {
     if (agent.get_jvm() == nullptr) {

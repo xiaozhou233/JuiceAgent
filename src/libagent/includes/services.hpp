@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <libagent.hpp>
+#include <JuiceAgent.hpp>
 #include <event/event_type.hpp>
 
 namespace JuiceAgent::services

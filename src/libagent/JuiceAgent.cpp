@@ -1,4 +1,4 @@
-#include <libagent.hpp>
+#include <JuiceAgent.hpp>
 #include <jni_impl.hpp>
 #include <event/event_type.hpp>
 #include <event/eventbus.hpp>

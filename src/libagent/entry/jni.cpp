@@ -1,5 +1,5 @@
 #include <jni_impl.hpp>
-#include <libagent.hpp>
+#include <JuiceAgent.hpp>
 
 // This function is called by Java to initialize the agent.
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_init
