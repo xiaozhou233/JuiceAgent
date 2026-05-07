@@ -36,7 +36,3 @@ extern std::mutex classDataMutex;
 
 extern std::unordered_map<std::string, std::vector<unsigned char>> pendingRetransform;
 extern std::mutex pendingRetransformMutex;
-
-// Remapper WhiteList/BlackList
-extern std::unordered_set<std::string> remapperWhiteList;
-extern std::unordered_set<std::string> remapperBlackList;
