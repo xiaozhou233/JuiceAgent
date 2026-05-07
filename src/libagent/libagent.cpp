@@ -4,6 +4,7 @@
 #include <event/event_type.hpp>
 #include <event/eventbus.hpp>
 #include <JuiceAgent/Config.hpp>
+#include <services.hpp>
 
 namespace JuiceAgent {
     // ===== Singleton =====
@@ -41,12 +42,8 @@ namespace JuiceAgent {
             set_config(cfg);
             PLOGD << "env: " << env << ", jvmti: " << jvmti;
             
-            // Load and Initialize Modules
-            module_manager.load_all();
-            module_manager.init_all();
-            
-            // Initialize Modules
-            module_manager.init_all();
+            // Register events for services
+            JuiceAgent::services::Manager::register_events();
 
             // PreLoad Event
             eventbus.post(EventPreLoad{
@@ -87,10 +84,6 @@ namespace JuiceAgent {
 
             // register bytecodes_opt
             JuiceAgent::Bytecodes::register_bytecodes();
-
-            // Start Modules
-            module_manager.start_all();
-
 
             // Loaded Event
             eventbus.post(EventLoaded{

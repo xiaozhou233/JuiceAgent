@@ -5,7 +5,6 @@
 #include <jvmti.h>
 #include <event/eventbus.hpp>
 #include <JuiceAgent/Config.hpp>
-#include <modules/ModuleManager.hpp>
 
 namespace JuiceAgent {
     class Agent {
@@ -15,8 +14,7 @@ namespace JuiceAgent {
             JNIEnv* env;
             EventBus eventbus;
             JuiceAgent::Config::Config config;
-            JuiceAgent::Core::Modules::ModuleManager module_manager;
-    
+
         private:
             Agent() = default;
             ~Agent() = default;

@@ -1,37 +1,12 @@
-#include <modules/ModuleRegistry.hpp>
-#include <modules/ModuleBase.hpp>
-#include <JuiceAgent/Logger.hpp>
-#include <libagent.hpp>
-#include <JuiceAgent/Utils.hpp>
+#include <services.hpp>
 
-namespace JuiceAgent::Core::Modules {
+namespace JuiceAgent::services::JarLoader {
+    static JarLoaderConfig config;
 
-struct JarLoaderConfig {
-    bool enabled = true;
-    std::string injection_dir;
-    std::string jar_path;
-    std::string entry_class;
-    std::string entry_method;
-};
+    static const char* MODULE_CLASS = "cn/xiaozhou233/juiceagent/api/modules/JarLoader";
+    static const char* MODULE_METHOD = "loadJar";
 
-static JarLoaderConfig config;
-static JuiceAgent::Agent& agent = JuiceAgent::Agent::instance();
-
-static const char* MODULE_CLASS =
-    "cn/xiaozhou233/juiceagent/api/modules/JarLoader";
-
-static const char* MODULE_METHOD = "loadJar";
-
-class JarLoaderModule : public ModuleBase {
-    using super = ModuleBase;
-
-public:
-    std::string name() const override {
-        return "JarLoader";
-    }
-
-protected:
-    bool on_init() override {
+    void init() {
         auto& cfg = agent.get_config();
 
         config.enabled = cfg.get<bool>(
@@ -63,13 +38,12 @@ protected:
             false
         );
 
-        PLOGI << "JarLoader init";
-        return true;
+        PLOGI << "JarLoaderService initialized";
     }
 
-    bool on_start() override {
+    void start() {
         if (!config.enabled) {
-            return true;
+            return;
         }
 
         JuiceAgent::Utils::Serializer ser;
@@ -89,17 +63,6 @@ protected:
         );
 
         PLOGI << "JarLoader start";
-        return true;
+        return;
     }
-
-    void on_stop() override {
-        PLOGI << "JarLoader stop";
-    }
-};
-
 }
-
-JUICEAGENT_REGISTER_MODULE(
-    JuiceAgent::Core::Modules::JarLoaderModule,
-    JarLoader
-)
