@@ -29,4 +29,9 @@ namespace JuiceAgent::services
         void start();
     } // namespace JarLoader
     
+    namespace Bytecode
+    {
+        void init();
+        void start();
+    }
 } // namespace JuiceAgent::services

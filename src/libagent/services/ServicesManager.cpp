@@ -19,12 +19,17 @@ namespace JuiceAgent::services::Manager {
         // JarLoader
         JuiceAgent::services::JarLoader::init();
         
+        // Bytecode
+        JuiceAgent::services::Bytecode::init();
     }
 
     void start(const EventLoaded& event) {
         PLOGI << "Starting services";
         // JarLoader
         JuiceAgent::services::JarLoader::start();
+
+        // Bytecode
+        JuiceAgent::services::Bytecode::start();
     }
 
     void stop() {

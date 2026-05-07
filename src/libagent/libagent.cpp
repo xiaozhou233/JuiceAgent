@@ -1,6 +1,5 @@
 #include <libagent.hpp>
 #include <jni_impl.hpp>
-#include <bytecodes_opt.hpp>
 #include <event/event_type.hpp>
 #include <event/eventbus.hpp>
 #include <JuiceAgent/Config.hpp>
@@ -81,9 +80,6 @@ namespace JuiceAgent {
             if (result != JNI_OK) {
                 PLOGE << "Failed to enable event notification: " << result;
             }
-
-            // register bytecodes_opt
-            JuiceAgent::Bytecodes::register_bytecodes();
 
             // Loaded Event
             eventbus.post(EventLoaded{
