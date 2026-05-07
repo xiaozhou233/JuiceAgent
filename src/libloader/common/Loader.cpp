@@ -50,9 +50,8 @@ bool invoke_juiceagent_init(JNIEnv* env, const LoaderConfig& config) {
     return true;
 }
 
-// Entrypoint function for loader
-void entrypoint(const char* runtime_dir) {
-    if (!runtime_dir) {
+static void init(const char* runtime_dir, JNIEnv * env, jvmtiEnv* jvmti) {
+        if (!runtime_dir) {
         PLOGW << "runtime_dir is null, using empty path";
     }
 
@@ -89,21 +88,6 @@ void entrypoint(const char* runtime_dir) {
     PLOGD << "JuiceAgent-API size: " << JuiceAgent::Resource::juiceagent_api_bytes_len;
     PLOGD << "JuiceAgent-API SHA256: " << JuiceAgent::Resource::juiceagent_api_bytes_sha256;
     
-    // Attach to JVM
-    JuiceAgent::Loader::JvmManager::Jvm jvm;
-    if (!jvm.attach()) {
-        PLOGE << "Attach to JVM failed";
-        return;
-    }
-
-    JNIEnv* env = jvm.get_env();
-    auto* jvmti = jvm.get_jvmti();
-
-    if (!env || !jvmti) {
-        PLOGE << "JNIEnv or JVMTI is null";
-        return;
-    }
-
     // Inject JuiceAgent jar into system class loader
     jint status = jvmti->AddToSystemClassLoaderSearch(juiceagent_api_path.c_str());
     if (status != JNI_OK) {
@@ -119,4 +103,50 @@ void entrypoint(const char* runtime_dir) {
     }
 }
 
+// Entrypoint function for loader
+void entrypoint(const char* runtime_dir) {
+    // Attach to JVM
+    JuiceAgent::Loader::JvmManager::Jvm jvm;
+    if (!jvm.attach()) {
+        PLOGE << "Attach to JVM failed";
+        return;
+    }
+
+    JNIEnv* env = jvm.get_env();
+    auto* jvmti = jvm.get_jvmti();
+
+    if (!env || !jvmti) {
+        PLOGE << "JNIEnv or JVMTI is null";
+        return;
+    }
+
+    // Init JuiceAgent
+    init(runtime_dir, env, jvmti);
+}
+
+void entrypoint_with_env(const char* runtime_dir, JNIEnv* env) {
+    JavaVM* jvm = nullptr;
+    jvmtiEnv* jvmti = nullptr;
+
+    env->GetJavaVM(&jvm);
+
+    if (!jvm) {
+        PLOGE << "Failed to get JavaVM";
+        return;
+    }
+
+    jint result = jvm->GetEnv(
+        reinterpret_cast<void**>(&jvmti),
+        JVMTI_VERSION_1_2
+    );
+
+    if (result != JNI_OK || !jvmti) {
+        PLOGE << "Failed to get JVMTI environment";
+        return;
+    }
+
+    PLOGI << "Successfully acquired JVMTI";
+
+    init(runtime_dir, env, jvmti);
+}
 } // namespace JuiceAgent::Loader

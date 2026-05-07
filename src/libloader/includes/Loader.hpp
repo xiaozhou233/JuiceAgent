@@ -9,6 +9,7 @@
 namespace JuiceAgent::Loader
 {
     void entrypoint(const char* runtime_dir);    
+    void entrypoint_with_env(const char* runtime_dir, JNIEnv* env);
 
     bool invoke_juiceagent_init(JNIEnv* env, const LoaderConfig& info);
 } // namespace JuiceAgent::Loader
