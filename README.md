@@ -31,7 +31,6 @@ With JuiceAgent, developers can:
  - Invoke a specified entry class and method after injection    
  - Redefine already loaded classes at runtime
  - Retransform bytecode for instrumentation or modification
- - Dump classes to disk by -agentpath:libagent.dll flags
  - And more...
 
 **If you have any questions or suggestions, please feel free to open an issue or submit a pull request. =D**
