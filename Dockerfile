@@ -14,6 +14,7 @@ RUN for i in 1 2 3 4 5; do \
             git \
             cmake \
             ninja-build \
+            zip \
             gcc-mingw-w64-x86-64-posix \
             g++-mingw-w64-x86-64-posix \
             binutils-mingw-w64-x86-64 \
