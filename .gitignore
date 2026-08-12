@@ -4,3 +4,4 @@ debug/*
 UserDir/*
 CMakeCache.txt
 examples/loop/loop.class
+build-mingw/*

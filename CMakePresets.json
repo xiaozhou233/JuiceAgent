@@ -17,6 +17,18 @@
         "cacheVariables": {
           "CMAKE_BUILD_TYPE": "Debug"
         }
+      },
+      {
+        "name": "mingw-release",
+        "inherits": "ninja-release",
+        "binaryDir": "${sourceDir}/build-mingw",
+        "toolchainFile": "${sourceDir}/toolchains/x86_64-w64-mingw32.cmake"
+      },
+      {
+        "name": "mingw-debug",
+        "inherits": "ninja-debug",
+        "binaryDir": "${sourceDir}/build-mingw",
+        "toolchainFile": "${sourceDir}/toolchains/x86_64-w64-mingw32.cmake"
       }
     ]
   }
