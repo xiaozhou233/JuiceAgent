@@ -1,23 +1,19 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_IMAGE = 'juiceagent-builder:latest'
+    }
+
     stages {
         stage('Build Image') {
             steps {
-                script {
-                    docker.build('juiceagent-builder:latest')
-                }
+                sh 'docker build -t juiceagent-builder:latest .'
             }
         }
         stage('Build') {
             steps {
-                script {
-                    docker.image('juiceagent-builder:latest').inside() {
-                        sh 'rm -rf build-mingw'
-                        sh 'cmake --preset mingw-release'
-                        sh 'cmake --build build-mingw'
-                    }
-                }
+                sh 'docker run --rm -v "$WORKSPACE:/workspace" juiceagent-builder:latest bash -lc "cd /workspace && rm -rf build-mingw && cmake --preset mingw-release && cmake --build build-mingw"'
             }
         }
     }
