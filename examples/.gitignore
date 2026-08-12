@@ -1,0 +1,17 @@
+# Compiled Java / build outputs
+load-via-injector-exe/demo.jar
+load-via-injector-exe/target.jar
+load-via-injector-exe/injection/out/*
+load-via-injector-exe/target/out/*
+**/out/*
+**/*.class
+
+# JuiceAgent runtime binaries copied into examples
+load-via-injector-exe/injector.exe
+load-via-injector-exe/libagent.dll
+load-via-injector-exe/libinject.dll
+load-via-injector-exe/libloader.dll
+**/injector.exe
+**/libagent.dll
+**/libinject.dll
+**/libloader.dll
