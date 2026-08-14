@@ -9,6 +9,12 @@
 
 inline void InitLogger()
 {
+    static bool initialized = false;
+    if (initialized) {
+        return;
+    }
+    initialized = true;
+
     static plog::ColorConsoleAppender<plog::TxtFormatter> colorConsoleAppender;
     static plog::DebugOutputAppender<plog::TxtFormatter> debugAppender;
 
