@@ -20,3 +20,29 @@
 
 ## 2026-04-20
  - [x] 修改文档
+
+## 2026-08-14
+### 待修复问题（当前 main 分支尚未修复，后续处理）
+ - [ ] **功能Bug**：`retransformClass` 把新字节码写入 `classFileDataMap`，但 `patch_bytecodes` 读取的是 `pendingRetransform`（且无任何代码写入它）→ 重变换补丁从未生效
+ - [ ] **并发问题**：`pendingRetransformMutex` 声明后从未使用，`pendingRetransform` 读写无锁保护，存在数据竞争
+ - [ ] **悬垂指针**：`capture_bytecodes` 将 JVMTI 回调的本地引用（clazz/classloader/protection_domain）直接存入全局 map，回调返回后即失效
+ - [ ] **引用泄漏**：`retransformClass` 中 `NewGlobalRef` 从不释放，每次调用泄漏一个全局引用
+ - [ ] **本地引用泄漏**：`Loader.cpp` 的 `invoke_juiceagent_init` 中 `jArgs` 未调用 `DeleteLocalRef`
+ - [ ] **缓存无上限**：`classFileDataMap` 只增不减，无清理/刷新机制
+ - [ ] **崩溃风险**：`patch_bytecodes` 未检查 `jvmti Allocate` 返回值就 `memcpy`，分配失败会写入空指针
+ - [ ] **崩溃风险**：`defineClass` / `getLoadedClasses` JNI 缺少空指针与异常检查
+ - [ ] **性能**：`ClassFileLoadHook` 对每个类加载都无条件分发两次事件（readonly + mutable），mutable 无订阅者，纯浪费
+ - [ ] **性能**：三处重复实现「遍历全部已加载类找类」逻辑，每个 O(n) 且构造临时 `std::string`
+ - [ ] **健壮性**：`InitLogger` 被多处调用，plog 会重复初始化
+ - [ ] **无效调用**：`agent_onload.cpp` 中 `AddCapabilities(&caps)` 传全 0 的空 caps
+ - [ ] **构建**：CMake `GLOB_RECURSE` 缺少 `CONFIGURE_DEPENDS`，新增源文件不会触发重新配置
+
+### 后续待优化项（未做）
+ - [ ] 类加载热点路径：`capture_bytecodes` / `patch_bytecodes` 每次类加载都加锁查 map，可加 `std::atomic<bool>` 快速通道跳过
+ - [ ] `agent_onload.cpp` 中 `AddCapabilities(&caps)`（空 caps）应删除
+ - [ ] 死代码：空文件 `instrumentation.cpp`；`MethodEntry`/`MethodExit` 回调从未注册使能；`services.hpp` 中 `static` 应改 `inline`
+ - [ ] `classFileDataMap` 无清理 API，长期运行会无限增长
+ - [ ] `JvmManager::attach` 30 次 × 1s 重试，最坏阻塞 30 秒
+ - [ ] `libinject.c` 固定写满 `MAX_PATH`(260) 字节而非 `strlen+1`
+ - [ ] `Agent::init(std::string& runtime_dir)` 应改 `const std::string&`
+ - [ ] Release 构建可加 strip 缩小二进制体积
