@@ -65,6 +65,29 @@ public:
     }
 
     // =========================
+    // Listeners presence check
+    // =========================
+    template<typename Event>
+    bool has_listeners() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        auto it = listeners_.find(std::type_index(typeid(Event)));
+        if (it == listeners_.end()) return false;
+
+        return !std::static_pointer_cast<std::vector<Node<Event>>>(it->second)->empty();
+    }
+
+    template<typename Event>
+    bool has_mutable_listeners() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        auto it = mutable_listeners_.find(std::type_index(typeid(Event)));
+        if (it == mutable_listeners_.end()) return false;
+
+        return !std::static_pointer_cast<std::vector<MutableNode<Event>>>(it->second)->empty();
+    }
+
+    // =========================
     // Unsubscribe
     // =========================
     template<typename Event>
@@ -161,7 +184,7 @@ private:
         MutableListener<Event> callback;
     };
 
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     std::atomic<Token> nextToken_{1};
 
     std::unordered_map<std::type_index, std::shared_ptr<void>> listeners_;

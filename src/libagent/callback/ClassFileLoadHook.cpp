@@ -34,5 +34,10 @@ void JNICALL ClassFileLoadHook(
 
             agent.get_eventbus().post(event);
 
-            agent.get_eventbus().post_mutable(event);
+            // Only dispatch the mutable variant when there are actual mutable listeners.
+            // Avoids a redundant map lookup + vector copy on every class load (hot path).
+            if (agent.get_eventbus().has_mutable_listeners<EventClassFileLoadHook>()) {
+                agent.get_eventbus().post_mutable(event);
+            }
         }
+
