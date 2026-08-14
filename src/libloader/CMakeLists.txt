@@ -1,5 +1,4 @@
 file(GLOB_RECURSE loader_sources
-    CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/common/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/common/*.c
 )
@@ -8,7 +7,6 @@ if (WIN32)
     message(STATUS "Detected System: Windows")
 
     file(GLOB_RECURSE windows_sources
-        CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/*.c
     )

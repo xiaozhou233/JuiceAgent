@@ -86,9 +86,36 @@ JNIEXPORT jbyteArray JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getCl
     std::replace(internalName.begin(), internalName.end(), '.', '/');
 
     // ============================
-    // 2. Find loaded class by internal name
+    // 2. Iterate loaded classes
     // ============================
-    jclass targetClass = find_class_by_internal_name(agent.get_jvmti(), internalName);
+    jint count = 0;
+    jclass* classes = nullptr;
+    jvmtiEnv* jvmti = agent.get_jvmti();
+
+    if (jvmti->GetLoadedClasses(&count, &classes) != JVMTI_ERROR_NONE || count == 0) {
+        return nullptr;
+    }
+
+    jclass targetClass = nullptr;
+    for (jint i = 0; i < count; i++) {
+        char* signature = nullptr;
+        if (jvmti->GetClassSignature(classes[i], &signature, nullptr) == JVMTI_ERROR_NONE && signature) {
+            size_t len = strlen(signature);
+            if (len > 2 && signature[0] == 'L' && signature[len - 1] == ';') {
+                if (internalName == std::string_view(signature + 1, len - 2)) {
+                    targetClass = classes[i];
+                    jvmti->Deallocate(reinterpret_cast<unsigned char*>(signature));
+                    break;
+                }
+            }
+            jvmti->Deallocate(reinterpret_cast<unsigned char*>(signature));
+        }
+    }
+
+    if (classes) {
+        jvmti->Deallocate(reinterpret_cast<unsigned char*>(classes));
+    }
+
     if (!targetClass) {
         PLOGE << "Class not loaded: " << internalName;
         return nullptr;
@@ -206,11 +233,19 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_retrans
     }
 
     // =========================
-    // 4. Cache bytecode for ClassFileLoadHook to apply
+    // 4. Cache bytecode & class info for ClassFileLoadHook
     // =========================
     {
-        std::lock_guard<std::mutex> lock(pendingRetransformMutex);
-        pendingRetransform[nameDot].assign(bytes, bytes + len);
+        std::lock_guard<std::mutex> lock(classDataMutex);
+
+        ClassFileData data;
+        data.classname = nameDot;
+        data.bytecode.assign(bytes, bytes + len);
+        data.clazz = static_cast<jclass>(env->NewGlobalRef(clazz)); // prevent GC
+        data.classloader = nullptr;                                  // optional
+        data.protection_domain = nullptr;                            
+
+        classFileDataMap[nameDot] = std::move(data);
     }
 
     env->ReleaseByteArrayElements(bytecodes, bytes, JNI_ABORT);
@@ -252,9 +287,33 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_retrans
     for (auto& c : internalName) if (c == '.') c = '/';
 
     // =========================
-    // 2. Find loaded class by internal name
+    // 2. Find loaded class by internal name (inline)
     // =========================
-    jclass target = find_class_by_internal_name(agent.get_jvmti(), internalName);
+    jclass target = nullptr;
+    {
+        jint classCount = 0;
+        jclass* loadedClasses = nullptr;
+
+        if (agent.get_jvmti()->GetLoadedClasses(&classCount, &loadedClasses) == JVMTI_ERROR_NONE && classCount > 0) {
+            for (jint i = 0; i < classCount; ++i) {
+                char* sig = nullptr;
+                if (agent.get_jvmti()->GetClassSignature(loadedClasses[i], &sig, nullptr) == JVMTI_ERROR_NONE && sig) {
+                    // sig: "Lnet/minecraft/client/Minecraft;"
+                    if (sig[0] == 'L') {
+                        size_t len = strlen(sig);
+                        if (len > 2 && internalName == std::string(sig + 1, len - 2)) {
+                            target = loadedClasses[i];
+                            agent.get_jvmti()->Deallocate(reinterpret_cast<unsigned char*>(sig));
+                            break;
+                        }
+                    }
+                    agent.get_jvmti()->Deallocate(reinterpret_cast<unsigned char*>(sig));
+                }
+            }
+            agent.get_jvmti()->Deallocate(reinterpret_cast<unsigned char*>(loadedClasses));
+        }
+    }
+
     if (!target) {
         PLOGE << "[retransformClassByName] class not loaded: " << internalName;
         return JNI_FALSE;

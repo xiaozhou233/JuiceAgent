@@ -41,9 +41,6 @@ bool invoke_juiceagent_init(JNIEnv* env, const LoaderConfig& config) {
     // Call the static method
     env->CallStaticVoidMethod(cls, method_id, jArgs);
 
-    // Release the local jstring reference
-    env->DeleteLocalRef(jArgs);
-
     // Check for exceptions
     if (check_and_clear_exception(env, "CallStaticVoidMethod")) {
         return false;

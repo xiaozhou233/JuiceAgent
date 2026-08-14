@@ -179,37 +179,16 @@ JNIEXPORT jclass JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_defineCla
 
     if (!check_env(agent))
         return nullptr;
-
-    if (!target_classloader || !bytes) {
-        PLOGE << "defineClass: target_classloader or bytes is null";
-        return nullptr;
-    }
-
+    
     jclass clClass = env->FindClass("java/lang/ClassLoader");
-    if (env->ExceptionCheck() || !clClass) {
-        env->ExceptionClear();
-        PLOGE << "defineClass: cannot find java/lang/ClassLoader";
-        return nullptr;
-    }
-
     jmethodID defineClass = env->GetMethodID(clClass, "defineClass", "([BII)Ljava/lang/Class;");
-    if (env->ExceptionCheck() || !defineClass) {
-        env->ExceptionClear();
-        env->DeleteLocalRef(clClass);
-        PLOGE << "defineClass: cannot find ClassLoader.defineClass";
-        return nullptr;
-    }
-
     jobject classDefined = env->CallObjectMethod(target_classloader, defineClass, bytes, 0,
                                                     env->GetArrayLength(bytes));
     if (env->ExceptionCheck()) {
         env->ExceptionDescribe();
         env->ExceptionClear();
-        env->DeleteLocalRef(clClass);
         return nullptr;
     }
-
-    env->DeleteLocalRef(clClass);
     return (jclass)classDefined;
   }
 
@@ -229,32 +208,13 @@ JNIEXPORT jobjectArray JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_get
     }
 
     jclass classClass = env->FindClass("java/lang/Class");
-    if (env->ExceptionCheck() || !classClass) {
-        env->ExceptionClear();
-        agent.get_jvmti()->Deallocate(reinterpret_cast<unsigned char*>(classes));
-        return nullptr;
-    }
-
     jobjectArray classesArray = env->NewObjectArray(count, classClass, nullptr);
-    if (env->ExceptionCheck() || !classesArray) {
-        env->ExceptionClear();
-        env->DeleteLocalRef(classClass);
-        agent.get_jvmti()->Deallocate(reinterpret_cast<unsigned char*>(classes));
-        return nullptr;
-    }
 
     for (int i = 0; i < count; i++) {
         env->SetObjectArrayElement(classesArray, i, classes[i]);
-        if (env->ExceptionCheck()) {
-            env->ExceptionClear();
-            env->DeleteLocalRef(classClass);
-            agent.get_jvmti()->Deallocate(reinterpret_cast<unsigned char*>(classes));
-            return nullptr;
-        }
     }
 
-    env->DeleteLocalRef(classClass);
-    agent.get_jvmti()->Deallocate(reinterpret_cast<unsigned char*>(classes));
+    agent.get_jvmti()->Deallocate((unsigned char*)classes);
     return classesArray;
   }
 
@@ -276,8 +236,37 @@ JNIEXPORT jclass JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getClassB
     std::replace(internal_name.begin(), internal_name.end(), '.', '/');
     env->ReleaseStringUTFChars(name, utf);
 
-    // Find loaded class by internal name
-    jclass result = find_class_by_internal_name(agent.get_jvmti(), internal_name);
+    // Get all loaded classes
+    jint count = 0;
+    jclass* classes = nullptr;
+    if (agent.get_jvmti()->GetLoadedClasses(&count, &classes) != JVMTI_ERROR_NONE || count == 0) {
+        PLOGE << "GetLoadedClasses failed or no classes loaded";
+        return nullptr;
+    }
+
+    jclass result = nullptr;
+
+    for (jint i = 0; i < count; i++) {
+        char* signature = nullptr;
+        if (agent.get_jvmti()->GetClassSignature(classes[i], &signature, nullptr) != JVMTI_ERROR_NONE || !signature)
+            continue;
+
+        size_t sig_len = strlen(signature);
+        if (sig_len > 2 && signature[0] == 'L' && signature[sig_len - 1] == ';' &&
+            internal_name.size() == sig_len - 2 &&
+            strncmp(signature + 1, internal_name.c_str(), sig_len - 2) == 0) {
+            result = classes[i];
+            agent.get_jvmti()->Deallocate((unsigned char*)signature);
+            break;
+        }
+
+        agent.get_jvmti()->Deallocate((unsigned char*)signature);
+    }
+
+    if (classes) {
+        agent.get_jvmti()->Deallocate((unsigned char*)classes);
+    }
+
     if (!result) {
         PLOGE << "Failed to find loaded class: " << internal_name;
     }
