@@ -1,0 +1,9 @@
+# Temporary build directories
+**/out/*
+**/*.class
+
+# JuiceAgent runtime binaries copied into the example (not committed)
+load-via-injector-exe/injector.exe
+load-via-injector-exe/libagent.dll
+load-via-injector-exe/libinject.dll
+load-via-injector-exe/libloader.dll

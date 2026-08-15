@@ -1,0 +1,63 @@
+============================================
+ 使用说明 / HOW TO USE
+============================================
+
+前提条件：已安装 Java 8+（需要 javac/jar 构建，jps 用于注入）
+
+目录文件说明：
+  injector.exe  libagent.dll  libinject.dll  libloader.dll  - JuiceAgent 运行时
+  config.toml                                          - 注入配置
+  demo.jar                                             - 待注入的 JAR（build.bat 生成）
+  target.jar                                           - 目标 JVM 程序（build.bat 生成）
+  injection/                                           - 注入代码源码
+  target/                                              - 目标程序源码
+  build.bat                                            - 重新生成 demo.jar / target.jar
+  run.bat                                              - 运行目标 JVM（target.jar）
+
+============================================
+ 使用步骤 / Usage Steps
+============================================
+
+1. 构建（可选）
+   默认已包含 demo.jar 和 target.jar。
+   若修改了 injection/Main.java 或 target/target.java，请运行：
+       build.bat
+   生成 demo.jar 和 target.jar 到本目录。
+
+2. 运行目标 JVM
+   双击 run.bat（或执行 java -jar target.jar），出现黑色窗口并输出：
+       [Target] I am the target JVM (PID: <PID>)
+   ......（每秒输出一次）
+
+3. 注入
+   双击 injector.exe，出现黑色窗口，输入目标 PID 并回车：
+       6644 target.jar
+       10504 jdk.jcmd/sun.tools.jps.Jps
+       Input PID: 6644
+
+4. 验证
+   回到目标窗口，看到以下输出即注入成功：
+       [Demo] Injection succeeded! Hello from JuiceAgent.
+       [Demo] Current thread: Thread-0
+
+============================================
+ 配置说明 / config.toml
+============================================
+
+  JarPath      - 待注入的 JAR 路径（默认 ./demo.jar）
+  EntryClass   - 入口类（默认 Example.Main）
+  EntryMethod  - 入口方法，需为 public static void run()
+  InjectionDir - 依赖 JAR 目录（仅加载 *.jar）
+
+============================================
+ 常见问题 / Troubleshooting
+============================================
+
+- "java/javac/jar 不是内部或外部命令"：
+  安装 JDK 并将其 bin 目录加入 PATH。
+- injector.exe 提示注入失败：
+  确认目标 JVM 正在运行，且输入的 PID 正确。
+- 没有出现 [Demo] 输出：
+  目标窗口会有大量日志，可能影响阅读；请查看其中的
+  [JuiceAgent JarLoader] 日志定位原因。
+  如仍无法解决，请复制完整日志提交 Issue，或直接丢给 AI。
