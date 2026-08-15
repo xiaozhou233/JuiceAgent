@@ -1,0 +1,79 @@
+如何使用 -- inject-via-java-api (JuiceAgent)
+
+本示例演示如何使用 Java API（JNI）将 JuiceAgent 注入到正在运行的 JVM 进程中，
+无需使用 injector.exe。
+
+环境要求：
+  - Java 8+ 已安装并在 PATH 中可用
+  - JuiceAgent 原生 DLL（libinject.dll、libloader.dll、libagent.dll）
+    已放置在本示例所在目录
+  - 已根据实际需求配置好 config.toml
+
+快速开始
+========
+
+步骤 1：构建
+  运行 build.bat 编译 injector 和 target 两个 jar：
+    > build.bat
+
+步骤 2：启动目标 JVM
+  打开一个终端，启动目标 JVM：
+    > run.bat
+  目标 JVM 将启动并周期性打印其 PID。保持该窗口运行。
+
+步骤 3：运行注入器
+  打开另一个终端，运行注入器：
+    > run_injector.bat
+  程序会提示你输入以下信息：
+    - PID         ：目标 JVM 进程 ID（在目标 JVM 终端中显示）
+    - DLL         ：libinject.dll 的路径（例如 .\libinject.dll）
+    - config_path ：config.toml 所在目录（留空则使用当前目录）
+
+步骤 4：验证
+  注入成功后，目标 JVM 将加载 config.toml 中指定的 JAR 并执行其入口方法。
+
+文件说明
+========
+
+  build.bat         - 构建所有 jar（injector + target）
+  run.bat           - 启动目标 JVM
+  run_injector.bat  - 运行 JavaInjector，将 agent 注入目标 JVM
+  config.toml       - JuiceAgent 配置文件
+  injector/         - JavaInjector 源码及构建脚本
+  target/           - 目标 JVM 源码及构建脚本
+
+配置说明（config.toml）
+=======================
+
+  [JuiceAgent]
+  Version = 1
+
+  [JuiceAgent.Loader]
+  JuiceAgentNativeLibraryPath = ""
+
+  [JuiceAgent.Modules]
+
+  [JuiceAgent.Modules.JarLoader]
+  Enabled = true
+  InjectionDir = "./injection"
+  JarPath = "./demo.jar"
+  EntryClass = "Example.Main"
+  EntryMethod = "run"
+
+  - JarPath：要加载到目标 JVM 的 JAR 文件
+  - EntryClass：包含入口方法的完整类名
+  - EntryMethod：必须是 public static void 且无参数的方法
+  - InjectionDir：依赖 JAR 所在的目录，这些 JAR 会在主 JAR 之前加载
+
+常见问题
+========
+
+  - "Error: JuiceAgent-JavaInjector-1.0-SNAPSHOT.jar not found"：
+    请先运行 build.bat 编译 injector。
+
+  - "java.lang.UnsatisfiedLinkError"：
+    请确保 libinject.dll 在当前目录下，或提供完整路径。
+
+  - 注入后无效果：
+    请确认 config.toml 在你指定的 config_path 目录中，且 config.toml
+    中的路径相对于该目录是正确的。

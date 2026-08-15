@@ -5,6 +5,8 @@
 #include <jni.h>
 #include <ReflectiveDLLInjection/LoadLibraryR.h>
 
+#include <JuiceAgent/cn_xiaozhou233_juiceagent_injector_Injector.h>
+
 #define BREAK_WITH_ERROR(e) { printf("[-] %s. Error=%lu\n", e, GetLastError()); break; }
 
 __declspec(dllexport)
@@ -131,9 +133,8 @@ static jboolean jni_inject(JNIEnv* env, jint pid, jstring path, const char* conf
 /*
 * JNI Function: inject(int pid, String path)
 */
-JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_inject__ILjava_lang_String_2
-  (JNIEnv *env, jobject obj, jint pid, jstring path) {
-    (void)obj;
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_Injector_inject__ILjava_lang_String_2
+  (JNIEnv *env, jclass, jint pid, jstring path) {
     return jni_inject(env, pid, path, NULL);
 }
 
@@ -141,9 +142,8 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNativ
 * JNI Function: inject(int pid, String path, String configDir)
 * configDir: path of config file (toml)
 */
-JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_inject__ILjava_lang_String_2Ljava_lang_String_2
-  (JNIEnv *env, jobject obj, jint pid, jstring path, jstring configDir) {
-    (void)obj;
+JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_Injector_inject__ILjava_lang_String_2Ljava_lang_String_2
+  (JNIEnv *env, jclass, jint pid, jstring path, jstring configDir) {
     const char* config_dir = (*env)->GetStringUTFChars(env, configDir, NULL);
     jboolean result = jni_inject(env, pid, path, config_dir);
     (*env)->ReleaseStringUTFChars(env, configDir, config_dir);
@@ -182,7 +182,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
     return TRUE;
 }
 
-JNIEXPORT jobjectArray JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_findWindowsByTitle
+JNIEXPORT jobjectArray JNICALL Java_cn_xiaozhou233_juiceagent_injector_Injector_findWindowsByTitle
   (JNIEnv *env, jclass clazz, jstring keyword) {
     (void)clazz;
     const jchar *input = (*env)->GetStringChars(env, keyword, NULL);
@@ -193,7 +193,7 @@ JNIEXPORT jobjectArray JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorN
     g_count = 0;
     EnumWindows(EnumWindowsProc, 0);
 
-    jclass infoClass = (*env)->FindClass(env, "cn/xiaozhou233/juiceagent/injector/InjectorNative$WindowInfo");
+    jclass infoClass = (*env)->FindClass(env, "cn/xiaozhou233/juiceagent/injector/WindowInfo");
     if (!infoClass) return NULL;
 
     jmethodID ctor = (*env)->GetMethodID(env, infoClass, "<init>", "(Ljava/lang/String;I)V");
