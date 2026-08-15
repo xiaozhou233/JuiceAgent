@@ -14,3 +14,4 @@ link_directories("${CMAKE_SOURCE_DIR}/lib")
 
 # modules
 add_subdirectory(${SRC_DIR}/libloader)
+add_subdirectory(${SRC_DIR}/injector)
