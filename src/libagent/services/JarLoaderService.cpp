@@ -38,7 +38,7 @@ namespace JuiceAgent::services::JarLoader {
             false
         );
 
-        PLOGI << "JarLoaderService initialized";
+        spdlog::info("JarLoaderService initialized");
     }
 
     void start() {
@@ -62,7 +62,7 @@ namespace JuiceAgent::services::JarLoader {
             data.c_str()
         );
 
-        PLOGI << "JarLoader start";
+        spdlog::info("JarLoader start");
         return;
     }
 }

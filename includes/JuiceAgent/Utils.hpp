@@ -1,58 +1,108 @@
 #pragma once
 
-#include <jni.h>
-#include <jvmti.h>
+#include <jvm/jni.h>
+#include <jvm/jvmti.h>
 #include <JuiceAgent/Logger.hpp>
-#include <string>
-#include <unordered_map>
-#include <type_traits>
-#include <cstdlib>
-#include <fstream>
-#include <filesystem>
-#include <chrono>
-#include <stdexcept>
 
-// Check for JNI exceptions and clear them
-inline bool check_and_clear_exception(JNIEnv* env, const char* context) {
-    if (env->ExceptionCheck()) {
-        PLOGE << "JNI Exception occurred at: " << context;
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <string>
+#include <type_traits>
+#include <unordered_map>
+
+namespace JuiceAgent::Utils
+{
+    template<typename T>
+    class LocalRef {
+    public:
+        LocalRef(JNIEnv* env, T ref = nullptr)
+            : _env(env), _ref(ref) {}
+
+        ~LocalRef()
+        {
+            reset();
+        }
+
+        LocalRef(const LocalRef&) = delete;
+        LocalRef& operator=(const LocalRef&) = delete;
+
+        LocalRef(LocalRef&& other) noexcept
+            : _env(other._env), _ref(other._ref)
+        {
+            other._ref = nullptr;
+        }
+
+        T get() const
+        {
+            return _ref;
+        }
+
+        operator T() const
+        {
+            return _ref;
+        }
+
+        void reset(T ref = nullptr)
+        {
+            if (_ref) {
+                _env->DeleteLocalRef(_ref);
+            }
+            _ref = ref;
+        }
+
+    private:
+        JNIEnv* _env;
+        T _ref;
+    };
+
+    inline bool check_and_clear_exception(JNIEnv* env, const char* context)
+    {
+        if (!env->ExceptionCheck()) {
+            return false;
+        }
+
+        spdlog::error("JNI Exception occurred at: {}", context);
         env->ExceptionDescribe();
         env->ExceptionClear();
         return true;
     }
-    return false;
-}
 
-namespace JuiceAgent::Utils
-{
-    inline bool call_java_impl(JNIEnv* env, const char* clazz, const char* method, const char* params) {
+    inline bool call_java_impl(JNIEnv* env, const char* clazz, const char* method, const char* params)
+    {
         if (!env || !clazz || !method) {
-            PLOGE << "Invalid JNI arguments";
+            spdlog::error("Invalid JNI arguments");
             return false;
         }
 
-        constexpr const char* method_signature = "(Ljava/lang/String;)V";
+        constexpr const char* signature = "(Ljava/lang/String;)V";
 
-        PLOGD << "Calling Java method: " << clazz << "." << method << " " << method_signature;
+        spdlog::debug("Calling Java method: {}.{} {}", clazz, method, signature);
 
         jclass cls = env->FindClass(clazz);
         if (!cls) {
             check_and_clear_exception(env, "FindClass failed");
-            PLOGE << "Class not found: " << clazz;
+            spdlog::error("Class not found: {}", clazz);
             return false;
         }
 
-        jmethodID mid = env->GetStaticMethodID(cls, method, method_signature);
+        jmethodID mid = env->GetStaticMethodID(cls, method, signature);
+        jstring j_params = mid
+            ? env->NewStringUTF(params ? params : "")
+            : nullptr;
+
         if (!mid) {
             check_and_clear_exception(env, "GetStaticMethodID failed");
-            PLOGE << "Method not found: " << method;
-            env->DeleteLocalRef(cls);
-            return false;
+            spdlog::error("Method not found: {}", method);
+        }
+        else if (!j_params) {
+            spdlog::error("Failed to create jstring");
         }
 
-        jstring j_params = env->NewStringUTF(params ? params : "");
-        if (!j_params) {
-            PLOGE << "Failed to create jstring";
+        if (!mid || !j_params) {
+            if (j_params) {
+                env->DeleteLocalRef(j_params);
+            }
             env->DeleteLocalRef(cls);
             return false;
         }
@@ -70,11 +120,45 @@ namespace JuiceAgent::Utils
     }
 
     class Serializer {
-    private:
-        std::string s;
+    public:
+        template<typename T>
+        Serializer& add_kv(const std::string& key, const T& value)
+        {
+            s += escape(key);
+            s += '=';
+
+            if constexpr (std::is_same_v<T, bool>) {
+                s += value ? "true" : "false";
+            }
+            else if constexpr (std::is_arithmetic_v<T>) {
+                s += escape(std::to_string(value));
+            }
+            else {
+                s += escape(value);
+            }
+
+            s += ';';
+            return *this;
+        }
+
+        void clear()
+        {
+            s.clear();
+        }
+
+        bool empty() const
+        {
+            return s.empty();
+        }
+
+        const std::string& serialize() const
+        {
+            return s;
+        }
 
     private:
-        static std::string escape(const std::string& input) {
+        static std::string escape(const std::string& input)
+        {
             std::string out;
             out.reserve(input.size());
 
@@ -88,49 +172,92 @@ namespace JuiceAgent::Utils
             return out;
         }
 
-    public:
-        Serializer() = default;
-
-        Serializer& add_kv(const std::string& key, const std::string& value) {
-            s += escape(key);
-            s += '=';
-            s += escape(value);
-            s += ';';
-            return *this;
-        }
-
-        Serializer& add_kv(const std::string& key, const char* value) {
-            return add_kv(key, std::string(value));
-        }
-
-        Serializer& add_kv(const std::string& key, int value) {
-            return add_kv(key, std::to_string(value));
-        }
-
-        Serializer& add_kv(const std::string& key, bool value) {
-            return add_kv(key, value ? "true" : "false");
-        }
-
-        void clear() {
-            s.clear();
-        }
-
-        bool empty() const {
-            return s.empty();
-        }
-
-        const std::string& serialize() const {
-            return s;
-        }
+        std::string s;
     };
 
-
     class Deserializer {
-    private:
-        std::unordered_map<std::string, std::string> data;
+    public:
+        Deserializer() = default;
+
+        explicit Deserializer(const std::string& input)
+        {
+            parse(input);
+        }
+
+        void parse(const std::string& input)
+        {
+            data.clear();
+
+            std::string key;
+            std::string value;
+            bool reading_key = true;
+            bool escaped = false;
+
+            auto commit = [&]() {
+                if (!key.empty()) {
+                    data[unescape(key)] = unescape(value);
+                }
+                key.clear();
+                value.clear();
+                reading_key = true;
+            };
+
+            for (char c : input) {
+                if (escaped) {
+                    (reading_key ? key : value) += c;
+                    escaped = false;
+                }
+                else if (c == '\\') {
+                    escaped = true;
+                }
+                else if (reading_key && c == '=') {
+                    reading_key = false;
+                }
+                else if (c == ';') {
+                    commit();
+                }
+                else {
+                    (reading_key ? key : value) += c;
+                }
+            }
+
+            commit();
+        }
+
+        bool has(const std::string& key) const
+        {
+            return data.find(key) != data.end();
+        }
+
+        template<typename T>
+        T get(const std::string& key, T def) const
+        {
+            auto it = data.find(key);
+            if (it == data.end()) {
+                return def;
+            }
+
+            return convert<T>(it->second, def);
+        }
+
+        void clear()
+        {
+            data.clear();
+        }
+
+        bool empty() const
+        {
+            return data.empty();
+        }
+
+        std::size_t size() const
+        {
+            return data.size();
+        }
 
     private:
-        static std::string unescape(const std::string& input) {
+        static std::string unescape(const std::string& input)
+        {
             std::string out;
             out.reserve(input.size());
 
@@ -140,28 +267,32 @@ namespace JuiceAgent::Utils
                 if (escaped) {
                     out += c;
                     escaped = false;
-                    continue;
                 }
-
-                if (c == '\\') {
+                else if (c == '\\') {
                     escaped = true;
-                    continue;
                 }
-
-                out += c;
+                else {
+                    out += c;
+                }
             }
 
             return out;
         }
 
-        static bool to_bool(const std::string& v, bool def) {
-            if (v == "true" || v == "1") return true;
-            if (v == "false" || v == "0") return false;
+        static bool to_bool(const std::string& v, bool def)
+        {
+            if (v == "true" || v == "1") {
+                return true;
+            }
+            if (v == "false" || v == "0") {
+                return false;
+            }
             return def;
         }
 
         template<typename T>
-        static T convert(const std::string& v, T def) {
+        static T convert(const std::string& v, T def)
+        {
             if constexpr (std::is_same_v<T, std::string>) {
                 return v;
             }
@@ -170,17 +301,17 @@ namespace JuiceAgent::Utils
             }
             else if constexpr (std::is_integral_v<T>) {
                 try {
-                    long long n = std::stoll(v);
-                    return static_cast<T>(n);
-                } catch (...) {
+                    return static_cast<T>(std::stoll(v));
+                }
+                catch (...) {
                     return def;
                 }
             }
             else if constexpr (std::is_floating_point_v<T>) {
                 try {
-                    long double n = std::stold(v);
-                    return static_cast<T>(n);
-                } catch (...) {
+                    return static_cast<T>(std::stold(v));
+                }
+                catch (...) {
                     return def;
                 }
             }
@@ -189,106 +320,29 @@ namespace JuiceAgent::Utils
             }
         }
 
-    public:
-        Deserializer() = default;
-
-        explicit Deserializer(const std::string& input) {
-            parse(input);
-        }
-
-        void parse(const std::string& input) {
-            data.clear();
-
-            std::string key;
-            std::string value;
-
-            bool reading_key = true;
-            bool escaped = false;
-
-            for (char c : input) {
-                if (escaped) {
-                    (reading_key ? key : value) += c;
-                    escaped = false;
-                    continue;
-                }
-
-                if (c == '\\') {
-                    escaped = true;
-                    continue;
-                }
-
-                if (reading_key && c == '=') {
-                    reading_key = false;
-                    continue;
-                }
-
-                if (c == ';') {
-                    if (!key.empty()) {
-                        data[unescape(key)] = unescape(value);
-                    }
-
-                    key.clear();
-                    value.clear();
-                    reading_key = true;
-                    continue;
-                }
-
-                (reading_key ? key : value) += c;
-            }
-
-            if (!key.empty()) {
-                data[unescape(key)] = unescape(value);
-            }
-        }
-
-        bool has(const std::string& key) const {
-            return data.find(key) != data.end();
-        }
-
-        template<typename T>
-        T get(const std::string& key, T def) const {
-            auto it = data.find(key);
-            if (it == data.end()) {
-                return def;
-            }
-
-            return convert<T>(it->second, def);
-        }
-
-        void clear() {
-            data.clear();
-        }
-
-        bool empty() const {
-            return data.empty();
-        }
-
-        std::size_t size() const {
-            return data.size();
-        }
+        std::unordered_map<std::string, std::string> data;
     };
 
     class File {
     public:
-        static inline std::string write_to_tempfile(
+        static std::string write_to_tempfile(
             const unsigned char* data,
             std::size_t size,
             const std::string& name
-        ) {
-    #ifdef _WIN32
+        )
+        {
+#ifdef _WIN32
             const char* env = std::getenv("TEMP");
-            std::filesystem::path dir = env ? env : ".";
-    #else
+#else
             const char* env = std::getenv("TMPDIR");
-            std::filesystem::path dir = env ? env : "/tmp";
-    #endif
+#endif
 
-            auto path = dir / name;
+            std::filesystem::path path = std::filesystem::path(env ? env : ".") / name;
 
             std::ofstream out(path, std::ios::binary | std::ios::trunc);
             if (!out) {
-                PLOGE << "Failed to create temp file " << path;
-                return "";
+                spdlog::error("Failed to create temp file {}", path.string());
+                return {};
             }
 
             out.write(reinterpret_cast<const char*>(data), size);
@@ -296,4 +350,3 @@ namespace JuiceAgent::Utils
         }
     };
 } // namespace JuiceAgent::Utils
-

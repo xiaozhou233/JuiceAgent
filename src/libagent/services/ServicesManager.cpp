@@ -11,11 +11,11 @@ namespace JuiceAgent::services::Manager {
 
         // TODO: Stopped
 
-        PLOGI << "Services Manager registered events";
+        spdlog::info("Services Manager registered events");
     }
 
     void init(const EventPreLoad& event) {
-        PLOGI << "Initializing services";
+        spdlog::info("Initializing services");
         // JarLoader
         JuiceAgent::services::JarLoader::init();
         
@@ -24,7 +24,7 @@ namespace JuiceAgent::services::Manager {
     }
 
     void start(const EventLoaded& event) {
-        PLOGI << "Starting services";
+        spdlog::info("Starting services");
         // JarLoader
         JuiceAgent::services::JarLoader::start();
 

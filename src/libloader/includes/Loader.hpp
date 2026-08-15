@@ -1,32 +1,9 @@
 #pragma once
 
-#include <JuiceAgent/JuiceAgent.hpp>
-#include <string>
-#include <JuiceAgent/Logger.hpp>
-#include <jvm/jni.h>
-#include <jvm/jvmti.h>
+namespace JuiceAgent::Loader {
 
-namespace JuiceAgent::Loader
-{
-    void entrypoint(const char* runtime_dir);    
-    void entrypoint_with_env(const char* runtime_dir, JNIEnv* env);
+// Attach to the JVM and initialize JuiceAgent.
+// runtime_dir: directory containing config.toml, or nullptr to use defaults.
+void entrypoint(const char* runtime_dir);
 
-    bool invoke_juiceagent_init(JNIEnv* env, const LoaderConfig& info);
 } // namespace JuiceAgent::Loader
-
-namespace {
-    // RAII wrapper for local JNI references
-    template<typename T>
-    class LocalRef {
-    private:
-        JNIEnv* env;
-        T ref;
-    public:
-        LocalRef(JNIEnv* env, T ref) : env(env), ref(ref) {}
-        ~LocalRef() {
-            if (ref) env->DeleteLocalRef(ref);
-        }
-        T get() const { return ref; }
-        operator T() const { return ref; }
-    };
-}

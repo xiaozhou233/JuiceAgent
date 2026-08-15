@@ -2,51 +2,54 @@
 #include <jni_impl.hpp>
 
 namespace JuiceAgent::services::Bytecode {
-        void capture_bytecodes(const EventClassFileLoadHook& e) {
-        /* =========================
-             * 1. Capture original bytes
-             * ========================= */
-            std::lock_guard<std::mutex> lock(classDataMutex);
-            if (classToCapture.contains(e.name)) {
-                if (!classFileDataMap.contains(e.name)) {
-                    ClassFileData data;
+    void capture_bytecodes(const EventClassFileLoadHook& e) {
+        std::lock_guard<std::mutex> lock(classDataMutex);
 
-                    data.classname = e.name;
-                    data.bytecode.assign(e.classbytes, e.classbytes + e.class_data_len);
-                    // Experimental: class/classloader/protection_domain references (to be used in future features, e.g. dynamic patching)
-                    data.clazz = e.class_being_redefined;
-                    data.classloader = e.loader;
-                    data.protection_domain = e.protection_domain;
+        if (!classToCapture.contains(e.name) || classFileDataMap.contains(e.name)) {
+            return;
+        }
 
+        ClassFileData data;
+        data.classname = e.name;
+        data.bytecode.assign(e.classbytes, e.classbytes + e.class_data_len);
 
-                    classFileDataMap[e.name] = std::move(data);
+        if (e.jni_env) {
+            if (e.class_being_redefined) data.clazz = static_cast<jclass>(e.jni_env->NewGlobalRef(e.class_being_redefined));
+            if (e.loader) data.classloader = e.jni_env->NewGlobalRef(e.loader);
+            if (e.protection_domain) data.protection_domain = e.jni_env->NewGlobalRef(e.protection_domain);
+        }
 
-                    classToCapture.erase(e.name);
+        classFileDataMap[e.name] = std::move(data);
+        classToCapture.erase(e.name);
 
-                    PLOGI << "Captured class: " << e.name << " (length: " << e.class_data_len << ")";
-                }
-            }
+        spdlog::info("Captured class: {} (length: {})", e.name, e.class_data_len);
     }
 
     void patch_bytecodes(const EventClassFileLoadHook& e) {
-        /* =========================
-             * 2. Apply patches
-            * ========================= */
-            if (pendingRetransform.contains(e.name)) {
-                auto& bytes = pendingRetransform[e.name];
+        std::lock_guard<std::mutex> lock(pendingRetransformMutex);
 
-                unsigned char* new_buf = nullptr;
-                e.jvmti_env->Allocate(bytes.size(), &new_buf);
+        auto it = pendingRetransform.find(e.name);
+        if (it == pendingRetransform.end()) {
+            return;
+        }
 
-                memcpy(new_buf, bytes.data(), bytes.size());
+        auto& bytes = it->second;
+        const jint new_len = static_cast<jint>(bytes.size());
 
-                *e.new_class_data_len = (jint)bytes.size();
-                *e.new_classbytes = new_buf;
+        unsigned char* new_buf = nullptr;
+        if (e.jvmti_env->Allocate(bytes.size(), &new_buf) != JVMTI_ERROR_NONE) {
+            spdlog::error("Failed to allocate buffer for retransform: {}", e.name);
+            return;
+        }
 
-                pendingRetransform.erase(e.name);
+        memcpy(new_buf, bytes.data(), bytes.size());
 
-                PLOGI << "Retransformed: " << e.name << " (new length: " << bytes.size() << ")";
-            }
+        *e.new_class_data_len = new_len;
+        *e.new_classbytes = new_buf;
+
+        pendingRetransform.erase(it);
+
+        spdlog::info("Retransformed: {} (new length: {})", e.name, new_len);
     }
 
     void init() {

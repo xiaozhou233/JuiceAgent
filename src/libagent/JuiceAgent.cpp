@@ -14,24 +14,24 @@ namespace JuiceAgent {
     
     bool Agent::init(JavaVM* jvm, JNIEnv* env, jvmtiEnv* jvmti, std::string& runtime_dir) {
         try {
-            PLOGI << "JuiceAgent Native EntryPoint Invoked!";
+            spdlog::info("JuiceAgent Native EntryPoint Invoked!");
 
             // ======== neccessary environment check ========
             if (jvm == nullptr) {
-                PLOGE << "Failed to initialize JuiceAgent: jvm is null";
+                spdlog::error("Failed to initialize JuiceAgent: jvm is null");
                 return false;
             }
             if (env == nullptr) {
-                PLOGE << "Failed to initialize JuiceAgent: env is null";
+                spdlog::error("Failed to initialize JuiceAgent: env is null");
                 return false;
             }
             if (jvmti == nullptr) {
-                PLOGE << "Failed to initialize JuiceAgent: jvmti is null";
+                spdlog::error("Failed to initialize JuiceAgent: jvmti is null");
                 return false;
             }
             JuiceAgent::Config::Config cfg (runtime_dir);
             if (!cfg.is_valid()) {
-                PLOGE << "Failed to initialize JuiceAgent: config is invalid";
+                spdlog::error("Failed to initialize JuiceAgent: config is invalid");
                 return false;
             }
 
@@ -39,7 +39,7 @@ namespace JuiceAgent {
             set_jvmti(jvmti);
             set_env(env);
             set_config(cfg);
-            PLOGD << "env: " << env << ", jvmti: " << jvmti;
+            spdlog::debug("env: {}, jvmti: {}", fmt::ptr(env), fmt::ptr(jvmti));
             
             // Register events for services
             JuiceAgent::services::Manager::register_events();
@@ -61,24 +61,24 @@ namespace JuiceAgent {
             caps.can_generate_all_class_hook_events = 1;
             jint result = jvmti->AddCapabilities(&caps);
             if (result != JNI_OK) {
-                PLOGE << "Failed to add capabilities: " << result;
+                spdlog::error("Failed to add capabilities: {}", result);
                 return false;
             }
             
-            PLOGI << "Abilities added successfully";
+            spdlog::info("Abilities added successfully");
 
             // ======== Register callbacks ========
             jvmtiEventCallbacks callbacks{};
             callbacks.ClassFileLoadHook = &ClassFileLoadHook;
             result = jvmti->SetEventCallbacks(&callbacks, sizeof(callbacks));
             if (result != JNI_OK) {
-                PLOGE << "Failed to set event callbacks: " << result;
+                spdlog::error("Failed to set event callbacks: {}", result);
             }
 
             // Enable events
             result = jvmti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, NULL);
             if (result != JNI_OK) {
-                PLOGE << "Failed to enable event notification: " << result;
+                spdlog::error("Failed to enable event notification: {}", result);
             }
 
             // Loaded Event
@@ -89,7 +89,7 @@ namespace JuiceAgent {
             });
             return true;
         } catch (const std::exception& e) {
-            PLOGE << "Exception: " << e.what();
+            spdlog::error("Exception: {}", e.what());
             return false;
         }
     }

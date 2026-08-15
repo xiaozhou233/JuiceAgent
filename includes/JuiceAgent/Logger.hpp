@@ -1,18 +1,59 @@
-// Logger.hpp
 #pragma once
-#include <plog/Log.h>
-#include <plog/Init.h>
-#include <plog/Formatters/TxtFormatter.h>
-#include <plog/Appenders/ColorConsoleAppender.h>
-#include <plog/Appenders/DebugOutputAppender.h>
-#include <plog/Appenders/RollingFileAppender.h>
 
-inline void InitLogger()
-{
-    static plog::ColorConsoleAppender<plog::TxtFormatter> colorConsoleAppender;
-    static plog::DebugOutputAppender<plog::TxtFormatter> debugAppender;
+#include <string>
+#include <memory>
+#include <vector>
 
-    plog::init(plog::debug, &colorConsoleAppender).addAppender(&debugAppender);
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/basic_file_sink.h>
 
-    PLOG_INFO << "Logger initialized: Console + Debug Output";
+namespace Logger {
+
+inline void init(
+    const std::string& file_name = "app.log",
+    spdlog::level::level_enum level = spdlog::level::trace
+) {
+    static bool initialized = false;
+
+    if (initialized) {
+        spdlog::warn("Logger already initialized, skipping");
+        return;
+    }
+
+    auto console_sink =
+        std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+
+    auto file_sink =
+        std::make_shared<spdlog::sinks::basic_file_sink_mt>(
+            file_name,
+            true
+        );
+
+    std::vector<spdlog::sink_ptr> sinks{
+        console_sink,
+        file_sink
+    };
+
+    auto logger =
+        std::make_shared<spdlog::logger>(
+            "app",
+            sinks.begin(),
+            sinks.end()
+        );
+
+    logger->set_level(level);
+
+    logger->set_pattern(
+        "[%Y-%m-%d %H:%M:%S] [%^%l%$] %v"
+    );
+
+    spdlog::set_default_logger(logger);
+
+    // Flush after every log message
+    spdlog::flush_on(spdlog::level::trace);
+
+    initialized = true;
+}
+
 }

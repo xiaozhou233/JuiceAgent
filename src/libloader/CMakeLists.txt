@@ -7,8 +7,8 @@ if (WIN32)
     message(STATUS "Detected System: Windows")
 
     file(GLOB_RECURSE windows_sources
-        ${CMAKE_CURRENT_SOURCE_DIR}/windows/*.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/windows/*.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/plantform/windows/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/plantform/windows/*.c
     )
 
     list(APPEND loader_sources ${windows_sources})
@@ -24,6 +24,6 @@ target_include_directories(loader PRIVATE
 )
 
 target_link_libraries(loader PRIVATE
-    ReflectiveDLLInjection
     jvm
+    ReflectiveDLLInjection
 )

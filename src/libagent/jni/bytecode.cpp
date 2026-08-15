@@ -33,7 +33,7 @@ JNIEXPORT jbyteArray JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getCl
     // ============================
     jvmtiError err = agent.get_jvmti()->RetransformClasses(1, &clazz);
     if (err != JVMTI_ERROR_NONE) {
-        PLOGE << "Retransform class failed: " << err;
+        spdlog::error("Retransform class failed: {}", static_cast<int>(err));
         return nullptr;
     }
 
@@ -50,7 +50,7 @@ JNIEXPORT jbyteArray JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getCl
     }
 
     if (data.bytecode.empty()) {
-        PLOGE << "Failed to capture bytecode for class: " << internalName;
+        spdlog::error("Failed to capture bytecode for class: {}", internalName);
         return nullptr;
     }
 
@@ -117,7 +117,7 @@ JNIEXPORT jbyteArray JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getCl
     }
 
     if (!targetClass) {
-        PLOGE << "Class not loaded: " << internalName;
+        spdlog::error("Class not loaded: {}", internalName);
         return nullptr;
     }
 
@@ -141,7 +141,7 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_redefin
     // Get byte array elements
     jbyte* buf = env->GetByteArrayElements(class_bytes, nullptr);
     if (!buf) {
-        PLOGE << "Cannot get class bytes";
+        spdlog::error("Cannot get class bytes");
         return JNI_FALSE;
     }
 
@@ -158,11 +158,11 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_redefin
     env->ReleaseByteArrayElements(class_bytes, buf, JNI_ABORT);
 
     if (result != JVMTI_ERROR_NONE) {
-        PLOGE << "Redefine class failed: " << result;
+        spdlog::error("Redefine class failed: {}", static_cast<int>(result));
         return JNI_FALSE;
     }
 
-    PLOGD << "Class redefined successfully!";
+    spdlog::debug("Class redefined successfully!");
     return JNI_TRUE;
 }
 
@@ -176,7 +176,7 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_redefin
     // Convert jstring to C string
     const char* cname = env->GetStringUTFChars(class_name, nullptr);
     if (!cname) {
-        PLOGE << "Class name is NULL!";
+        spdlog::error("Class name is NULL!");
         return JNI_FALSE;
     }
 
@@ -190,7 +190,7 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_redefin
     // Find class by internal name
     jclass clazz = env->FindClass(internal_name.c_str());
     if (!clazz) {
-        PLOGE << "Cannot find class: " << internal_name;
+        spdlog::error("Cannot find class: {}", internal_name);
         return JNI_FALSE;
     }
 
@@ -216,7 +216,7 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_retrans
     // =========================
     std::string nameDot = get_class_name(env, clazz);
     if (nameDot.empty()) {
-        PLOGE << "Failed to get class name for retransform";
+        spdlog::error("Failed to get class name for retransform");
         return JNI_FALSE;
     }
 
@@ -233,19 +233,11 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_retrans
     }
 
     // =========================
-    // 4. Cache bytecode & class info for ClassFileLoadHook
+    // 4. Cache new bytecode for ClassFileLoadHook
     // =========================
     {
-        std::lock_guard<std::mutex> lock(classDataMutex);
-
-        ClassFileData data;
-        data.classname = nameDot;
-        data.bytecode.assign(bytes, bytes + len);
-        data.clazz = static_cast<jclass>(env->NewGlobalRef(clazz)); // prevent GC
-        data.classloader = nullptr;                                  // optional
-        data.protection_domain = nullptr;                            
-
-        classFileDataMap[nameDot] = std::move(data);
+        std::lock_guard<std::mutex> lock(pendingRetransformMutex);
+        pendingRetransform[nameDot].assign(bytes, bytes + len);
     }
 
     env->ReleaseByteArrayElements(bytecodes, bytes, JNI_ABORT);
@@ -257,11 +249,11 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_retrans
     jvmtiError err = agent.get_jvmti()->RetransformClasses(1, classes);
 
     if (err != JVMTI_ERROR_NONE) {
-        PLOGE << "[retransformClass] failed: " << err << " for " << nameDot;
+        spdlog::error("[retransformClass] failed: {} for {}", static_cast<int>(err), nameDot);
         return JNI_FALSE;
     }
 
-    PLOGI << "[retransformClass] OK: " << nameDot << " (" << len << " bytes)";
+    spdlog::info("[retransformClass] OK: {} ({} bytes)", nameDot, len);
     return JNI_TRUE;
 }
 
@@ -315,7 +307,7 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_retrans
     }
 
     if (!target) {
-        PLOGE << "[retransformClassByName] class not loaded: " << internalName;
+        spdlog::error("[retransformClassByName] class not loaded: {}", internalName);
         return JNI_FALSE;
     }
 

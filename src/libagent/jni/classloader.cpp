@@ -10,17 +10,17 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_addToBo
 
     const char* j_jar_path = env->GetStringUTFChars(jar_path, nullptr);
     if (!j_jar_path) {
-        PLOGE << "Path is NULL!";
+        spdlog::error("Path is NULL!");
         return JNI_FALSE;
     }
 
     jvmtiError result = agent.get_jvmti()->AddToBootstrapClassLoaderSearch(j_jar_path);
     if (result != JVMTI_ERROR_NONE) {
-        PLOGE.printf("Cannot AddToBootstrapClassLoaderSearch [result=%d]", result);
+        spdlog::error("Cannot AddToBootstrapClassLoaderSearch [result={}]", static_cast<int>(result));
         env->ReleaseStringUTFChars(jar_path, j_jar_path);
         return JNI_FALSE;
     }
-    PLOGI << "AddToBootstrapClassLoaderSearch: " << j_jar_path;
+    spdlog::info("AddToBootstrapClassLoaderSearch: {}", j_jar_path);
 
     env->ReleaseStringUTFChars(jar_path, j_jar_path);
     return JNI_TRUE;
@@ -35,17 +35,17 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_addToSy
 
     const char* j_jar_path = env->GetStringUTFChars(jar_path, nullptr);
     if (!j_jar_path) {
-        PLOGE << "Path is NULL!";
+        spdlog::error("Path is NULL!");
         return JNI_FALSE;
     }
 
     jvmtiError result = agent.get_jvmti()->AddToSystemClassLoaderSearch(j_jar_path);
     if (result != JVMTI_ERROR_NONE) {
-        PLOGE.printf("Cannot AddToSystemClassLoaderSearch [result=%d]", result);
+        spdlog::error("Cannot AddToSystemClassLoaderSearch [result={}]", static_cast<int>(result));
         env->ReleaseStringUTFChars(jar_path, j_jar_path);
         return JNI_FALSE;
     }
-    PLOGI << "AddToSystemClassLoaderSearch: " << j_jar_path;
+    spdlog::info("AddToSystemClassLoaderSearch: {}", j_jar_path);
 
     env->ReleaseStringUTFChars(jar_path, j_jar_path);
     return JNI_TRUE;
@@ -203,7 +203,7 @@ JNIEXPORT jobjectArray JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_get
     jclass* classes = nullptr;
     jvmtiError err = agent.get_jvmti()->GetLoadedClasses(&count, &classes);
     if (err != JVMTI_ERROR_NONE) {
-        PLOGE.printf("GetLoadedClasses failed: %d", err);
+        spdlog::error("GetLoadedClasses failed: {}", static_cast<int>(err));
         return nullptr;
     }
 
@@ -227,7 +227,7 @@ JNIEXPORT jclass JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getClassB
 
     const char* utf = env->GetStringUTFChars(name, nullptr);
     if (!utf) {
-        PLOGE << "Class name is NULL!";
+        spdlog::error("Class name is NULL!");
         return nullptr;
     }
 
@@ -240,7 +240,7 @@ JNIEXPORT jclass JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getClassB
     jint count = 0;
     jclass* classes = nullptr;
     if (agent.get_jvmti()->GetLoadedClasses(&count, &classes) != JVMTI_ERROR_NONE || count == 0) {
-        PLOGE << "GetLoadedClasses failed or no classes loaded";
+        spdlog::error("GetLoadedClasses failed or no classes loaded");
         return nullptr;
     }
 
@@ -268,7 +268,7 @@ JNIEXPORT jclass JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getClassB
     }
 
     if (!result) {
-        PLOGE << "Failed to find loaded class: " << internal_name;
+        spdlog::error("Failed to find loaded class: {}", internal_name);
     }
 
     return result;

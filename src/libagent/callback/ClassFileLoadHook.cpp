@@ -13,7 +13,7 @@ void JNICALL ClassFileLoadHook(
         jint* new_class_data_len,
         unsigned char** new_classbytes) {
             if (!name) {
-                PLOGW << "name is null";
+                spdlog::warn("name is null");
                 return;
             }
 

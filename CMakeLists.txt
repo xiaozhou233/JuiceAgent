@@ -17,5 +17,6 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/includes/ReflectiveDLLInjection)
 
 # modules
 add_subdirectory(${SRC_DIR}/libloader)
-add_subdirectory(${SRC_DIR}/libinjector)
+add_subdirectory(${SRC_DIR}/injector)
+add_subdirectory(${SRC_DIR}/libinject)
 add_subdirectory(${SRC_DIR}/libagent)

@@ -15,7 +15,7 @@ void JNICALL OnVMInit(jvmtiEnv* jvmti, JNIEnv* env, jthread thread);
 // Utility: check JVMTI error
 static bool CheckJvmti(jvmtiError err, const char* action) {
     if (err != JVMTI_ERROR_NONE) {
-        PLOGE << action << " failed, code=" << err;
+        spdlog::error("{} failed, code={}", action, static_cast<int>(err));
         return false;
     }
     return true;
@@ -23,16 +23,16 @@ static bool CheckJvmti(jvmtiError err, const char* action) {
 
 // VMInit callback
 void JNICALL OnVMInit(jvmtiEnv* jvmti, JNIEnv* env, jthread thread) {
-    PLOGI << "JVMTI VMInit triggered";
+    spdlog::info("JVMTI VMInit triggered");
 
     std::string runtime_dir = std::filesystem::current_path().string();
 
     if (runtime_dir.empty()) {
-        PLOGE << "runtime_dir is empty";
+        spdlog::error("runtime_dir is empty");
         return;
     }
 
-    PLOGI << "Runtime directory: " << runtime_dir;
+    spdlog::info("Runtime directory: {}", runtime_dir);
 
     // Inject JuiceAgent-API
         // Save bytes to file
@@ -50,38 +50,38 @@ void JNICALL OnVMInit(jvmtiEnv* jvmti, JNIEnv* env, jthread thread) {
             file_name
         );
         
-    PLOGD << "Saved JuiceAgent-API to: " << juiceagent_api_path;
-    PLOGD << "JuiceAgent-API size: " << JuiceAgent::Resource::juiceagent_api_bytes_len;
-    PLOGD << "JuiceAgent-API SHA256: " << JuiceAgent::Resource::juiceagent_api_bytes_sha256;
+    spdlog::debug("Saved JuiceAgent-API to: {}", juiceagent_api_path);
+    spdlog::debug("JuiceAgent-API size: {}", JuiceAgent::Resource::juiceagent_api_bytes_len);
+    spdlog::debug("JuiceAgent-API SHA256: {}", JuiceAgent::Resource::juiceagent_api_bytes_sha256);
     
     // Inject JuiceAgent jar into system class loader
     jint status = jvmti->AddToSystemClassLoaderSearch(juiceagent_api_path.c_str());
     if (status != JNI_OK) {
-        PLOGE << "AddToSystemClassLoaderSearch failed: " << status;
+        spdlog::error("AddToSystemClassLoaderSearch failed: {}", status);
         return;
     }
 
-    PLOGI << "Jar injected successfully: " << juiceagent_api_path;
+    spdlog::info("Jar injected successfully: {}", juiceagent_api_path);
 
     JuiceAgent::Agent& agent = JuiceAgent::Agent::instance();
     agent.init(g_vm, env, g_jvmti, runtime_dir);
 
-    PLOGI << "JuiceAgent initialized successfully";
+    spdlog::info("JuiceAgent initialized successfully");
 }
 
 // Agent entry
 JNIEXPORT jint JNICALL
 Agent_OnLoad(JavaVM* vm, char* options, void* reserved) {
-    InitLogger();
+    Logger::init("libagent.log");
 
-    PLOGI << "Agent_OnLoad";
+    spdlog::info("Agent_OnLoad");
 
     g_vm = vm;
 
     // Get JVMTI first
     jint result = vm->GetEnv(reinterpret_cast<void**>(&g_jvmti), JVMTI_VERSION_1_2);
     if (result != JNI_OK || g_jvmti == nullptr) {
-        PLOGE << "Failed to get JVMTI, code=" << result;
+        spdlog::error("Failed to get JVMTI, code={}", result);
         return JNI_ERR;
     }
 
@@ -108,12 +108,12 @@ Agent_OnLoad(JavaVM* vm, char* options, void* reserved) {
         return JNI_ERR;
     }
 
-    PLOGI << "Agent loaded, waiting for VMInit...";
+    spdlog::info("Agent loaded, waiting for VMInit...");
     return JNI_OK;
 }
 
 // Optional unload
 JNIEXPORT void JNICALL
 Agent_OnUnload(JavaVM* vm) {
-    PLOGI << "Agent_OnUnload";
+    spdlog::info("Agent_OnUnload");
 }
