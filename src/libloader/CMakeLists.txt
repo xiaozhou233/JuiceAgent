@@ -22,4 +22,5 @@ target_include_directories(loader PRIVATE
 
 target_link_libraries(loader PRIVATE
     jvm
+    ReflectiveDLLInjection
 )
