@@ -1,0 +1,109 @@
+# HowToUse — retransform-class
+
+**Prerequisites:** Java 8+ (`javac`/`jar` for building, `jps` for injection)
+
+## Directory Files
+
+| File | Description |
+| --- | --- |
+| `injector.exe` `libagent.dll` `libinject.dll` `libloader.dll` | JuiceAgent runtime |
+| `config.toml` | Injection config |
+| `build.bat` | Build script |
+| `run.bat` | Run target JVM |
+| `playload.jar` | JAR to inject (built by `build.bat`) |
+| `target.jar` | Target JVM program (built by `build.bat`) |
+| `new_target.class` | Retransformed bytecode (built by `build.bat`) |
+| `playload/` | Payload source |
+| `target/` | Target source |
+| `new_target/` | Modified copy of target source |
+
+## What This Example Does
+
+The target class `target` has a method `say()` that prints:
+
+```
+Hello!
+```
+
+`new_target/target.java` is a modified copy that also prints:
+
+```
+Retransformed!
+```
+
+This example injects `playload.jar` into a running JVM. The payload reads
+`new_target.class` from its own JAR and calls
+`JuiceAgent.retransformClassByName("target", ...)` to swap the already-loaded
+`target` class on the fly. After that, `say()` starts printing the new message
+without restarting the JVM.
+
+## Usage Steps
+
+### 1. Build (optional)
+
+`playload.jar` and `target.jar` are already included by default.
+If you modified `playload/`, `target/` or `new_target/`, run:
+
+```
+build.bat
+```
+
+to regenerate `playload.jar`, `target.jar` and `new_target.class`.
+
+### 2. Run the target JVM
+
+Double-click `run.bat` (or run: `java -jar target.jar`). A black window
+appears and prints:
+
+```
+[Target] I am the target JVM (PID: <PID>)
+Hello!
+```
+
+... (once per second)
+
+### 3. Inject
+
+Double-click `injector.exe`, type the target PID and press Enter:
+
+```
+6644 target.jar
+10504 jdk.jcmd/sun.tools.jps.Jps
+Input PID: 6644
+```
+
+### 4. Verify
+
+Go back to the target window. Injection succeeded if you see:
+
+```
+Playload loaded!
+Playload executed!
+```
+
+and the output of `say()` changes from `Hello!` to:
+
+```
+Hello!
+Retransformed!
+```
+
+## Config / config.toml
+
+| Key | Description |
+| --- | --- |
+| `JarPath` | JAR path to inject (default: `./playload.jar`) |
+| `EntryClass` | Entry class (default: `playload`) |
+| `EntryMethod` | Entry method, must be `public static void entry()` |
+
+## Troubleshooting
+
+- `java/javac/jar is not recognized`:
+  Install a JDK and add its `bin` directory to `PATH`.
+- `injector.exe` reports injection failure:
+  Make sure the target JVM is running and the PID is correct.
+- No `Playload loaded!` output appears:
+  Check `libagent.log` and `libloader.log` in this directory for the cause.
+- `say()` output does not change:
+  Make sure `build.bat` was run after editing `new_target/`, and that
+  `new_target.class` inside `playload.jar` is up to date.

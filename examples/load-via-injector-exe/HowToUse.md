@@ -1,0 +1,80 @@
+# HowToUse — load-via-injector-exe
+
+**Prerequisites:** Java 8+ (`javac`/`jar` for building, `jps` for injection)
+
+## Directory Files
+
+| File | Description |
+| --- | --- |
+| `injector.exe` `libagent.dll` `libinject.dll` `libloader.dll` | JuiceAgent runtime |
+| `config.toml` | Injection config |
+| `demo.jar` | JAR to inject (built by `build.bat`) |
+| `target.jar` | Target JVM program (built by `build.bat`) |
+| `injection/` | Injection source |
+| `target/` | Target source |
+| `build.bat` | Rebuild `demo.jar` / `target.jar` |
+| `run.bat` | Run target JVM (`target.jar`) |
+
+## Usage Steps
+
+### 1. Build (optional)
+
+`demo.jar` and `target.jar` are already included by default.
+If you modified `injection/Main.java` or `target/target.java`, run:
+
+```
+build.bat
+```
+
+to regenerate `demo.jar` and `target.jar` in this directory.
+
+### 2. Run the target JVM
+
+Double-click `run.bat` (or run: `java -jar target.jar`). A black window
+appears and prints:
+
+```
+[Target] I am the target JVM (PID: <PID>)
+```
+
+... (once per second)
+
+### 3. Inject
+
+Double-click `injector.exe`, type the target PID and press Enter:
+
+```
+6644 target.jar
+10504 jdk.jcmd/sun.tools.jps.Jps
+Input PID: 6644
+```
+
+### 4. Verify
+
+Go back to the target window. Injection succeeded if you see:
+
+```
+[Demo] Injection succeeded! Hello from JuiceAgent.
+[Demo] Current thread: Thread-0
+```
+
+## Config / config.toml
+
+| Key | Description |
+| --- | --- |
+| `JarPath` | JAR path to inject (default: `./demo.jar`) |
+| `EntryClass` | Entry class (default: `Example.Main`) |
+| `EntryMethod` | Entry method, must be `public static void run()` |
+| `InjectionDir` | Dependency JAR directory (only `*.jar` is loaded) |
+
+## Troubleshooting
+
+- `java/javac/jar is not recognized`:
+  Install a JDK and add its `bin` directory to `PATH`.
+- `injector.exe` reports injection failure:
+  Make sure the target JVM is running and the PID is correct.
+- No `[Demo]` output appears:
+  The target window prints many log lines which may affect reading.
+  Check the `[JuiceAgent JarLoader]` lines to locate the cause.
+  If it still fails, copy the full log and submit an Issue, or paste
+  it directly to an AI.
