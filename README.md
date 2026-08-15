@@ -85,6 +85,8 @@ The `JuiceAgent-API` jar is embedded in the native binaries, so no separate down
 
 ## Quick Start
 
+**You can also see the [examples](https://github.com/xiaozhou233/JuiceAgent/tree/main/examples) directory for more detailed usage examples.**
+
 ### 1. Download Release
 
 Download `JuiceAgent_vx.x.x_x64.zip` from the [releases](https://github.com/xiaozhou233/JuiceAgent/releases) page.
