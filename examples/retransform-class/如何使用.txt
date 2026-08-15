@@ -1,0 +1,82 @@
+============================================
+  如何使用
+============================================
+
+前置条件: Java 8+ (构建需要 javac/jar, 注入需要 jps)
+
+目录文件:
+  injector.exe  libagent.dll  libinject.dll  libloader.dll  - JuiceAgent 运行库
+  config.toml                                           - 注入配置
+  build.bat                                             - 构建脚本
+  run.bat                                               - 运行目标 JVM
+  playload.jar                                          - 注入用的 JAR (由 build.bat 生成)
+  target.jar                                            - 目标 JVM 程序 (由 build.bat 生成)
+  new_target.class                                      - 重变换后的字节码 (由 build.bat 生成)
+  playload/                                             - payload 源码
+  target/                                               - 目标类源码
+  new_target/                                           - target 的修改版源码
+
+============================================
+  本示例的作用
+============================================
+
+目标类 "target" 的 say() 方法原本打印:
+    Hello!
+
+new_target/target.java 是它的修改版, 额外打印:
+    Retransformed!
+
+本示例把 playload.jar 注入到运行中的 JVM。payload 从自己的 JAR 中读取
+new_target.class, 调用 JuiceAgent.retransformClassByName("target", ...)
+在运行时动态替换已加载的 "target" 类。之后 say() 无需重启 JVM 就会输出新内容。
+
+============================================
+  使用步骤
+============================================
+
+1. 构建 (可选)
+   playload.jar 和 target.jar 默认已包含。
+   如果修改了 playload/、target/ 或 new_target/, 运行:
+       build.bat
+   重新生成 playload.jar、target.jar 和 new_target.class。
+
+2. 运行目标 JVM
+   双击 run.bat (或执行: java -jar target.jar)。黑窗口出现并每秒打印:
+       [Target] I am the target JVM (PID: <PID>)
+       Hello!
+
+3. 注入
+   双击 injector.exe, 输入目标 PID 后回车:
+       6644 target.jar
+       10504 jdk.jcmd/sun.tools.jps.Jps
+       Input PID: 6644
+
+4. 验证
+   回到目标窗口, 注入成功应看到:
+       Playload loaded!
+       Playload executed!
+   并且 say() 的输出从 "Hello!" 变为:
+       Hello!
+       Retransformed!
+
+============================================
+  配置 / config.toml
+============================================
+
+  JarPath      - 注入的 JAR 路径 (默认: ./playload.jar)
+  EntryClass   - 入口类 (默认: playload)
+  EntryMethod  - 入口方法, 必须为 public static void entry()
+
+============================================
+  常见问题
+============================================
+
+- "java/javac/jar is not recognized":
+  安装 JDK 并将 bin 目录加入 PATH。
+- injector.exe 提示注入失败:
+  确认目标 JVM 正在运行且 PID 正确。
+- 没有出现 "Playload loaded!" 输出:
+  查看本目录下的 libagent.log 和 libloader.log 定位原因。
+- say() 输出没有变化:
+  确认修改 new_target/ 后重新运行过 build.bat, 且 playload.jar 内的
+  new_target.class 是最新的。

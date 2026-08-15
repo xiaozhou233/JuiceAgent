@@ -1,0 +1,7 @@
+# Build output directory (intermediate)
+out/
+
+# Do not ignore root build artifacts:
+!new_target.class
+!playload.jar
+!target.jar
