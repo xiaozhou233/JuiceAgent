@@ -52,13 +52,13 @@ static bool invoke_juiceagent_init(JNIEnv* env, const LoaderConfig& config) {
     return true;
 }
 
-static void init(const char* runtime_dir, JNIEnv * env, jvmtiEnv* jvmti) {
+static void init(const char* runtime_dir, JNIEnv* env, jvmtiEnv* jvmti) {
     if (!runtime_dir) {
         spdlog::warn("Runtime directory is not set!");
     }
     
     // Load configuration
-    JuiceAgent::Config::Config cfg(runtime_dir);
+    JuiceAgent::Config::Config cfg(runtime_dir ? runtime_dir : "");
     if (!cfg.is_valid()) {
         spdlog::error("Failed to load configuration!");
 
@@ -91,9 +91,9 @@ static void init(const char* runtime_dir, JNIEnv * env, jvmtiEnv* jvmti) {
     spdlog::debug("JuiceAgent API sha256: {}", JuiceAgent::Resource::juiceagent_api_bytes_sha256);
 
     // Load JuiceAgent API to system classloader
-    jint status = jvmti->AddToSystemClassLoaderSearch(juiceagent_api_path.c_str());
-    if (status != JNI_OK) {
-        spdlog::error("Failed to add JuiceAgent API to system classloader! code: {}", status);
+    jvmtiError status = jvmti->AddToSystemClassLoaderSearch(juiceagent_api_path.c_str());
+    if (status != JVMTI_ERROR_NONE) {
+        spdlog::error("Failed to add JuiceAgent API to system classloader! code: {}", static_cast<int>(status));
         return;
     }
 
@@ -108,16 +108,16 @@ static void init(const char* runtime_dir, JNIEnv * env, jvmtiEnv* jvmti) {
 
 void entrypoint(const char* runtime_dir) {
     // Attach to the JVM
-    JuiceAgent::Loader::Jvm jvm;
+    Jvm jvm;
     if (!jvm.attach()) {
-        spdlog::error("Failed to attach to JVM!");     
+        spdlog::error("Failed to attach to JVM!");
         return;
     }
 
     // Get jvm and jni env
     JNIEnv* env = jvm.get_env();
     auto* jvmti = jvm.get_jvmti();
-    if(!env || !jvmti) {
+    if (!env || !jvmti) {
         spdlog::error("Failed to get jni env or jvmti env!");
         return;
     }

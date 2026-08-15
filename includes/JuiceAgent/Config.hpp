@@ -90,7 +90,7 @@ public:
 
             return value;
         }
-        catch (const std::exception& e) {
+        catch (...) {
             spdlog::warn("Config get failed: {}, using default value", path);
             return default_value;
         }

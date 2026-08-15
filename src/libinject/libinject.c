@@ -5,8 +5,7 @@
 #include <ReflectiveDLLInjection/LoadLibraryR.h>
 
 #define WIN_X64
-#define BREAK_WITH_ERROR( e ) { printf("[-] %s. Error=%l", e, GetLastError()); break; }
-#define MAX_PATH 260
+#define BREAK_WITH_ERROR(e) { printf("[-] %s. Error=%lu\n", e, GetLastError()); break; }
 
 __declspec(dllexport)
 int inject(int pid, char *path, char *params){
@@ -83,21 +82,21 @@ int inject(int pid, char *path, char *params){
         }
 
 
-        /* allocate remote memory for InjectParameters */
-        lpRemoteParam = VirtualAllocEx(hProcess, NULL, MAX_PATH, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-        if (!lpRemoteParam)
-            BREAK_WITH_ERROR("VirtualAllocEx for remote param failed\n");
-
-        printf("remote param addr = %p\n", lpRemoteParam);
-
         /* write params to remote memory */
         SIZE_T written = 0;
         if (params) {
-            if (!WriteProcessMemory(hProcess, lpRemoteParam, params, MAX_PATH, &written) || written != MAX_PATH)
-            BREAK_WITH_ERROR("WriteProcessMemory for remote param failed\n");
+            /* allocate remote memory for params */
+            lpRemoteParam = VirtualAllocEx(hProcess, NULL, MAX_PATH, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+            if (!lpRemoteParam)
+                BREAK_WITH_ERROR("VirtualAllocEx for remote param failed");
+
+            printf("remote param addr = %p\n", lpRemoteParam);
+
+            SIZE_T param_len = strlen(params) + 1;
+            if (!WriteProcessMemory(hProcess, lpRemoteParam, params, param_len, &written) || written != param_len)
+                BREAK_WITH_ERROR("WriteProcessMemory for remote param failed");
         } else {
             printf("No parameters provided; using null pointer\n");
-            lpRemoteParam = NULL;
         }
 
         /* read back some bytes to verify write */
@@ -124,7 +123,7 @@ int inject(int pid, char *path, char *params){
             BREAK_WITH_ERROR("LoadRemoteLibraryR returned NULL");
         }
 
-        printf("[+] DLL injected: '%s' into PID %d, remote param at %p\n", path, dwProcessId, lpRemoteParam);
+        printf("[+] DLL injected: '%s' into PID %lu, remote param at %p\n", path, dwProcessId, lpRemoteParam);
         /* wait for reflective loader thread to complete */
         WaitForSingleObject(hRemoteThread, INFINITE);
 
@@ -164,6 +163,7 @@ int inject(int pid, char *path, char *params){
 */
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_inject__ILjava_lang_String_2
   (JNIEnv *env, jobject obj, jint pid, jstring path) {
+    (void)obj;
     // Injection Path
     const char* InjectionDLL = (*env)->GetStringUTFChars(env, path, NULL);
 
@@ -181,12 +181,13 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNativ
 */
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_inject__ILjava_lang_String_2Ljava_lang_String_2
   (JNIEnv *env, jobject obj, jint pid , jstring path, jstring configDir){
-
+    (void)obj;
     const char* InjectionDLL = (*env)->GetStringUTFChars(env, path, NULL);
     const char* ConfigDir = (*env)->GetStringUTFChars(env, configDir, NULL);
 
     char params[MAX_PATH] = {0};    /* use a real buffer */
     strncpy(params, ConfigDir ? ConfigDir : "", MAX_PATH - 1);
+    params[MAX_PATH - 1] = '\0';
 
     int ret = inject(pid, (char*)InjectionDLL, params);
 
@@ -210,6 +211,7 @@ static int g_count = 0;
 
 
 BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
+    (void)lParam;
     wchar_t title[256];
     GetWindowTextW(hwnd, title, 256);
     if (wcslen(title) == 0) return TRUE;
@@ -229,7 +231,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
 
 JNIEXPORT jobjectArray JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_findWindowsByTitle
   (JNIEnv *env, jclass clazz, jstring keyword) {
-
+    (void)clazz;
     const jchar *input = (*env)->GetStringChars(env, keyword, NULL);
     wcsncpy(g_keyword, (const wchar_t *)input, 255);
     g_keyword[255] = L'\0';

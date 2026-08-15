@@ -56,10 +56,9 @@ private:
         attached_ = false;
     }
 
-    bool retry(const char* what, int attempt) {
+    void retry(const char* what, int attempt) {
         spdlog::debug("Failed to get {}, attempt {}/{}", what, attempt, max_try_);
         std::this_thread::sleep_for(std::chrono::milliseconds(retry_delay_ms_));
-        return false;
     }
 
     bool acquire_jvm() {

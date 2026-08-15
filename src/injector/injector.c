@@ -116,7 +116,7 @@ static int run(int argc, char** argv)
         return 3;
     }
 
-    inject_fn_t inject = (inject_fn_t)proc;
+    inject_fn_t inject = (inject_fn_t)(void*)proc;
 
     printf("[*] Calling inject(pid=%d, dllPath=\"%s\", currentDir=\"%s\")\n",
            pid, dll_path, cwd);
