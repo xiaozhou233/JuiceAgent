@@ -1,14 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <windows.h>
 #include <jni.h>
 #include <ReflectiveDLLInjection/LoadLibraryR.h>
 
-#define WIN_X64
 #define BREAK_WITH_ERROR(e) { printf("[-] %s. Error=%lu\n", e, GetLastError()); break; }
 
 __declspec(dllexport)
-int inject(int pid, char *path, char *params){
+int inject(int pid, const char *path, const char *params){
     HANDLE hFile          = NULL;
     HANDLE hRemoteThread  = NULL;
     HANDLE hProcess       = NULL;
@@ -21,34 +21,16 @@ int inject(int pid, char *path, char *params){
     TOKEN_PRIVILEGES priv = {0};
     BOOL bSuccess         = FALSE;
 
-    printf("Injector process pointer size = %zu bytes\n", sizeof(void*));
-    
     do {
-        if (!params) {
-            printf("[!] No parameters provided\n");
-        }
-
         /* open DLL file */
         hFile = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         if (hFile == INVALID_HANDLE_VALUE)
             BREAK_WITH_ERROR("Failed to open DLL file");
-		/* Debug helper: print the path being opened and its absolute path */
-		char fullPath[MAX_PATH] = {0};
-		if (GetFullPathNameA(path, MAX_PATH, fullPath, NULL) != 0) {
-            printf("Injector GetFullPathNameA success: %s\n", fullPath);
-		} else {
-            printf("[*] Injector GetFullPathNameA failed: %lu\n", GetLastError());
-		}
-
-		/* Before CreateFileA, print which file we are about to open */
-        printf("[*] About to open DLL: %s\n", path);
-
-		/* after ReadFile (or after loading into lpBuffer), verify exports again on the buffer we actually read */
 
         /* get file size */
         dwLength = GetFileSize(hFile, NULL);
         if (dwLength == INVALID_FILE_SIZE || dwLength == 0)
-            BREAK_WITH_ERROR("Failed to get DLL file size\n");
+            BREAK_WITH_ERROR("Failed to get DLL file size");
 
         /* alloc local buffer and read file */
         lpBuffer = HeapAlloc(GetProcessHeap(), 0, dwLength);
@@ -73,57 +55,27 @@ int inject(int pid, char *path, char *params){
         if (!hProcess)
             BREAK_WITH_ERROR("Failed to open target process");
 
-        /* detect target architecture */
-        BOOL targetIsWow64 = FALSE;
-        if (!IsWow64Process(hProcess, &targetIsWow64)) {
-            printf("IsWow64Process failed\n");
-        } else {
-            printf("Is target process wow64 = %d (TRUE means 32-bit process on 64-bit OS)\n", targetIsWow64);
-        }
-
-
         /* write params to remote memory */
         SIZE_T written = 0;
         if (params) {
-            /* allocate remote memory for params */
             lpRemoteParam = VirtualAllocEx(hProcess, NULL, MAX_PATH, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
             if (!lpRemoteParam)
                 BREAK_WITH_ERROR("VirtualAllocEx for remote param failed");
 
-            printf("remote param addr = %p\n", lpRemoteParam);
-
             SIZE_T param_len = strlen(params) + 1;
+            if (param_len > MAX_PATH)
+                param_len = MAX_PATH;
+
             if (!WriteProcessMemory(hProcess, lpRemoteParam, params, param_len, &written) || written != param_len)
                 BREAK_WITH_ERROR("WriteProcessMemory for remote param failed");
-        } else {
-            printf("No parameters provided; using null pointer\n");
-        }
-
-        /* read back some bytes to verify write */
-        {
-            char verify[MAX_PATH] = {0};
-            SIZE_T read = 0;
-
-            if (lpRemoteParam) {
-                if (ReadProcessMemory(hProcess, lpRemoteParam, verify, MAX_PATH, &read)) {
-                    printf("[*] Read back remote param, ConfigDir=%s\n", verify);
-                } else {
-                    printf("[-] ReadProcessMemory failed: %lu\n", GetLastError());
-                }
-            } else {
-                printf("[*] lpRemoteParam == NULL, skip verify\n");
-            }
         }
 
         /* call LoadRemoteLibraryR */
         hRemoteThread = LoadRemoteLibraryR(hProcess, lpBuffer, dwLength, lpRemoteParam);
-        if (!hRemoteThread) {
-            /* library didn't set last error; print hint info we gathered */
-            printf("[-] LoadRemoteLibraryR returned NULL. GetLastError=%lu\n", GetLastError());
+        if (!hRemoteThread)
             BREAK_WITH_ERROR("LoadRemoteLibraryR returned NULL");
-        }
 
-        printf("[+] DLL injected: '%s' into PID %lu, remote param at %p\n", path, dwProcessId, lpRemoteParam);
+        printf("[+] DLL injected: '%s' into PID %lu\n", path, dwProcessId);
         /* wait for reflective loader thread to complete */
         WaitForSingleObject(hRemoteThread, INFINITE);
 
@@ -157,47 +109,48 @@ int inject(int pid, char *path, char *params){
     return bSuccess ? 0 : -1;
 }
 
+static jboolean jni_inject(JNIEnv* env, jint pid, jstring path, const char* config_dir) {
+    const char* dll_path = (*env)->GetStringUTFChars(env, path, NULL);
+    if (!dll_path)
+        return JNI_FALSE;
+
+    char params[MAX_PATH] = {0};
+    const char* inject_params = NULL;
+    if (config_dir) {
+        strncpy(params, config_dir, MAX_PATH - 1);
+        params[MAX_PATH - 1] = '\0';
+        inject_params = params;
+    }
+
+    int ret = inject(pid, dll_path, inject_params);
+
+    (*env)->ReleaseStringUTFChars(env, path, dll_path);
+    return (ret == 0) ? JNI_TRUE : JNI_FALSE;
+}
+
 /*
-* JNI Function: inject(int pid)
-* Note: 
+* JNI Function: inject(int pid, String path)
 */
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_inject__ILjava_lang_String_2
   (JNIEnv *env, jobject obj, jint pid, jstring path) {
     (void)obj;
-    // Injection Path
-    const char* InjectionDLL = (*env)->GetStringUTFChars(env, path, NULL);
-
-    int ret = inject(pid, (char*)InjectionDLL, NULL);
-    (*env)->ReleaseStringUTFChars(env, path, InjectionDLL);
-    return (ret == 0) ? JNI_TRUE : JNI_FALSE;
+    return jni_inject(env, pid, path, NULL);
 }
-
 
 /*
-* JNI Function: inject(int pid, String path)
-* Param pid: target process id
-* Param path: path of inject dll
-* Param configDir: path of config file (toml)
+* JNI Function: inject(int pid, String path, String configDir)
+* configDir: path of config file (toml)
 */
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorNative_inject__ILjava_lang_String_2Ljava_lang_String_2
-  (JNIEnv *env, jobject obj, jint pid , jstring path, jstring configDir){
+  (JNIEnv *env, jobject obj, jint pid, jstring path, jstring configDir) {
     (void)obj;
-    const char* InjectionDLL = (*env)->GetStringUTFChars(env, path, NULL);
-    const char* ConfigDir = (*env)->GetStringUTFChars(env, configDir, NULL);
-
-    char params[MAX_PATH] = {0};    /* use a real buffer */
-    strncpy(params, ConfigDir ? ConfigDir : "", MAX_PATH - 1);
-    params[MAX_PATH - 1] = '\0';
-
-    int ret = inject(pid, (char*)InjectionDLL, params);
-
-    (*env)->ReleaseStringUTFChars(env, path, InjectionDLL);
-    (*env)->ReleaseStringUTFChars(env, configDir, ConfigDir);
-
-    return (ret == 0) ? JNI_TRUE : JNI_FALSE;
+    const char* config_dir = (*env)->GetStringUTFChars(env, configDir, NULL);
+    jboolean result = jni_inject(env, pid, path, config_dir);
+    (*env)->ReleaseStringUTFChars(env, configDir, config_dir);
+    return result;
 }
 
-/// ================ FindWindowsByTitle  =================
+/* ================ FindWindowsByTitle ================= */
 #define MAX_RESULTS 128
 
 typedef struct {
@@ -208,7 +161,6 @@ typedef struct {
 static wchar_t g_keyword[256];
 static WindowData g_results[MAX_RESULTS];
 static int g_count = 0;
-
 
 BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
     (void)lParam;
@@ -222,6 +174,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
 
         if (g_count < MAX_RESULTS && pid) {
             wcsncpy(g_results[g_count].title, title, 255);
+            g_results[g_count].title[255] = L'\0';
             g_results[g_count].pid = pid;
             g_count++;
         }
@@ -256,4 +209,4 @@ JNIEXPORT jobjectArray JNICALL Java_cn_xiaozhou233_juiceagent_injector_InjectorN
 
     return array;
 }
-/// ===============================================================================
+/* ====================================================== */

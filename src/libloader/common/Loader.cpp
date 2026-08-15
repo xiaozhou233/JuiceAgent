@@ -11,40 +11,12 @@ namespace JuiceAgent::Loader {
 static bool invoke_juiceagent_init(JNIEnv* env, const LoaderConfig& config) {
     const char* bootstrap_class = "cn/xiaozhou233/juiceagent/api/JuiceAgentBootstrap";
     const char* method_name = "start";
-    const char* method_desc = "(Ljava/lang/String;)V";
 
-    using JuiceAgent::Utils::check_and_clear_exception;
-
-    // Find Java class
-    JuiceAgent::Utils::LocalRef<jclass> cls(env, env->FindClass(bootstrap_class));
-    if (!cls.get() || check_and_clear_exception(env, "FindClass")) {
-        spdlog::error("Failed to find class: {}", bootstrap_class);
-        return false;
-    }
-
-    // Find static method
-    jmethodID method_id = env->GetStaticMethodID(cls, method_name, method_desc);
-    if (!method_id || check_and_clear_exception(env, "GetStaticMethodID")) {
-        spdlog::error("Failed to find method: {}", method_name);
-        return false;
-    }
-
-    // Serialize InjectionInfo to string
     std::string args = JuiceAgent::Config::Utils::serialize_loader_config(config);
     spdlog::debug("Invoke args: {}", args);
 
-    // Create Java string
-    jstring jArgs = env->NewStringUTF(args.c_str());
-    if (!jArgs || check_and_clear_exception(env, "NewStringUTF")) {
-        spdlog::error("Failed to create jstring");
-        return false;
-    }
-
-    // Call the static method
-    env->CallStaticVoidMethod(cls, method_id, jArgs);
-
-    // Check for exceptions
-    if (check_and_clear_exception(env, "CallStaticVoidMethod")) {
+    if (!JuiceAgent::Utils::call_java_impl(env, bootstrap_class, method_name, args.c_str())) {
+        spdlog::error("Failed to init JuiceAgent!");
         return false;
     }
 

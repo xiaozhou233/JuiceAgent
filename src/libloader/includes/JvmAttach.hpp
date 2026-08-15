@@ -61,53 +61,47 @@ private:
         std::this_thread::sleep_for(std::chrono::milliseconds(retry_delay_ms_));
     }
 
-    bool acquire_jvm() {
+    template<typename Fn>
+    bool acquire(const char* what, Fn&& attempt) {
         for (int i = 1; i <= max_try_; i++) {
-            jint status = JNI_GetCreatedJavaVMs(&jvm_, 1, nullptr);
-
-            if (status == JNI_OK && jvm_ != nullptr) {
-                spdlog::debug("Got JavaVM");
+            if (attempt()) {
                 return true;
             }
-
-            retry("JavaVM", i);
+            retry(what, i);
         }
         return false;
+    }
+
+    bool acquire_jvm() {
+        return acquire("JavaVM", [this] {
+            jvm_ = nullptr;
+            return JNI_GetCreatedJavaVMs(&jvm_, 1, nullptr) == JNI_OK && jvm_ != nullptr;
+        });
     }
 
     bool acquire_env() {
-        for (int i = 1; i <= max_try_; i++) {
-            jint status = jvm_->GetEnv(reinterpret_cast<void**>(&env_), JNI_VERSION_1_6);
-
-            if (status == JNI_OK && env_ != nullptr) {
-                spdlog::debug("Got JNIEnv (already attached)");
+        return acquire("JNIEnv", [this] {
+            env_ = nullptr;
+            if (jvm_->GetEnv(reinterpret_cast<void**>(&env_), JNI_VERSION_1_6) == JNI_OK && env_ != nullptr) {
                 return true;
             }
 
-            status = jvm_->AttachCurrentThread(reinterpret_cast<void**>(&env_), nullptr);
-            if (status == JNI_OK && env_ != nullptr) {
+            env_ = nullptr;
+            if (jvm_->AttachCurrentThread(reinterpret_cast<void**>(&env_), nullptr) == JNI_OK && env_ != nullptr) {
                 attached_ = true;
-                spdlog::debug("Attached current thread");
                 return true;
             }
 
-            retry("JNIEnv attach", i);
-        }
-        return false;
+            env_ = nullptr;
+            return false;
+        });
     }
 
     bool acquire_jvmti() {
-        for (int i = 1; i <= max_try_; i++) {
-            jint status = jvm_->GetEnv(reinterpret_cast<void**>(&jvmti_), JVMTI_VERSION_1_2);
-
-            if (status == JNI_OK && jvmti_ != nullptr) {
-                spdlog::debug("Got JVMTI");
-                return true;
-            }
-
-            retry("JVMTI", i);
-        }
-        return false;
+        return acquire("JVMTI", [this] {
+            jvmti_ = nullptr;
+            return jvm_->GetEnv(reinterpret_cast<void**>(&jvmti_), JVMTI_VERSION_1_2) == JNI_OK && jvmti_ != nullptr;
+        });
     }
 };
 

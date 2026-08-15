@@ -9,22 +9,11 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved) {
             DisableThreadLibraryCalls(hinstDLL);
             Logger::init("libloader.log");
 
-            spdlog::info("DllMain: DLL_PROCESS_ATTACH");
-
-            // Get the runtime directory from the lpReserved parameter
-            const char* runtime_dir = (const char*)lpReserved; 
-            spdlog::info("DllMain: runtime_dir: {}", runtime_dir);
+            // lpReserved carries the runtime directory from the reflective loader
+            const char* runtime_dir = (const char*)lpReserved;
+            spdlog::info("DllMain: DLL_PROCESS_ATTACH, runtime_dir: {}", runtime_dir);
 
             JuiceAgent::Loader::entrypoint(runtime_dir);
-
-            break;
-        }
-
-        case DLL_THREAD_ATTACH: {
-            break;
-        }
-
-        case DLL_THREAD_DETACH: {
             break;
         }
 

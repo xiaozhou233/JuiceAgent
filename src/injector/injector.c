@@ -23,15 +23,6 @@ static void execute_jps(void)
     _pclose(pipe);
 }
 
-static void copy_arg(char* dst, size_t dst_size, const char* src)
-{
-    int written = snprintf(dst, dst_size, "%s", src ? src : "");
-    if (written < 0 || (size_t)written >= dst_size)
-    {
-        printf("[-] Argument truncated to fit buffer.\n");
-    }
-}
-
 static int run(int argc, char** argv)
 {
     int pid = 0;
@@ -42,10 +33,10 @@ static int run(int argc, char** argv)
     if (argc >= 3)
     {
         pid = atoi(argv[1]);
-        copy_arg(dll_path, sizeof(dll_path), argv[2]);
+        snprintf(dll_path, sizeof(dll_path), "%s", argv[2]);
         if (argc >= 4)
         {
-            copy_arg(injector_lib_path, sizeof(injector_lib_path), argv[3]);
+            snprintf(injector_lib_path, sizeof(injector_lib_path), "%s", argv[3]);
         }
     }
     else
@@ -64,7 +55,7 @@ static int run(int argc, char** argv)
         if (!GetCurrentDirectoryA(sizeof(cwd), cwd))
         {
             printf("[-] GetCurrentDirectory failed, using '.'\n");
-            copy_arg(cwd, sizeof(cwd), ".");
+            snprintf(cwd, sizeof(cwd), ".");
         }
         snprintf(dll_path, sizeof(dll_path), "%s\\libloader.dll", cwd);
         printf("[*] Using DLL path: %s\n", dll_path);
