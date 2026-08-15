@@ -15,16 +15,15 @@ inline void init(
     spdlog::level::level_enum level = spdlog::level::trace
 ) {
     static bool initialized = false;
+
     if (initialized) {
         spdlog::warn("Logger already initialized, skipping");
         return;
     }
-    initialized = true;
 
     auto console_sink =
         std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 
-    // truncate = true: overwrite the log file on startup
     auto file_sink =
         std::make_shared<spdlog::sinks::basic_file_sink_mt>(
             file_name,
@@ -50,6 +49,11 @@ inline void init(
     );
 
     spdlog::set_default_logger(logger);
+
+    // Flush after every log message
+    spdlog::flush_on(spdlog::level::trace);
+
+    initialized = true;
 }
 
 }
