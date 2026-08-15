@@ -82,7 +82,8 @@ JuiceAgent 是 [JuiceAgent-API](https://github.com/xiaozhou233/JuiceAgent-API) �
 
 - `src/libloader` — `libloader.dll`。注入到目标 JVM，附加 JVM、解析 `config.toml`、注入内嵌的 `JuiceAgent-API` 并引导 agent。
 - `src/libagent` — `libagent.dll`。JVMTI agent。注册回调（例如 `ClassFileLoadHook`）并实现 `JuiceAgent-API` 的原生侧。
-- `src/libinjector` — `injector.exe` + `libinject.dll`。反射式 DLL 注入器，将 `libloader.dll` 加载到目标进程。可通过命令行或 JNI 驱动。
+- `src/injector` — `injector.exe`。命令行驱动，加载 `libinject.dll` 并将 `libloader.dll` 注入到目标进程。
+- `src/libinject` — `libinject.dll`。反射式 DLL 注入器，导出原生 `inject` 函数并提供 JNI 绑定（`cn.xiaozhou233.juiceagent.injector.InjectorNative`）。
 
 ## 快速开始
 
@@ -164,7 +165,25 @@ Input PID:
 
 #### 方法 B：通过 JNI 调用 `inject`
 
-详见 [docs/Inject.md](docs/Inject.md)。
+在你的项目中创建 `cn/xiaozhou233/juiceagent/injector/InjectorNative.java`：
+
+```java
+package cn.xiaozhou233.juiceagent.injector;
+
+public class InjectorNative {
+    public native boolean inject(int pid, String path);
+    public native boolean inject(int pid, String path, String configDir);
+}
+```
+
+示例：
+
+```java
+System.load("<libinject.dll 的路径>");
+InjectorNative injectorNative = new InjectorNative();
+
+injectorNative.inject(<pid>, "<libloader.dll 的路径>", "<配置文件所在目录>");
+```
 
 ### 5. 完成
 
@@ -191,7 +210,7 @@ Input PID:
 ## 示例
 
 - `examples/load-via-injector-exe` — 通过 `injector.exe` 将 JAR 加载到目标 JVM 并运行入口点。
-- `examples/retansform-class` — 演示使用目标 JVM 和修改后的类副本进行类重变换。
+- `examples/retransform-class` — 演示使用目标 JVM 和修改后的类副本进行类重变换。
 
 ## 如何构建
 
@@ -231,6 +250,5 @@ cmake --build build
 ## 致谢
 
 - [ReflectiveDLLInjection](https://github.com/stephenfewer/ReflectiveDLLInjection) — DLL 注入实现
-- [plog](https://github.com/SergiusTheBest/plog) — 轻量、简单、可扩展的 C++ 日志库
+- [spdlog](https://github.com/gabime/spdlog) — 高性能 C++ 日志库
 - [toml11](https://github.com/ToruNiina/toml11) — 现代 C++ 的 TOML 库
-- [eventpp](https://github.com/wqking/eventpp) — 事件分发器与回调列表 C++ 库

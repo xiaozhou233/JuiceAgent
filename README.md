@@ -80,7 +80,8 @@ The `JuiceAgent-API` jar is embedded in the native binaries, so no separate down
 
 - `src/libloader` — `libloader.dll`. Injected into the target JVM. Attaches to the JVM, parses `config.toml`, injects the embedded `JuiceAgent-API`, and bootstraps the agent.
 - `src/libagent` — `libagent.dll`. The JVMTI agent. Registers callbacks (e.g. `ClassFileLoadHook`) and implements the native side of `JuiceAgent-API`.
-- `src/libinjector` — `injector.exe` + `libinject.dll`. Reflective DLL injector that loads `libloader.dll` into the target process. Can be driven from the command line or through JNI.
+- `src/injector` — `injector.exe`. Command-line driver that loads `libinject.dll` and injects `libloader.dll` into the target process.
+- `src/libinject` — `libinject.dll`. Reflective DLL injector. Exposes a native `inject` function and JNI bindings (`cn.xiaozhou233.juiceagent.injector.InjectorNative`).
 
 ## Quick Start
 
@@ -162,7 +163,25 @@ You can also pass arguments directly: `injector.exe <pid> <libloader.dll path> [
 
 #### Method B: Use JNI to call `inject`
 
-See [docs/Inject.md](docs/Inject.md) for details.
+Create `cn/xiaozhou233/juiceagent/injector/InjectorNative.java` in your project:
+
+```java
+package cn.xiaozhou233.juiceagent.injector;
+
+public class InjectorNative {
+    public native boolean inject(int pid, String path);
+    public native boolean inject(int pid, String path, String configDir);
+}
+```
+
+Example:
+
+```java
+System.load("<path-to-libinject.dll>");
+InjectorNative injectorNative = new InjectorNative();
+
+injectorNative.inject(<pid>, "<path-to-libloader.dll>", "<path-to-config-directory>");
+```
 
 ### 5. Done
 
@@ -189,7 +208,7 @@ The following native functions are exposed to Java through the `cn.xiaozhou233.j
 ## Examples
 
 - `examples/load-via-injector-exe` — loads a JAR into a target JVM via `injector.exe` and runs an entry point.
-- `examples/retansform-class` — demonstrates class retransformation with a target JVM and a modified copy of the class.
+- `examples/retransform-class` — demonstrates class retransformation with a target JVM and a modified copy of the class.
 
 ## How To Build
 
@@ -229,6 +248,5 @@ This project is intended for learning and research in controlled environments on
 ## Acknowledgements
 
 - [ReflectiveDLLInjection](https://github.com/stephenfewer/ReflectiveDLLInjection) — DLL injection implementation
-- [plog](https://github.com/SergiusTheBest/plog) — Portable, simple, and extensible C++ logging library
+- [spdlog](https://github.com/gabime/spdlog) — Fast C++ logging library
 - [toml11](https://github.com/ToruNiina/toml11) — TOML for Modern C++
-- [eventpp](https://github.com/wqking/eventpp) — C++ library for event dispatchers and callback lists
