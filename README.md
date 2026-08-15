@@ -1,10 +1,12 @@
 # JuiceAgent
 
+[English](README.md) | [简体中文](README_ZH.md)
+
 JuiceAgent is an advanced JVMTI-based injection framework for runtime JAR loading, bytecode transformation, and runtime JVM instrumentation. It injects into a running JVM process even when `DisableAttachMechanism=true`, without requiring `-javaagent` startup arguments or the attach mechanism.
 
 **Warning**: This project is still experimental and is not recommended for production use. Use it at your own risk.
 
-**Tips**: JuiceAgent may be flagged as malware by some antivirus software. The reasons are as follows: [Here](docs/Antivirus-False-Positive.md)
+> **Tips**: Some antivirus software may flag JuiceAgent as malware. See [Antivirus False Positive Notice](docs/Antivirus-False-Positive.md) for details.
 
 **Note**: This project is designed for a regular JVM. Custom JVMs may not be able to run it.
 
