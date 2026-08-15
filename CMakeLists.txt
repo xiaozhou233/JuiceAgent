@@ -11,3 +11,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
 link_directories("${CMAKE_SOURCE_DIR}/lib")
+
+# modules
+add_subdirectory(${SRC_DIR}/libloader)
