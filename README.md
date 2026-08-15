@@ -4,7 +4,7 @@ JuiceAgent is an advanced JVMTI-based injection framework for runtime JAR loadin
 
 **Warning**: This project is still experimental and is not recommended for production use. Use it at your own risk.
 
-**Tips**: JuiceAgent may be flagged as malware by some antivirus software. The reasons are as follows: ![Here](docs/Antivirus-False-Positive.md)
+**Tips**: JuiceAgent may be flagged as malware by some antivirus software. The reasons are as follows: [Here](docs/Antivirus-False-Positive.md)
 
 **Note**: This project is designed for a regular JVM. Custom JVMs may not be able to run it.
 
@@ -204,7 +204,7 @@ The following native functions are exposed to Java through the `cn.xiaozhou233.j
 git clone https://github.com/xiaozhou233/JuiceAgent.git
 cd JuiceAgent
 
-cmake --preset ninja-release
+cmake --preset release
 cmake --build build
 ```
 
