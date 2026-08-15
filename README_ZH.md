@@ -12,6 +12,10 @@ JuiceAgent 是一个基于 JVMTI 的高级注入框架，用于运行时 JAR 加
 
 **注意**：本项目针对标准 JVM 设计，自定义 JVM 可能无法运行。
 
+欢迎加入我们的 QQ / Discord 群组获取更多信息和支持：
+- Discord：[JuiceDev](https://discord.gg/AQTnUyWNNJ)
+- QQ 群：1103504356
+
 ![License](https://img.shields.io/github/license/xiaozhou233/JuiceAgent)
 ![Release](https://img.shields.io/github/v/release/xiaozhou233/JuiceAgent)
 ![GitHub last commit](https://img.shields.io/github/last-commit/xiaozhou233/JuiceAgent)
@@ -86,6 +90,8 @@ JuiceAgent 是 [JuiceAgent-API](https://github.com/xiaozhou233/JuiceAgent-API) �
 - `src/libinject` — `libinject.dll`。反射式 DLL 注入器，导出原生 `inject` 函数并提供 JNI 绑定（`cn.xiaozhou233.juiceagent.injector.InjectorNative`）。
 
 ## 快速开始
+
+**你也可以查看 [examples](https://github.com/xiaozhou233/JuiceAgent/tree/main/examples) 目录获取更详细的使用示例。**
 
 ### 1. 下载 Release
 

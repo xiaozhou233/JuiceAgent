@@ -10,6 +10,11 @@ JuiceAgent is an advanced JVMTI-based injection framework for runtime JAR loadin
 
 **Note**: This project is designed for a regular JVM. Custom JVMs may not be able to run it.
 
+Welcome to join our QQ/Discord group for more information and support:
+- Discord: [JuiceDev](https://discord.gg/AQTnUyWNNJ)
+- QQ Group: 1103504356
+
+
 ![License](https://img.shields.io/github/license/xiaozhou233/JuiceAgent)
 ![Release](https://img.shields.io/github/v/release/xiaozhou233/JuiceAgent)
 ![GitHub last commit](https://img.shields.io/github/last-commit/xiaozhou233/JuiceAgent)
