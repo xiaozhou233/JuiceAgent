@@ -1,14 +1,14 @@
-file(GLOB_RECURSE loader_sources
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/*.c
+file(GLOB_RECURSE loader_sources CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/*.c
 )
 
 if (WIN32)
     message(STATUS "Detected System: Windows")
 
-    file(GLOB_RECURSE windows_sources
-        ${CMAKE_CURRENT_SOURCE_DIR}/plantform/windows/*.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/plantform/windows/*.c
+    file(GLOB_RECURSE windows_sources CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/platform/windows/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/platform/windows/*.c
     )
 
     list(APPEND loader_sources ${windows_sources})

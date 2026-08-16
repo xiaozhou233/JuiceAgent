@@ -1,9 +1,10 @@
 #pragma once
 
+#include <jvm/jni.h>
+#include <jvm/jvmti.h>
+
 namespace JuiceAgent::Loader {
-
-// Attach to the JVM and initialize JuiceAgent.
-// runtime_dir: directory containing config.toml, or nullptr to use defaults.
-void entrypoint(const char* runtime_dir);
-
+    void entrypoint(const char* runtime_dir);
+    void preload(const char* runtime_dir, JNIEnv* env, jvmtiEnv* jvmti);
+    void initialize(const char* runtime_dir, JNIEnv* env, jvmtiEnv* jvmti);
 } // namespace JuiceAgent::Loader
