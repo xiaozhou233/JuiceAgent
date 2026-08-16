@@ -1,6 +1,7 @@
 #include <string>
 #include <JuiceAgent/Logger.hpp>
 #include <JuiceAgent.hpp>
+#include <JuiceAgent/Config.hpp>
 #include <jni_common.hpp>
 
 namespace JuiceAgent {
@@ -29,6 +30,18 @@ namespace JuiceAgent {
             spdlog::error("[JuiceAgent] Could not get JVMTI!");
             return false;
         }
+        if(runtime_dir.empty()) {
+            spdlog::warn("[JuiceAgent] No runtime directory specified!");
+            spdlog::warn("[JuiceAgent] No config provided, Modules will not be loaded!");
+        } else {
+            JuiceAgent::Config::Config cfg(runtime_dir);
+            setConfig(cfg);
+            if(!getConfig().is_valid()) {
+                spdlog::warn("[JuiceAgent] Config is not valid!");
+                spdlog::warn("[JuiceAgent] No config provided, Modules will not be loaded!");
+            }
+        }
+        
 
         // Set Environment
         setJavaVM(jvm);

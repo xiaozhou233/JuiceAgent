@@ -1,6 +1,7 @@
 #pragma once
 #include <jvm/jni.h>
 #include <jvm/jvmti.h>
+#include <JuiceAgent/Config.hpp>
 
 namespace JuiceAgent {
     class Agent{
@@ -9,6 +10,7 @@ namespace JuiceAgent {
             jvmtiEnv* jvmti;
             // Unsafe: JNIEnv
             JNIEnv* env;
+            JuiceAgent::Config::Config config;
 
             bool loaded = false;
         public:
@@ -27,12 +29,13 @@ namespace JuiceAgent {
             jvmtiEnv* getJVMTI() const { return jvmti; }
             JNIEnv* getJNIEnv() const { return env; }
             bool isLoaded() const { return loaded; }
+            JuiceAgent::Config::Config& getConfig() { return config; }
 
             // setters
             void setJavaVM(JavaVM* jvm) { this->jvm = jvm; }
             void setJVMTI(jvmtiEnv* jvmti) { this->jvmti = jvmti; }
             void setJNIEnv(JNIEnv* env) { this->env = env; }
             void setLoaded(bool loaded) { this->loaded = loaded; }
-
+            void setConfig(JuiceAgent::Config::Config& config) { this->config = config; }
     };
 }

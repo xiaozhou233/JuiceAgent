@@ -3,18 +3,25 @@
 // This function is called by Java to initialize the agent.
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_init
   (JNIEnv *env, jclass , jstring j_runtime_dir) {
+
     Logger::init("libagent.log");
     
     spdlog::info("Initializing JuiceAgent...");
 
     // Get runtime directory
-    const char* c_runtime_dir = env->GetStringUTFChars(j_runtime_dir, nullptr);
-    std::string runtime_dir(c_runtime_dir);
-    env->ReleaseStringUTFChars(j_runtime_dir, c_runtime_dir);
+    std::string runtime_dir;
+
+    if (j_runtime_dir != nullptr) {
+        const char* c_runtime_dir = env->GetStringUTFChars(j_runtime_dir, nullptr);
+
+        if (c_runtime_dir != nullptr) {
+            runtime_dir = c_runtime_dir;
+            env->ReleaseStringUTFChars(j_runtime_dir, c_runtime_dir);
+        }
+    }
 
     if (runtime_dir.empty()) {
-        spdlog::error("Failed to get runtime directory from argument, runtime_dir is empty");
-        return JNI_FALSE;
+        spdlog::warn("Runtime directory is empty");
     }
     spdlog::info("JuiceAgent got runtime directory: {}", runtime_dir);
 
