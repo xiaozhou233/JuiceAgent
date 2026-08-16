@@ -7,7 +7,7 @@ namespace JuiceAgent::services::JarLoader {
     static const char* MODULE_METHOD = "loadJar";
 
     void init() {
-        auto& cfg = agent.get_config();
+        auto& cfg = agent().get_config();
 
         config.enabled = cfg.get<bool>(
             "JuiceAgent.Modules.JarLoader.Enabled",
@@ -56,7 +56,7 @@ namespace JuiceAgent::services::JarLoader {
         auto data = ser.serialize();
 
         JuiceAgent::Utils::call_java_impl(
-            agent.get_env(),
+            agent().get_env(),
             MODULE_CLASS,
             MODULE_METHOD,
             data.c_str()

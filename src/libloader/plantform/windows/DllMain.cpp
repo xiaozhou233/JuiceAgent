@@ -3,13 +3,19 @@
 #include "JuiceAgent/Logger.hpp"
 #include "Loader.hpp"
 
+static bool g_loaded_via_injection = false;
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved) {
     switch (fdwReason) {
         case DLL_PROCESS_ATTACH: {
+            if (lpReserved == NULL) {
+                return TRUE;
+            }
+
+            g_loaded_via_injection = true;
             DisableThreadLibraryCalls(hinstDLL);
             Logger::init("libloader.log");
 
-            // lpReserved carries the runtime directory from the reflective loader
             const char* runtime_dir = (const char*)lpReserved;
             spdlog::info("DllMain: DLL_PROCESS_ATTACH, runtime_dir: {}", runtime_dir);
 
@@ -18,7 +24,9 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved) {
         }
 
         case DLL_PROCESS_DETACH: {
-            spdlog::info("DllMain: DLL_PROCESS_DETACH");
+            if (g_loaded_via_injection) {
+                spdlog::info("DllMain: DLL_PROCESS_DETACH");
+            }
             break;
         }
     }

@@ -6,7 +6,10 @@
 
 namespace JuiceAgent::services
 {
-    static JuiceAgent::Agent& agent = JuiceAgent::Agent::instance();
+    inline JuiceAgent::Agent& agent() {
+        static JuiceAgent::Agent& instance = JuiceAgent::Agent::instance();
+        return instance;
+    }
 
     namespace Manager {
         void register_events();

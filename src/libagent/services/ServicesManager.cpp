@@ -4,10 +4,10 @@
 namespace JuiceAgent::services::Manager {
     void register_events() {
         // PreLoad
-        agent.get_eventbus().subscribe<EventPreLoad>(init);
+        agent().get_eventbus().subscribe<EventPreLoad>(init);
 
         // Loaded
-        agent.get_eventbus().subscribe<EventLoaded>(start);
+        agent().get_eventbus().subscribe<EventLoaded>(start);
 
         // TODO: Stopped
 

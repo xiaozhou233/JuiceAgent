@@ -53,8 +53,8 @@ namespace JuiceAgent::services::Bytecode {
     }
 
     void init() {
-        agent.get_eventbus().subscribe<EventClassFileLoadHook>(capture_bytecodes);
-        agent.get_eventbus().subscribe<EventClassFileLoadHook>(patch_bytecodes);
+        agent().get_eventbus().subscribe<EventClassFileLoadHook>(capture_bytecodes);
+        agent().get_eventbus().subscribe<EventClassFileLoadHook>(patch_bytecodes);
     }
 
     void start() {

@@ -122,6 +122,8 @@ static jboolean jni_inject(JNIEnv* env, jint pid, jstring path, const char* conf
         strncpy(params, config_dir, MAX_PATH - 1);
         params[MAX_PATH - 1] = '\0';
         inject_params = params;
+    } else {
+        inject_params = params;
     }
 
     int ret = inject(pid, dll_path, inject_params);
