@@ -1,45 +1,38 @@
 #pragma once
-
-#include <JuiceAgent/Logger.hpp>
-#include <jni.h>
-#include <jvmti.h>
-#include <event/eventbus.hpp>
-#include <JuiceAgent/Config.hpp>
+#include <jvm/jni.h>
+#include <jvm/jvmti.h>
 
 namespace JuiceAgent {
-    class Agent {
+    class Agent{
         private:
             JavaVM* jvm;
             jvmtiEnv* jvmti;
+            // Unsafe: JNIEnv
             JNIEnv* env;
-            EventBus eventbus;
-            JuiceAgent::Config::Config config;
 
-        private:
-            Agent() = default;
-            ~Agent() = default;
-            
+            bool loaded = false;
         public:
-            // ===== Singleton =====
-            static Agent& instance();
+            // Singleton
+            static Agent& getInstance();
 
-            Agent(const Agent&) = delete;
             Agent& operator=(const Agent&) = delete;
 
-            // EntryPoint
-            bool init(JavaVM* jvm, JNIEnv* env, jvmtiEnv* jvmti, std::string& runtime_dir);
-
+            // preload
+            bool preload(JavaVM* jvm, JNIEnv* env, jvmtiEnv* jvmti, std::string& runtime_dir);
+            // init
+            bool init();
+            
             // getters
-            JavaVM* get_jvm() const { return jvm; }
-            jvmtiEnv* get_jvmti() const { return jvmti; }
-            JNIEnv* get_env() const { return env; }
-            EventBus& get_eventbus() { return eventbus; }
-            JuiceAgent::Config::Config& get_config() { return config; }
+            JavaVM* getJavaVM() const { return jvm; }
+            jvmtiEnv* getJVMTI() const { return jvmti; }
+            JNIEnv* getJNIEnv() const { return env; }
+            bool isLoaded() const { return loaded; }
 
             // setters
-            void set_jvm(JavaVM* jvm) { this->jvm = jvm; }
-            void set_jvmti(jvmtiEnv* jvmti) { this->jvmti = jvmti; }
-            void set_env(JNIEnv* env) { this->env = env; }
-            void set_config(JuiceAgent::Config::Config& config) { this->config = config; }
+            void setJavaVM(JavaVM* jvm) { this->jvm = jvm; }
+            void setJVMTI(jvmtiEnv* jvmti) { this->jvmti = jvmti; }
+            void setJNIEnv(JNIEnv* env) { this->env = env; }
+            void setLoaded(bool loaded) { this->loaded = loaded; }
+
     };
 }

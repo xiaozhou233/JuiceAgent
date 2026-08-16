@@ -1,5 +1,4 @@
-#include <jni_impl.hpp>
-#include <JuiceAgent.hpp>
+#include <jni_common.hpp>
 
 // This function is called by Java to initialize the agent.
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_init
@@ -37,8 +36,9 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_init
     }
 
     // Invoke EntryPoint
-    JuiceAgent::Agent& agent = JuiceAgent::Agent::instance();
-    agent.init(jvm, env, jvmti, runtime_dir);
+    JuiceAgent::Agent& agent = JuiceAgent::Agent::getInstance();
+    agent.preload(jvm, env, jvmti, runtime_dir);
+    agent.init();
 
-    return JNI_TRUE;    
+    return JNI_TRUE;
 }
