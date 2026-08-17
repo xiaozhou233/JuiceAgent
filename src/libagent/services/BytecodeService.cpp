@@ -29,6 +29,7 @@ public:
     }
 
     void onShutdown() override {
+        unlistenAll();
         spdlog::info("[BytecodeService] Shutdown");
     }
 

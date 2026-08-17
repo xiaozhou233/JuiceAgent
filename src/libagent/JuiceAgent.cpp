@@ -44,10 +44,6 @@ namespace JuiceAgent {
             }
         }
 
-        // Post preload event
-        EventPreLoad preloadEvent;
-        EventBus::getInstance().post(EventId::PreLoad, &preloadEvent);
-
         // Set Environment
         setJavaVM(jvm);
         setJNIEnv(env);
@@ -59,6 +55,11 @@ namespace JuiceAgent {
               (void*)jvmti);
     
         setLoaded(true);
+
+        // Post preload event (after environment is set so listeners
+        // can access the agent state via Agent::getInstance())
+        EventPreLoad preloadEvent{ jvm, env, jvmti };
+        EventBus::getInstance().post(EventId::PreLoad, &preloadEvent);
 
         return true;
     }
@@ -105,7 +106,7 @@ namespace JuiceAgent {
         }
 
         // Post loaded event
-        EventLoaded loadedEvent;
+        EventLoaded loadedEvent{ getJavaVM(), getJNIEnv(), getJVMTI() };
         EventBus::getInstance().post(EventId::Loaded, &loadedEvent);
 
         

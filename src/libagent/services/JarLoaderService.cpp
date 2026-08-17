@@ -22,6 +22,7 @@ public:
     }
 
     void onShutdown() override {
+        unlistenAll();
         spdlog::info("[JarLoaderService] Shutdown");
     }
 

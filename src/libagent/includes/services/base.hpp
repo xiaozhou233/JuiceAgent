@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <utility>
 #include <type_traits>
 #include <JuiceAgent/Logger.hpp>
 #include <eventbus.hpp>
@@ -24,7 +25,8 @@ protected:
         static_assert(std::is_base_of<IService, ServiceT>::value,
                       "ServiceT must derive from IService");
         auto* self = static_cast<ServiceT*>(this);
-        handles_.push_back(
+        handles_.push_back({
+            id,
             EventBus::getInstance().appendListener(
                 id,
                 [self, handler](const void* data) {
@@ -33,11 +35,21 @@ protected:
                     }
                 }
             )
-        );
+        });
+    }
+
+    // Remove all listeners registered by this service. Call it in onShutdown()
+    // so no callback outlives the service instance.
+    void unlistenAll() {
+        auto& bus = EventBus::getInstance();
+        for (auto& [id, handle] : handles_) {
+            bus.removeListener(id, handle);
+        }
+        handles_.clear();
     }
 
 private:
-    std::vector<EventBus::Dispatcher::Handle> handles_;
+    std::vector<std::pair<EventId, EventBus::Dispatcher::Handle>> handles_;
 };
 
 }
