@@ -1,4 +1,5 @@
 #include <jni_common.hpp>
+#include <eventbus.hpp>
 
 void JNICALL ClassFileLoadHook(
         jvmtiEnv* jvmti_env,
@@ -15,7 +16,19 @@ void JNICALL ClassFileLoadHook(
                 spdlog::warn("[ClassFileLoadHook] name is null");
                 return;
             }
+            
+            EventClassFileLoadHook event{
+                jvmti_env,
+                jni_env,
+                class_being_redefined,
+                loader,
+                name,
+                protection_domain,
+                class_data_len,
+                classbytes,
+                new_class_data_len,
+                new_classbytes
+            };
 
-            // TODO: Impl & Delete this
-            spdlog::trace("[ClassFileLoadHook] name: {}", name);
+            EventBus::getInstance().post(EventId::ClassFileLoadHook, &event);
         }

@@ -3,6 +3,7 @@
 #include <JuiceAgent.hpp>
 #include <JuiceAgent/Config.hpp>
 #include <jni_common.hpp>
+#include <services.hpp>
 
 namespace JuiceAgent {
     // Singleton
@@ -91,6 +92,12 @@ namespace JuiceAgent {
         result = getJVMTI()->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, nullptr);
         if(result != JVMTI_ERROR_NONE) {
             spdlog::error("[JuiceAgent] Could not enable JVMTI event notifications: {}", result);
+        }
+
+        // Initialize services (and their plugins)
+        if(!JuiceAgent::Services::initializeAll()) {
+            spdlog::error("[JuiceAgent] Failed to initialize services");
+            return false;
         }
 
         return true;
