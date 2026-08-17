@@ -3,11 +3,11 @@
 #include <JuiceAgent.hpp>
 
 inline bool check_env(JuiceAgent::Agent& agent) {
-    if (agent.get_jvm() == nullptr) {
+    if (agent.getJavaVM() == nullptr) {
         spdlog::error("Failed to get JavaVM instance");
         return false;
     }
-    if (agent.get_jvmti() == nullptr) {
+    if (agent.getJVMTI() == nullptr) {
         spdlog::error("Failed to get JVMTI environment");
         return false;
     }

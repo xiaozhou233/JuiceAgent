@@ -4,7 +4,7 @@
 #include <string>
 #include <type_traits>
 
-#include <JuiceAgent/JuiceAgent.hpp>
+#include <JuiceAgent/ConfigStruct.hpp>
 #include <JuiceAgent/Logger.hpp>
 #include <JuiceAgent/Utils.hpp>
 #include <toml.hpp>
@@ -142,12 +142,12 @@ namespace Utils {
         spdlog::info("RuntimeDir: {}", config.RuntimeDir);
     }
 
-    inline std::string serialize_loader_config(const LoaderConfig& config)
+    inline std::string serialize_loader_config(const Config& config, const LoaderConfig& loader_config)
     {
         JuiceAgent::Utils::Serializer ser;
-        ser.add_kv("Version", 2);
-        ser.add_kv("JuiceAgentNativeLibraryPath", config.JuiceAgentNativeLibraryPath);
-        ser.add_kv("RuntimeDir", config.RuntimeDir);
+        ser.add_kv("Version", config.get<int>("JuiceAgent.Version", 1));
+        ser.add_kv("JuiceAgentNativeLibraryPath", loader_config.JuiceAgentNativeLibraryPath);
+        ser.add_kv("RuntimeDir", loader_config.RuntimeDir);
 
         return ser.serialize();
     }

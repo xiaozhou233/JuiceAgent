@@ -1,6 +1,6 @@
 #pragma once
 
-#include <jni_impl.hpp>
+#include <jni_common.hpp>
 
 // ClassFileLoadHook
 struct EventClassFileLoadHook {

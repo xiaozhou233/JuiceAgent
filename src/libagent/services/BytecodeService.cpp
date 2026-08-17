@@ -1,64 +1,82 @@
-#include <services.hpp>
-#include <jni_impl.hpp>
+#include <services/base.hpp>
+#include <services/service_manager.hpp>
+#include <event/event_type.hpp>
+#include <JuiceAgent/Logger.hpp>
+#include <global.hpp>
 
-namespace JuiceAgent::services::Bytecode {
-    void capture_bytecodes(const EventClassFileLoadHook& e) {
-        std::lock_guard<std::mutex> lock(classDataMutex);
+#include <cstring>
 
-        if (!classToCapture.contains(e.name) || classFileDataMap.contains(e.name)) {
-            return;
-        }
+namespace JuiceAgent {
+namespace Services {
 
-        ClassFileData data;
-        data.classname = e.name;
-        data.bytecode.assign(e.classbytes, e.classbytes + e.class_data_len);
+class BytecodeService : public IService {
+public:
+    const char* name() const override { return "BytecodeService"; }
 
-        if (e.jni_env) {
-            if (e.class_being_redefined) data.clazz = static_cast<jclass>(e.jni_env->NewGlobalRef(e.class_being_redefined));
-            if (e.loader) data.classloader = e.jni_env->NewGlobalRef(e.loader);
-            if (e.protection_domain) data.protection_domain = e.jni_env->NewGlobalRef(e.protection_domain);
-        }
+    bool onInitialize() override {
+        listen<BytecodeService, EventClassFileLoadHook>(
+            EventId::ClassFileLoadHook,
+            &BytecodeService::captureBytecodes
+        );
 
-        classFileDataMap[e.name] = std::move(data);
-        classToCapture.erase(e.name);
+        listen<BytecodeService, EventClassFileLoadHook>(
+            EventId::ClassFileLoadHook,
+            &BytecodeService::patchBytecodes
+        );
 
-        spdlog::info("Captured class: {} (length: {})", e.name, e.class_data_len);
+        spdlog::info("[BytecodeService] Initialized");
+        return true;
     }
 
-    void patch_bytecodes(const EventClassFileLoadHook& e) {
-        std::lock_guard<std::mutex> lock(pendingRetransformMutex);
+    void onShutdown() override {
+        unlistenAll();
+        spdlog::info("[BytecodeService] Shutdown");
+    }
 
-        auto it = pendingRetransform.find(e.name);
-        if (it == pendingRetransform.end()) {
+private:
+    void captureBytecodes(const EventClassFileLoadHook& e) {
+        if (!e.name) return;
+
+        const std::size_t len = BytecodeStore::getInstance()
+            .tryCapture(e.name, e.classbytes, e.class_data_len);
+
+        if (len > 0) {
+            spdlog::info("[BytecodeService] Captured class: {} (length: {})",
+                         e.name, len);
+        }
+    }
+
+    void patchBytecodes(const EventClassFileLoadHook& e) {
+        if (!e.name || !e.jvmti_env ||
+            !e.new_class_data_len || !e.new_classbytes) {
             return;
         }
 
-        auto& bytes = it->second;
-        const jint new_len = static_cast<jint>(bytes.size());
+        std::vector<unsigned char> bytes;
+        if (!BytecodeStore::getInstance().takePatch(e.name, bytes) || bytes.empty()) {
+            return;
+        }
 
+        const jlong new_len = static_cast<jlong>(bytes.size());
         unsigned char* new_buf = nullptr;
-        if (e.jvmti_env->Allocate(bytes.size(), &new_buf) != JVMTI_ERROR_NONE) {
-            spdlog::error("Failed to allocate buffer for retransform: {}", e.name);
+        if (e.jvmti_env->Allocate(new_len, &new_buf) != JVMTI_ERROR_NONE) {
+            // Put bytes back so a future hook can retry instead of losing the patch.
+            BytecodeStore::getInstance().putBackPatch(e.name, std::move(bytes));
+            spdlog::error("[BytecodeService] Failed to allocate buffer for: {}", e.name);
             return;
         }
 
-        memcpy(new_buf, bytes.data(), bytes.size());
+        std::memcpy(new_buf, bytes.data(), bytes.size());
 
-        *e.new_class_data_len = new_len;
+        *e.new_class_data_len = static_cast<jint>(new_len);
         *e.new_classbytes = new_buf;
 
-        pendingRetransform.erase(it);
-
-        spdlog::info("Retransformed: {} (new length: {})", e.name, new_len);
+        spdlog::info("[BytecodeService] Patched class: {} (new length: {})",
+                     e.name, new_len);
     }
-
-    void init() {
-        agent().get_eventbus().subscribe<EventClassFileLoadHook>(capture_bytecodes);
-        agent().get_eventbus().subscribe<EventClassFileLoadHook>(patch_bytecodes);
-    }
-
-    void start() {
-        
-    }
+};
 
 }
+}
+
+JUICEAGENT_REGISTER_SERVICE(::JuiceAgent::Services::BytecodeService)
