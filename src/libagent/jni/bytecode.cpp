@@ -108,14 +108,15 @@ JNIEXPORT jbyteArray JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getCl
     std::string internalName = dottedToInternal(utf);
     env->ReleaseStringUTFChars(name, utf);
 
-    jclass target = findLoadedClass(agent.getJVMTI(), env, internalName);
-    if (!target) {
-        spdlog::error("[bytecode] Class not loaded: {}", internalName);
+    jclass clazz = env->FindClass(internalName.c_str());
+    if (!clazz) {
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        spdlog::error("[bytecode] Class not found: {}", internalName);
         return nullptr;
     }
 
-    jbyteArray result = Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getClassBytes(env, nullptr, target);
-    env->DeleteLocalRef(target);
+    jbyteArray result = Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getClassBytes(env, nullptr, clazz);
+    env->DeleteLocalRef(clazz);
     return result;
 }
 
