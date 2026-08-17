@@ -3,7 +3,9 @@
 #include <services/base.hpp>
 
 #include <algorithm>
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 namespace JuiceAgent {
@@ -23,6 +25,13 @@ public:
     ServiceT* registerService(Args&&... args) {
         auto service = std::make_unique<ServiceT>(std::forward<Args>(args)...);
         ServiceT* raw = service.get();
+        spdlog::debug("[ServiceManager] Registering service: {}", raw->name());
+        services_.push_back(std::move(service));
+        return raw;
+    }
+
+    IService* createService(std::unique_ptr<IService> service) {
+        IService* raw = service.get();
         spdlog::debug("[ServiceManager] Registering service: {}", raw->name());
         services_.push_back(std::move(service));
         return raw;
@@ -67,5 +76,56 @@ private:
     std::vector<std::unique_ptr<IService>> services_;
 };
 
+// Static self-registration: each service's .cpp uses JUICEAGENT_REGISTER_SERVICE.
+class ServiceRegistry {
+public:
+    using Factory = std::function<std::unique_ptr<IService>()>;
+
+    static ServiceRegistry& getInstance() {
+        static ServiceRegistry instance;
+        return instance;
+    }
+
+    void addFactory(Factory factory) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        factories_.push_back(std::move(factory));
+    }
+
+    void instantiateAll(ServiceManager& manager) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        for (auto& f : factories_) {
+            manager.createService(f());
+        }
+    }
+
+private:
+    ServiceRegistry() = default;
+    std::mutex mutex_;
+    std::vector<Factory> factories_;
+};
+
+template <typename ServiceT>
+class ServiceRegistrar {
+public:
+    ServiceRegistrar() {
+        ServiceRegistry::getInstance().addFactory(
+            []() -> std::unique_ptr<IService> {
+                return std::make_unique<ServiceT>();
+            }
+        );
+    }
+};
+
 }
 }
+
+#define JUICEAGENT_SERVICE_CONCAT_IMPL(a, b) a##b
+#define JUICEAGENT_SERVICE_CONCAT(a, b) JUICEAGENT_SERVICE_CONCAT_IMPL(a, b)
+
+// Put at file scope in the service's .cpp:
+//   JUICEAGENT_REGISTER_SERVICE(juiceagent::services::MyService)
+#define JUICEAGENT_REGISTER_SERVICE(ServiceT)                                     \
+    namespace {                                                                  \
+        const ::JuiceAgent::Services::ServiceRegistrar<ServiceT>                 \
+            JUICEAGENT_SERVICE_CONCAT(_juiceagent_service_registrar_, __LINE__); \
+    }
