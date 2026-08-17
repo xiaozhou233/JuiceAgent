@@ -4,6 +4,7 @@
 #include <JuiceAgent/Config.hpp>
 #include <jni_common.hpp>
 #include <services.hpp>
+#include <eventbus.hpp>
 
 namespace JuiceAgent {
     // Singleton
@@ -42,7 +43,10 @@ namespace JuiceAgent {
                 spdlog::warn("[JuiceAgent] No config provided, Modules will not be loaded!");
             }
         }
-        
+
+        // Post preload event
+        EventPreLoad preloadEvent;
+        EventBus::getInstance().post(EventId::PreLoad, &preloadEvent);
 
         // Set Environment
         setJavaVM(jvm);
@@ -94,12 +98,17 @@ namespace JuiceAgent {
             spdlog::error("[JuiceAgent] Could not enable JVMTI event notifications: {}", result);
         }
 
-        // Initialize services (and their plugins)
+        // Initialize services
         if(!JuiceAgent::Services::initializeAll()) {
             spdlog::error("[JuiceAgent] Failed to initialize services");
             return false;
         }
 
+        // Post loaded event
+        EventLoaded loadedEvent;
+        EventBus::getInstance().post(EventId::Loaded, &loadedEvent);
+
+        
         return true;
     }
 }
