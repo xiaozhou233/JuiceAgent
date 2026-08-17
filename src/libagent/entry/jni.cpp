@@ -44,8 +44,14 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_init
 
     // Invoke EntryPoint
     JuiceAgent::Agent& agent = JuiceAgent::Agent::getInstance();
-    agent.preload(jvm, env, jvmti, runtime_dir);
-    agent.init();
+    if (!agent.preload(jvm, env, jvmti, runtime_dir)) {
+        spdlog::error("Failed to preload JuiceAgent");
+        return JNI_FALSE;
+    }
+    if (!agent.init()) {
+        spdlog::error("Failed to init JuiceAgent");
+        return JNI_FALSE;
+    }
 
     return JNI_TRUE;
 }
