@@ -72,45 +72,69 @@ JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceremapper_JuiceRemapper_initN
 }
 
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceremapper_JuiceRemapper_addInclude
-  (JNIEnv *, jclass, jstring) {
-    // TODO: implement
-    spdlog::warn("JuiceRemapper::addInclude");
+  (JNIEnv *env, jclass, jstring name) {
+    if (!name) return JNI_FALSE;
 
+    const char* utf = env->GetStringUTFChars(name, nullptr);
+    if (!utf) return JNI_FALSE;
+    std::string s(utf);
+    env->ReleaseStringUTFChars(name, utf);
+
+    JuiceAgent::Services::Remapper::getInstance().addInclude(std::move(s));
+    spdlog::debug("[JuiceRemapper JNI] addInclude");
     return JNI_TRUE;
 }
 
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceremapper_JuiceRemapper_addExclude
-  (JNIEnv *, jclass, jstring) {
-    // TODO: implement
-    spdlog::warn("JuiceRemapper::addExclude");
+  (JNIEnv *env, jclass, jstring name) {
+    if (!name) return JNI_FALSE;
 
+    const char* utf = env->GetStringUTFChars(name, nullptr);
+    if (!utf) return JNI_FALSE;
+    std::string s(utf);
+    env->ReleaseStringUTFChars(name, utf);
+
+    JuiceAgent::Services::Remapper::getInstance().addExclude(std::move(s));
+    spdlog::debug("[JuiceRemapper JNI] addExclude");
     return JNI_TRUE;
 }
 
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceremapper_JuiceRemapper_removeInclude
-  (JNIEnv *, jclass, jstring) {
-    // TODO: implement
-    spdlog::warn("JuiceRemapper::removeInclude");
+  (JNIEnv *env, jclass, jstring name) {
+    if (!name) return JNI_FALSE;
 
+    const char* utf = env->GetStringUTFChars(name, nullptr);
+    if (!utf) return JNI_FALSE;
+    std::string s(utf);
+    env->ReleaseStringUTFChars(name, utf);
+
+    JuiceAgent::Services::Remapper::getInstance().removeInclude(s);
+    spdlog::debug("[JuiceRemapper JNI] removeInclude");
     return JNI_TRUE;
 }
 
 JNIEXPORT jboolean JNICALL Java_cn_xiaozhou233_juiceremapper_JuiceRemapper_removeExclude
-  (JNIEnv *, jclass, jstring){
-    // TODO: implement
-    spdlog::warn("JuiceRemapper::removeExclude");
+  (JNIEnv *env, jclass, jstring name){
+    if (!name) return JNI_FALSE;
 
+    const char* utf = env->GetStringUTFChars(name, nullptr);
+    if (!utf) return JNI_FALSE;
+    std::string s(utf);
+    env->ReleaseStringUTFChars(name, utf);
+
+    JuiceAgent::Services::Remapper::getInstance().removeExclude(s);
+    spdlog::debug("[JuiceRemapper JNI] removeExclude");
     return JNI_TRUE;
 }
 
 JNIEXPORT void JNICALL Java_cn_xiaozhou233_juiceremapper_JuiceRemapper_clearIncludes
   (JNIEnv *, jclass) {
-    // TODO: implement
-    spdlog::warn("JuiceRemapper::clearIncludes");
+    JuiceAgent::Services::Remapper::getInstance().clearIncludes();
+    spdlog::debug("[JuiceRemapper JNI] clearIncludes");
 }
 
 JNIEXPORT void JNICALL Java_cn_xiaozhou233_juiceremapper_JuiceRemapper_clearExcludes
   (JNIEnv *, jclass) {
-    // TODO: implement
-    spdlog::warn("JuiceRemapper::clearExcludes");
+    JuiceAgent::Services::Remapper::getInstance().clearExcludes();
+    spdlog::debug("[JuiceRemapper JNI] clearExcludes");
 }

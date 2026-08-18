@@ -150,12 +150,79 @@ public:
     void setRemapClass(jclass clazz) { remapClass_ = clazz; }
     void setRemapMethodId(jmethodID methodId) { remapMethodId_ = methodId; }
 
+    // ---- Include/Exclude filters ----
+
+    void addInclude(std::string name) {
+        std::lock_guard<std::mutex> lock(filterMutex_);
+        includes_.insert(std::move(name));
+    }
+
+    void removeInclude(const std::string& name) {
+        std::lock_guard<std::mutex> lock(filterMutex_);
+        includes_.erase(name);
+    }
+
+    void clearIncludes() {
+        std::lock_guard<std::mutex> lock(filterMutex_);
+        includes_.clear();
+    }
+
+    void addExclude(std::string name) {
+        std::lock_guard<std::mutex> lock(filterMutex_);
+        excludes_.insert(std::move(name));
+    }
+
+    void removeExclude(const std::string& name) {
+        std::lock_guard<std::mutex> lock(filterMutex_);
+        excludes_.erase(name);
+    }
+
+    void clearExcludes() {
+        std::lock_guard<std::mutex> lock(filterMutex_);
+        excludes_.clear();
+    }
+
+    // A class should be remapped when:
+    //   1. its name is not excluded, and
+    //   2. its name matches an include filter.
+    // Remapping is OFF by default: an empty include set means nothing is
+    // remapped. To enable remapping for a package, add it as an include
+    // (e.g. "com/example/" matches the whole package).
+    //
+    // Matching rules (applied to both include and exclude):
+    //   - exact internal name match
+    //   - package prefix (ends with '/', e.g. "java/lang/")
+    //   - class prefix + nested classes (e.g. "java/lang/Shutdown"
+    //     also excludes "java/lang/Shutdown$Lock")
+    bool shouldRemap(const std::string& name) const {
+        std::lock_guard<std::mutex> lock(filterMutex_);
+
+        for (const auto& exc : excludes_) {
+            if (name == exc) return false;
+            if (exc.back() == '/' && name.rfind(exc, 0) == 0) return false;
+            if (name.size() > exc.size() &&
+                name.rfind(exc, 0) == 0 && name[exc.size()] == '$') return false;
+        }
+
+        for (const auto& inc : includes_) {
+            if (name == inc) return true;
+            if (inc.back() == '/' && name.rfind(inc, 0) == 0) return true;
+            if (name.size() > inc.size() &&
+                name.rfind(inc, 0) == 0 && name[inc.size()] == '$') return true;
+        }
+        return false;
+    }
+
 private:
     Remapper() = default;
 
     bool initialized_ = false;
     jclass remapClass_ = nullptr;       // global ref
     jmethodID remapMethodId_ = nullptr; // static method id
+
+    mutable std::mutex filterMutex_;
+    std::unordered_set<std::string> includes_;
+    std::unordered_set<std::string> excludes_;
 };
 
 }

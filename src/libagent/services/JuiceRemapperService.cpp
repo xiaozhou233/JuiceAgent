@@ -48,7 +48,7 @@ private:
             return;
         }
 
-        spdlog::debug("[JuiceRemapperService] Enabled");
+        spdlog::debug("[JuiceRemapperService] Enabled. Waiting for addInclude to start remapping");
     }
 
     void onClassFileLoadHook(const EventClassFileLoadHook& e) {
@@ -64,7 +64,11 @@ private:
         if (std::string_view(e.name).starts_with("cn/xiaozhou233/juiceremapper/"))
             return;
 
-        // TODO: Include/Exclude check
+        // Include/Exclude filter check
+        if (!remapper.shouldRemap(e.name)) {
+            spdlog::trace("[JuiceRemapperService] Skipped by filter: {}", e.name);
+            return;
+        }
 
         jclass remapClass = remapper.getRemapClass();
         jmethodID remapMethod = remapper.getRemapMethodId();
