@@ -131,5 +131,32 @@ private:
     std::unordered_map<std::string, PendingPatch> pendingPatches_;
 };
 
+class Remapper {
+public:
+    static Remapper& getInstance() {
+        static Remapper instance;
+        return instance;
+    }
+
+    Remapper(const Remapper&) = delete;
+    Remapper& operator=(const Remapper&) = delete;
+
+    bool isInit() const { return initialized_; }
+    void setInit(bool init) { initialized_ = init; }
+
+    // Cached JNI static declarations for the Java remap class.
+    jclass getRemapClass() const { return remapClass_; }
+    jmethodID getRemapMethodId() const { return remapMethodId_; }
+    void setRemapClass(jclass clazz) { remapClass_ = clazz; }
+    void setRemapMethodId(jmethodID methodId) { remapMethodId_ = methodId; }
+
+private:
+    Remapper() = default;
+
+    bool initialized_ = false;
+    jclass remapClass_ = nullptr;       // global ref
+    jmethodID remapMethodId_ = nullptr; // static method id
+};
+
 }
 }
