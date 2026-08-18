@@ -69,6 +69,11 @@ namespace JuiceAgent {
             spdlog::error("[JuiceAgent] Agent not loaded! Please call preload() first!");
             return false;
         }
+        if(initialized_) {
+            spdlog::warn("[JuiceAgent] Agent already initialized! Skipping...");
+            return true;
+        }
+        initialized_ = true;
         
         // Add Abilities
         jvmtiCapabilities caps{};

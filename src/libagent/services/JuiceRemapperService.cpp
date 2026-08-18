@@ -53,7 +53,8 @@ private:
 
     void onClassFileLoadHook(const EventClassFileLoadHook& e) {
         if (!e.name || !e.jni_env || !e.jvmti_env ||
-            !e.classbytes || e.class_data_len <= 0) {
+            !e.classbytes || e.class_data_len <= 0 ||
+            !e.new_class_data_len || !e.new_classbytes) {
             return;
         }
 

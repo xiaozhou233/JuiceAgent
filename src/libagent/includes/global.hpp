@@ -198,6 +198,7 @@ public:
         std::lock_guard<std::mutex> lock(filterMutex_);
 
         for (const auto& exc : excludes_) {
+            if (exc.empty()) continue;
             if (name == exc) return false;
             if (exc.back() == '/' && name.rfind(exc, 0) == 0) return false;
             if (name.size() > exc.size() &&
@@ -205,6 +206,7 @@ public:
         }
 
         for (const auto& inc : includes_) {
+            if (inc.empty()) continue;
             if (name == inc) return true;
             if (inc.back() == '/' && name.rfind(inc, 0) == 0) return true;
             if (name.size() > inc.size() &&

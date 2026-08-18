@@ -13,6 +13,7 @@ namespace JuiceAgent {
             JuiceAgent::Config::Config config;
 
             bool loaded = false;
+            bool initialized_ = false;
         public:
             // Singleton
             static Agent& getInstance();
