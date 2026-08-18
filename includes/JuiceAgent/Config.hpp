@@ -15,9 +15,13 @@ class Config {
 public:
     explicit Config(const std::filesystem::path& runtime_dir = {})
     {
-        _runtime_dir = runtime_dir.empty()
-            ? std::filesystem::current_path()
-            : runtime_dir;
+        _runtime_dir = runtime_dir;
+
+        // No runtime directory specified: do not auto-read a config file
+        // from the current working directory.
+        if (runtime_dir.empty()) {
+            return;
+        }
 
         const auto result = toml::try_parse(_runtime_dir / "config.toml");
 
