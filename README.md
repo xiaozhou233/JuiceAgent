@@ -170,25 +170,7 @@ You can also pass arguments directly: `injector.exe <pid> <libloader.dll path> [
 
 #### Method B: Use JNI to call `inject`
 
-Create `cn/xiaozhou233/juiceagent/injector/InjectorNative.java` in your project:
-
-```java
-package cn.xiaozhou233.juiceagent.injector;
-
-public class InjectorNative {
-    public native boolean inject(int pid, String path);
-    public native boolean inject(int pid, String path, String configDir);
-}
-```
-
-Example:
-
-```java
-System.load("<path-to-libinject.dll>");
-InjectorNative injectorNative = new InjectorNative();
-
-injectorNative.inject(<pid>, "<path-to-libloader.dll>", "<path-to-config-directory>");
-```
+See [Inject](doc/Inject.md)
 
 ### 5. Done
 
