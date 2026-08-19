@@ -171,25 +171,7 @@ Input PID:
 
 #### 方法 B：通过 JNI 调用 `inject`
 
-在你的项目中创建 `cn/xiaozhou233/juiceagent/injector/InjectorNative.java`：
-
-```java
-package cn.xiaozhou233.juiceagent.injector;
-
-public class InjectorNative {
-    public native boolean inject(int pid, String path);
-    public native boolean inject(int pid, String path, String configDir);
-}
-```
-
-示例：
-
-```java
-System.load("<libinject.dll 的路径>");
-InjectorNative injectorNative = new InjectorNative();
-
-injectorNative.inject(<pid>, "<libloader.dll 的路径>", "<配置文件所在目录>");
-```
+看 [Inject](docs/Inject.md)
 
 ### 5. 完成
 

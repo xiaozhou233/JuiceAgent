@@ -170,7 +170,7 @@ You can also pass arguments directly: `injector.exe <pid> <libloader.dll path> [
 
 #### Method B: Use JNI to call `inject`
 
-See [Inject](doc/Inject.md)
+See [Inject](docs/Inject.md)
 
 ### 5. Done
 
