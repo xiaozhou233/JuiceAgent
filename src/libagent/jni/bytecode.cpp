@@ -108,7 +108,7 @@ JNIEXPORT jbyteArray JNICALL Java_cn_xiaozhou233_juiceagent_api_JuiceAgent_getCl
     std::string internalName = dottedToInternal(utf);
     env->ReleaseStringUTFChars(name, utf);
 
-    jclass clazz = env->FindClass(internalName.c_str());
+    jclass clazz = findLoadedClass(agent.getJVMTI(), env, internalName);
     if (!clazz) {
         if (env->ExceptionCheck()) env->ExceptionClear();
         spdlog::error("[bytecode] Class not found: {}", internalName);
