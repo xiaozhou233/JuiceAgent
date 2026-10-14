@@ -1,160 +1,209 @@
 #pragma once
 
 #include <filesystem>
+#include <optional>
+#include <toml++/toml.h>
+#include <stdexcept>
 #include <string>
-#include <type_traits>
-
-#include <JuiceAgent/ConfigStruct.hpp>
-#include <JuiceAgent/Logger.hpp>
-#include <JuiceAgent/Utils.hpp>
-#include <toml.hpp>
+#include <vector>
+#include <cstddef>
 
 namespace JuiceAgent::Config {
 
 class Config {
+private:
+    toml::table _config;
+    std::optional<toml::parse_error> _last_error;
+
+    std::filesystem::path _runtime_dir;
+    std::filesystem::path _config_path;
+
+    bool _valid = false;
+
 public:
-    explicit Config(const std::filesystem::path& runtime_dir = {})
-    {
-        _runtime_dir = runtime_dir;
-
-        // No runtime directory specified: do not auto-read a config file
-        // from the current working directory.
+    explicit Config(const std::filesystem::path& runtime_dir = {}) {
+        // Check if the runtime directory is empty
         if (runtime_dir.empty()) {
-            return;
+            // Use the default runtime directory
+            _runtime_dir = std::filesystem::current_path();
+        } else {
+            _runtime_dir = runtime_dir;
         }
 
-        const auto result = toml::try_parse(_runtime_dir / "config.toml");
+        _config_path = _runtime_dir / "config.toml";
 
-        if (result.is_ok()) {
-            _config = result.unwrap();
+        // Load the config file
+        try {
+            _config = toml::parse_file(_config_path.string());
             _valid = true;
+        } catch (const toml::parse_error& e) {
+            // TODO: Log the error
+            _last_error = e;
         }
-        else {
-            spdlog::error("Failed to parse config.toml");
+    }
 
-            for (const auto& err : result.unwrap_err()) {
-                spdlog::error("{}", toml::format_error(err));
+
+    template<typename T>
+    T get(const std::string& path) const {
+        const auto* node = _config.at_path(path).node();
+
+        if (!node) {
+            // TODO: Log the error
+            throw std::runtime_error(
+                "Configuration key not found: " + path
+            );
+        }
+
+        auto value = node->value<T>();
+
+        if (!value) {
+            // TODO: Log the error
+            throw std::runtime_error(
+                "Configuration type mismatch: " + path
+            );
+        }
+
+        return *value;
+    }
+
+    template<typename T>
+    T get(const std::string& path, T defaultValue) const {
+        const auto* node = _config.at_path(path).node();
+
+        if (!node) {
+            // Configuration key is missing; use the default value.
+            // TODO: Log the warning
+            return defaultValue;
+        }
+
+        auto value = node->value<T>();
+
+        if (!value) {
+            // Configuration type mismatch; use the default value.
+            // TODO: Log the warning
+            return defaultValue;
+        }
+
+        return *value;
+    }
+
+    std::string getPath(const std::string& key) const {
+        const std::filesystem::path value(get<std::string>(key));
+
+        if (value.is_absolute()) {
+            return value.lexically_normal().string();
+        }
+
+        const std::string normalized = value.generic_string();
+
+        if (normalized == "." || normalized.starts_with("./")) {
+            return (_runtime_dir / value).lexically_normal().string();
+        }
+
+        return value.lexically_normal().string();
+    }
+
+    template<typename T>
+    std::vector<T> getArray(const std::string& path) const {
+        const auto* node = _config.at_path(path).node();
+
+        if (!node) {
+            throw std::runtime_error(
+                "Configuration key not found: " + path
+            );
+        }
+
+        const auto* array = node->as_array();
+
+        if (!array) {
+            throw std::runtime_error(
+                "Configuration type mismatch: expected array: " + path
+            );
+        }
+
+        std::vector<T> result;
+        result.reserve(array->size());
+
+        for (std::size_t i = 0; i < array->size(); ++i) {
+            const auto& element = (*array)[i];
+            auto value = element.value<T>();
+
+            if (!value) {
+                throw std::runtime_error(
+                    "Configuration array element type mismatch: "
+                    + path + "[" + std::to_string(i) + "]"
+                );
             }
+
+            result.push_back(*value);
         }
+
+        return result;
     }
 
-    bool is_valid() const noexcept
-    {
-        return _valid;
+    template<typename T>
+    std::vector<T> getArray(
+        const std::string& path,
+        std::vector<T> defaultValue
+    ) const {
+        const auto* node = _config.at_path(path).node();
+
+        if (!node) {
+            return defaultValue;
+        }
+
+        const auto* array = node->as_array();
+
+        if (!array) {
+            throw std::runtime_error(
+                "Configuration type mismatch: expected array: " + path
+            );
+        }
+
+        std::vector<T> result;
+        result.reserve(array->size());
+
+        for (std::size_t i = 0; i < array->size(); ++i) {
+            const auto& element = (*array)[i];
+            auto value = element.value<T>();
+
+            if (!value) {
+                throw std::runtime_error(
+                    "Configuration array element type mismatch: "
+                    + path + "[" + std::to_string(i) + "]"
+                );
+            }
+
+            result.push_back(*value);
+        }
+
+        return result;
     }
 
-    const toml::value& get_config() const noexcept
-    {
+    bool contains(const std::string& path) const {
+        return _config.at_path(path).node() != nullptr;
+    }
+
+    // Getters
+    const toml::table& getConfig() const {
         return _config;
     }
 
-    const std::filesystem::path& runtime_dir() const noexcept
-    {
+    const std::filesystem::path& getRuntimeDir() const {
         return _runtime_dir;
     }
 
-    template<typename T>
-    T get(const std::string& path, const T& default_value, bool is_path = false) const
-    {
-        if (!_valid) {
-            return default_value;
-        }
-
-        try {
-            const toml::value* current = &_config;
-            std::size_t start = 0;
-
-            while (start < path.size()) {
-                const std::size_t end = path.find('.', start);
-                const std::string key = path.substr(
-                    start,
-                    end == std::string::npos ? std::string::npos : end - start
-                );
-
-                current = &current->at(key);
-
-                if (end == std::string::npos) {
-                    break;
-                }
-
-                start = end + 1;
-            }
-
-            T value = read_value<T>(*current);
-
-            if constexpr (std::is_same_v<T, std::string>) {
-                if (value.empty()) {
-                    value = default_value;
-                }
-
-                if (is_path && value.starts_with(".")) {
-                    value = (_runtime_dir / value).lexically_normal().string();
-                }
-            }
-
-            return value;
-        }
-        catch (...) {
-            spdlog::warn("Config get failed: {}, using default value", path);
-            return default_value;
-        }
+    const std::filesystem::path& getConfigPath() const {
+        return _config_path;
     }
 
-private:
-    template<typename T>
-    static T read_value(const toml::value& v)
-    {
-        if constexpr (std::is_same_v<T, std::string>) {
-            return v.as_string();
-        }
-        else if constexpr (std::is_same_v<T, bool>) {
-            return v.as_boolean();
-        }
-        else if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {
-            return static_cast<T>(v.as_integer());
-        }
-        else if constexpr (std::is_floating_point_v<T>) {
-            return static_cast<T>(v.as_floating());
-        }
-        else {
-            static_assert(sizeof(T) == 0, "Unsupported config type");
-        }
+    const std::optional<toml::parse_error>& getLastError() const {
+        return _last_error;
     }
 
-    std::filesystem::path _runtime_dir;
-    toml::value _config;
-    bool _valid = false;
+    bool isValid() const {
+        return _valid;
+    }
 };
-
-namespace Utils {
-    inline LoaderConfig get_loader_config(const Config& config)
-    {
-        LoaderConfig loader_config;
-        loader_config.JuiceAgentNativeLibraryPath = config.get<std::string>(
-            "JuiceAgent.Loader.JuiceAgentNativeLibraryPath",
-            (config.runtime_dir() / "libagent.dll").string(),
-            true
-        );
-        loader_config.RuntimeDir = config.runtime_dir().string();
-
-        return loader_config;
-    }
-
-    inline void print_loader_config(const LoaderConfig& config)
-    {
-        spdlog::info("JuiceAgentNativeLibraryPath: {}", config.JuiceAgentNativeLibraryPath);
-        spdlog::info("RuntimeDir: {}", config.RuntimeDir);
-    }
-
-    inline std::string serialize_loader_config(const Config& config, const LoaderConfig& loader_config)
-    {
-        JuiceAgent::Utils::Serializer ser;
-        ser.add_kv("Version", config.get<int>("JuiceAgent.Version", 1));
-        ser.add_kv("JuiceAgentNativeLibraryPath", loader_config.JuiceAgentNativeLibraryPath);
-        ser.add_kv("RuntimeDir", loader_config.RuntimeDir);
-
-        return ser.serialize();
-    }
-}
 
 } // namespace JuiceAgent::Config
