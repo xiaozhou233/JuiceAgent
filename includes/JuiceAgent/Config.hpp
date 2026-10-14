@@ -8,6 +8,8 @@
 #include <vector>
 #include <cstddef>
 #include <JuiceAgent/Logger.hpp>
+#include <JuiceAgent/Utils.hpp>
+#include <JuiceAgent/ConfigStruct.hpp>
 
 namespace JuiceAgent::Config {
 
@@ -89,7 +91,31 @@ public:
     }
 
     std::string getPath(const std::string& key) const {
-        const std::filesystem::path value(get<std::string>(key));
+        const std::string value = get<std::string>(key);
+
+        if (value.empty()) {
+            return {};
+        }
+
+        return getPath(key, value);
+    }
+
+    std::string getPath(
+        const std::string& key,
+        const std::string& defaultValue
+    ) const {
+        std::string rawValue = get<std::string>(key, defaultValue);
+
+        // Use the default value when the configuration value is empty.
+        if (rawValue.empty()) {
+            rawValue = defaultValue;
+        }
+
+        if (rawValue.empty()) {
+            return {};
+        }
+
+        const std::filesystem::path value(rawValue);
 
         if (value.is_absolute()) {
             return value.lexically_normal().string();
@@ -206,5 +232,35 @@ public:
         return _valid;
     }
 };
+
+namespace Utils {
+    inline LoaderConfig get_loader_config(const Config& config)
+    {
+        LoaderConfig loader_config;
+        loader_config.JuiceAgentNativeLibraryPath = config.getPath(
+            "JuiceAgent.Loader.JuiceAgentNativeLibraryPath",
+            (config.getRuntimeDir() / "libagent.dll").string()
+        );
+        loader_config.RuntimeDir = config.getRuntimeDir().string();
+
+        return loader_config;
+    }
+
+    inline void print_loader_config(const LoaderConfig& config)
+    {
+        spdlog::info("JuiceAgentNativeLibraryPath: {}", config.JuiceAgentNativeLibraryPath);
+        spdlog::info("RuntimeDir: {}", config.RuntimeDir);
+    }
+
+    inline std::string serialize_loader_config(const Config& config, const LoaderConfig& loader_config)
+    {
+        JuiceAgent::Utils::Serializer ser;
+        ser.add_kv("Version", config.get<int>("JuiceAgent.Version", -1));
+        ser.add_kv("JuiceAgentNativeLibraryPath", loader_config.JuiceAgentNativeLibraryPath);
+        ser.add_kv("RuntimeDir", loader_config.RuntimeDir);
+
+        return ser.serialize();
+    }
+}
 
 } // namespace JuiceAgent::Config
