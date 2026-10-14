@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <cstddef>
+#include <JuiceAgent/Logger.hpp>
 
 namespace JuiceAgent::Config {
 
@@ -37,7 +38,7 @@ public:
             _config = toml::parse_file(_config_path.string());
             _valid = true;
         } catch (const toml::parse_error& e) {
-            // TODO: Log the error
+            spdlog::error("Failed to parse config file: {}", e.what());
             _last_error = e;
         }
     }
@@ -48,7 +49,7 @@ public:
         const auto* node = _config.at_path(path).node();
 
         if (!node) {
-            // TODO: Log the error
+            spdlog::error("Configuration key not found: {}", path);
             throw std::runtime_error(
                 "Configuration key not found: " + path
             );
@@ -57,7 +58,7 @@ public:
         auto value = node->value<T>();
 
         if (!value) {
-            // TODO: Log the error
+            spdlog::error("Configuration type mismatch: {}", path);
             throw std::runtime_error(
                 "Configuration type mismatch: " + path
             );
@@ -72,7 +73,7 @@ public:
 
         if (!node) {
             // Configuration key is missing; use the default value.
-            // TODO: Log the warning
+            spdlog::warn("Configuration key not found: {}, using default value", path);
             return defaultValue;
         }
 
@@ -80,7 +81,7 @@ public:
 
         if (!value) {
             // Configuration type mismatch; use the default value.
-            // TODO: Log the warning
+            spdlog::warn("Configuration type mismatch: {}, using default value", path);
             return defaultValue;
         }
 
