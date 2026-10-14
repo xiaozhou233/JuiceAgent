@@ -251,16 +251,6 @@ namespace Utils {
         spdlog::info("JuiceAgentNativeLibraryPath: {}", config.JuiceAgentNativeLibraryPath);
         spdlog::info("RuntimeDir: {}", config.RuntimeDir);
     }
-
-    inline std::string serialize_loader_config(const Config& config, const LoaderConfig& loader_config)
-    {
-        JuiceAgent::Utils::Serializer ser;
-        ser.add_kv("Version", config.get<int>("JuiceAgent.Version", -1));
-        ser.add_kv("JuiceAgentNativeLibraryPath", loader_config.JuiceAgentNativeLibraryPath);
-        ser.add_kv("RuntimeDir", loader_config.RuntimeDir);
-
-        return ser.serialize();
-    }
 }
 
 } // namespace JuiceAgent::Config

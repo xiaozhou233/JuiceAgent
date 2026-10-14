@@ -10,51 +10,28 @@
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <charconv>
+#include <string_view>
+#include <system_error>
 
 namespace JuiceAgent::Utils
 {
-    template<typename T>
-    class LocalRef {
-    public:
-        LocalRef(JNIEnv* env, T ref = nullptr)
-            : _env(env), _ref(ref) {}
+    // JNIEnv::FindClass expects the internal form of a class name where the
+    // package separator is '/' (e.g. "Example/Main"). Configs and docs use the
+    // Java binary name with '.' (e.g. "Example.Main"), so normalize it here to
+    // keep both forms working.
+    inline std::string to_jni_class_name(const char* name)
+    {
+        std::string result(name ? name : "");
 
-        ~LocalRef()
-        {
-            reset();
-        }
-
-        LocalRef(const LocalRef&) = delete;
-        LocalRef& operator=(const LocalRef&) = delete;
-
-        LocalRef(LocalRef&& other) noexcept
-            : _env(other._env), _ref(other._ref)
-        {
-            other._ref = nullptr;
-        }
-
-        T get() const
-        {
-            return _ref;
-        }
-
-        operator T() const
-        {
-            return _ref;
-        }
-
-        void reset(T ref = nullptr)
-        {
-            if (_ref) {
-                _env->DeleteLocalRef(_ref);
+        for (char& c : result) {
+            if (c == '.') {
+                c = '/';
             }
-            _ref = ref;
         }
 
-    private:
-        JNIEnv* _env;
-        T _ref;
-    };
+        return result;
+    }
 
     inline bool check_and_clear_exception(JNIEnv* env, const char* context)
     {
@@ -68,7 +45,8 @@ namespace JuiceAgent::Utils
         return true;
     }
 
-    inline bool call_java_impl(JNIEnv* env, const char* clazz, const char* method, const char* params)
+    // Call a static Java method with a single string parameter
+    inline bool call_static_java_method(JNIEnv* env, const char* clazz, const char* method, const char* params)
     {
         if (!env || !clazz || !method) {
             spdlog::error("Invalid JNI arguments");
@@ -79,7 +57,8 @@ namespace JuiceAgent::Utils
 
         spdlog::debug("Calling Java method: {}.{} {}", clazz, method, signature);
 
-        jclass cls = env->FindClass(clazz);
+        std::string jni_class = to_jni_class_name(clazz);
+        jclass cls = env->FindClass(jni_class.c_str());
         if (!cls) {
             check_and_clear_exception(env, "FindClass failed");
             spdlog::error("Class not found: {}", clazz);
@@ -118,210 +97,180 @@ namespace JuiceAgent::Utils
 
         return success;
     }
+    
+    inline bool call_static_java_method(JNIEnv* env, const char* clazz, const char* method)
+    {
+        if (!env || !clazz || !method) {
+            spdlog::error("Invalid JNI arguments");
+            return false;
+        }
 
+        constexpr const char* signature = "()V";
+
+        spdlog::debug("Calling Java method: {}.{} {}", clazz, method, signature);
+
+        std::string jni_class = to_jni_class_name(clazz);
+        jclass cls = env->FindClass(jni_class.c_str());
+        if (!cls) {
+            check_and_clear_exception(env, "FindClass failed");
+            spdlog::error("Class not found: {}", clazz);
+            return false;
+        }
+
+        jmethodID mid = env->GetStaticMethodID(cls, method, signature);
+        if (!mid) {
+            check_and_clear_exception(env, "GetStaticMethodID failed");
+            spdlog::error("Method not found: {}", method);
+            env->DeleteLocalRef(cls);
+            return false;
+        }
+
+        env->CallStaticVoidMethod(cls, mid);
+
+        bool success = !env->ExceptionCheck();
+        check_and_clear_exception(env, "CallStaticVoidMethod failed");
+
+        env->DeleteLocalRef(cls);
+
+        return success;
+    }
+    
     class Serializer {
     public:
         template<typename T>
-        Serializer& add_kv(const std::string& key, const T& value)
+        Serializer& add_kv(std::string_view key, const T& value)
         {
-            s += escape(key);
+            append_escaped(key);
             s += '=';
 
-            if constexpr (std::is_same_v<T, bool>) {
+            using ValueType = std::decay_t<T>;
+
+            if constexpr (std::is_same_v<ValueType, bool>) {
                 s += value ? "true" : "false";
             }
-            else if constexpr (std::is_arithmetic_v<T>) {
-                s += escape(std::to_string(value));
+            else if constexpr (std::is_integral_v<ValueType>) {
+                append_number(value);
+            }
+            else if constexpr (std::is_floating_point_v<ValueType>) {
+                append_number(value);
             }
             else {
-                s += escape(value);
+                append_escaped(std::string_view(value));
             }
 
             s += ';';
             return *this;
         }
 
-        void clear()
+        void clear() noexcept
         {
             s.clear();
         }
 
-        bool empty() const
+        bool empty() const noexcept
         {
             return s.empty();
         }
 
-        const std::string& serialize() const
+        const std::string& serialize() const noexcept
         {
             return s;
         }
 
     private:
-        static std::string escape(const std::string& input)
+        void append_escaped(std::string_view input)
         {
-            std::string out;
-            out.reserve(input.size());
-
             for (char c : input) {
                 if (c == '=' || c == ';' || c == '\\') {
-                    out += '\\';
+                    s += '\\';
                 }
-                out += c;
-            }
 
-            return out;
+                s += c;
+            }
+        }
+
+        template<typename T>
+        void append_number(T value)
+        {
+            char buffer[64];
+
+            auto [end, ec] = std::to_chars(
+                buffer,
+                buffer + sizeof(buffer),
+                value
+            );
+
+            if (ec == std::errc{}) {
+                s.append(buffer, end);
+            }
         }
 
         std::string s;
     };
 
-    class Deserializer {
-    public:
-        Deserializer() = default;
+    inline jobjectArray to_java_string_array(
+        JNIEnv* env,
+        const std::vector<std::string>& values)
+    {
 
-        explicit Deserializer(const std::string& input)
-        {
-            parse(input);
+        if (!env) {
+            return nullptr;
         }
 
-        void parse(const std::string& input)
-        {
-            data.clear();
-
-            std::string key;
-            std::string value;
-            bool reading_key = true;
-            bool escaped = false;
-
-            auto commit = [&]() {
-                if (!key.empty()) {
-                    data[unescape(key)] = unescape(value);
-                }
-                key.clear();
-                value.clear();
-                reading_key = true;
-            };
-
-            for (char c : input) {
-                if (escaped) {
-                    (reading_key ? key : value) += c;
-                    escaped = false;
-                }
-                else if (c == '\\') {
-                    escaped = true;
-                }
-                else if (reading_key && c == '=') {
-                    reading_key = false;
-                }
-                else if (c == ';') {
-                    commit();
-                }
-                else {
-                    (reading_key ? key : value) += c;
-                }
-            }
-
-            commit();
+        jclass string_class = env->FindClass("java/lang/String");
+        if (!string_class) {
+            return nullptr;
         }
 
-        bool has(const std::string& key) const
-        {
-            return data.find(key) != data.end();
+        jobjectArray result = env->NewObjectArray(
+            static_cast<jsize>(values.size()),
+            string_class,
+            nullptr
+        );
+
+        if (!result) {
+            env->DeleteLocalRef(string_class);
+            return nullptr;
         }
 
-        template<typename T>
-        T get(const std::string& key, T def) const
-        {
-            auto it = data.find(key);
-            if (it == data.end()) {
-                return def;
+        for (jsize i = 0; i < static_cast<jsize>(values.size()); ++i) {
+            jstring value = env->NewStringUTF(values[i].c_str());
+
+            if (!value) {
+                env->DeleteLocalRef(result);
+                env->DeleteLocalRef(string_class);
+                return nullptr;
             }
 
-            return convert<T>(it->second, def);
-        }
+            env->SetObjectArrayElement(result, i, value);
+            env->DeleteLocalRef(value);
 
-        void clear()
-        {
-            data.clear();
-        }
-
-        bool empty() const
-        {
-            return data.empty();
-        }
-
-        std::size_t size() const
-        {
-            return data.size();
-        }
-
-    private:
-        static std::string unescape(const std::string& input)
-        {
-            std::string out;
-            out.reserve(input.size());
-
-            bool escaped = false;
-
-            for (char c : input) {
-                if (escaped) {
-                    out += c;
-                    escaped = false;
-                }
-                else if (c == '\\') {
-                    escaped = true;
-                }
-                else {
-                    out += c;
-                }
-            }
-
-            return out;
-        }
-
-        static bool to_bool(const std::string& v, bool def)
-        {
-            if (v == "true" || v == "1") {
-                return true;
-            }
-            if (v == "false" || v == "0") {
-                return false;
-            }
-            return def;
-        }
-
-        template<typename T>
-        static T convert(const std::string& v, T def)
-        {
-            if constexpr (std::is_same_v<T, std::string>) {
-                return v;
-            }
-            else if constexpr (std::is_same_v<T, bool>) {
-                return to_bool(v, def);
-            }
-            else if constexpr (std::is_integral_v<T>) {
-                try {
-                    return static_cast<T>(std::stoll(v));
-                }
-                catch (...) {
-                    return def;
-                }
-            }
-            else if constexpr (std::is_floating_point_v<T>) {
-                try {
-                    return static_cast<T>(std::stold(v));
-                }
-                catch (...) {
-                    return def;
-                }
-            }
-            else {
-                return def;
+            if (env->ExceptionCheck()) {
+                env->DeleteLocalRef(result);
+                env->DeleteLocalRef(string_class);
+                return nullptr;
             }
         }
 
-        std::unordered_map<std::string, std::string> data;
-    };
+        env->DeleteLocalRef(string_class);
+        return result;
+    }
+
+    inline std::string toDelimitedString(const std::vector<std::string>& values,
+                    const std::string& delimiter = ",")
+    {
+        std::string result;
+
+        for (const auto& value : values) {
+            if (!result.empty()) {
+                result += delimiter;
+            }
+            result += value;
+        }
+
+        return result;
+    }
+
 
     class File {
     public:

@@ -4,8 +4,9 @@
 #include <JuiceAgent/Logger.hpp>
 #include <JuiceAgent/Config.hpp>
 #include <JuiceAgent/ConfigStruct.hpp>
-
+#include <JuiceAgent/Utils.hpp>
 #include <JuiceAgent/JuiceAgent.hpp>
+#include <vector>
 
 // Preload section
 // Check parameters and load the runtime
@@ -50,7 +51,7 @@ void JuiceAgent::Loader::preload(const char* runtime_dir, JNIEnv* env, jvmtiEnv*
     } else if(jar_loader_mode == "CustomJar") {
         spdlog::info("[PreLoad] JarLoader mode: CustomJar");
 
-        std::string jar_path = cfg.get<std::string>("JarLoader.JarPath");
+        std::string jar_path = cfg.getPath("JarLoader.JarPath");
         
         if(!load_custom(jvmti, jar_path.c_str())) {
             spdlog::error("[PreLoad] Failed to load custom jar: {}", jar_path);
@@ -66,7 +67,38 @@ void JuiceAgent::Loader::preload(const char* runtime_dir, JNIEnv* env, jvmtiEnv*
 void JuiceAgent::Loader::initialize(const char* runtime_dir, JNIEnv* env, jvmtiEnv* jvmti, JuiceAgent::Config::Config& cfg) {
     std::string jar_loader_mode = cfg.get<std::string>("JarLoader.Mode");
 
-    // TODO: Implement this
+    if(jar_loader_mode == "BuiltIn") {
+        const char* bootstrap_class = "cn/xiaozhou233/juiceagent/api/JuiceAgentBootstrap";
+        const char* method_name = "start";
 
-    // spdlog::info("JuiceAgent initialized!");
+        JuiceAgent::Utils::Serializer ser;
+        ser.add_kv("Version", cfg.get<int>("JuiceAgent.Version", -1));
+        ser.add_kv("JuiceAgentNativeLibraryPath", cfg.getPath("JuiceAgent.JuiceAgentNativeLibraryPath", (cfg.getRuntimeDir()/"libagent.dll").string()));
+        ser.add_kv("RuntimeDir", cfg.getRuntimeDir().string());
+        
+        std::string args = ser.serialize(); 
+        spdlog::debug("Serialized config: {}", args);
+
+        bool result = JuiceAgent::Utils::call_static_java_method(env, bootstrap_class, method_name, args.c_str());
+        if (!result) {
+            spdlog::error("Failed to initialize JuiceAgent! (call_static_java_method)");
+            return;
+        }
+    } else if(jar_loader_mode == "CustomJar") {
+        spdlog::info("[Initialize] JarLoader mode: CustomJar");
+
+        std::string entry_class = cfg.get<std::string>("JarLoader.EntryClass");
+        std::string entry_method = cfg.get<std::string>("JarLoader.EntryMethod");
+        spdlog::debug("[Initialize] Entry class: {}, Entry method: {}", entry_class, entry_method);
+        bool result = JuiceAgent::Utils::call_static_java_method(env, entry_class.c_str(), entry_method.c_str());
+        if (!result) {
+            spdlog::error("Failed to invoke custom jar entry! (call_static_java_method)");
+            return;
+        }
+    } else {
+        spdlog::error("[Initialize] Invalid JarLoader mode: {}", jar_loader_mode);
+        return;
+    }
+
+    spdlog::info("JuiceAgent initialized!");
 }
