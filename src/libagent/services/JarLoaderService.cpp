@@ -35,6 +35,14 @@ private:
         auto& agent = Agent::getInstance();
         auto& cfg = agent.getConfig();
 
+        const bool enabled = cfg.get<bool>(
+            "JarLoader.Enabled", false);
+
+        if (!enabled) {
+            spdlog::info("[JarLoaderService] Disabled by config");
+            return;
+        }
+
         const std::string injection_dir = cfg.getPath(
             "JarLoader.InjectionDir",
             (cfg.getRuntimeDir() / "injection").string()

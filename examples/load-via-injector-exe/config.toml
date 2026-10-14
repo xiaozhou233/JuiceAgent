@@ -9,6 +9,7 @@ JuiceAgentNativeLibraryPath = ""
 # BuiltIn: Use the built-in jar loader (recommended, support JuiceAgent-API ( https://github.com/xiaozhou233/JuiceAgent#juiceagent-api ))
 # CustomJar: Load the Jar directly, without using JuiceAgent-API
 # For more information, please refer to the documentation: https://github.com/xiaozhou233/JuiceAgent/blob/main/docs/advanced.md#load-custom-api--directly-load-jar
+Enabled = true
 Mode = "BuiltIn"
 
 # InjectionDir only works when Mode is BuiltIn
