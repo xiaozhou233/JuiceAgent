@@ -35,33 +35,25 @@ private:
         auto& agent = Agent::getInstance();
         auto& cfg = agent.getConfig();
 
-        const bool enabled = cfg.get<bool>(
-            "JuiceAgent.Modules.JarLoader.Enabled", false);
+        const std::string injection_dir = cfg.getPath(
+            "JarLoader.InjectionDir",
+            (cfg.getRuntimeDir() / "injection").string()
+        );
 
-        if (!enabled) {
-            spdlog::info("[JarLoaderService] Disabled by config");
-            return;
-        }
-
-        const std::string injection_dir = cfg.get<std::string>(
-            "JuiceAgent.Modules.JarLoader.InjectionDir",
-            (cfg.runtime_dir() / "injection").string(),
-            true);
-
-        const std::string jar_path = cfg.get<std::string>(
-            "JuiceAgent.Modules.JarLoader.JarPath",
-            (cfg.runtime_dir() / "Entry.jar").string(),
-            true);
+        const std::string jar_path = cfg.getPath(
+            "JarLoader.JarPath",
+            (cfg.getRuntimeDir() / "Entry.jar").string()
+        );
 
         const std::string entry_class = cfg.get<std::string>(
-            "JuiceAgent.Modules.JarLoader.EntryClass",
-            "Example.Main",
-            false);
+            "JarLoader.EntryClass",
+            "Example.Main"
+        );
 
         const std::string entry_method = cfg.get<std::string>(
-            "JuiceAgent.Modules.JarLoader.EntryMethod",
-            "start",
-            false);
+            "JarLoader.EntryMethod",
+            "start"
+        );
 
         JuiceAgent::Utils::Serializer ser;
         ser.add_kv("InjectionDir", injection_dir);
@@ -78,7 +70,7 @@ private:
             return;
         }
 
-        bool result = JuiceAgent::Utils::call_java_impl(
+        bool result = JuiceAgent::Utils::call_static_java_method(
             env, MODULE_CLASS, MODULE_METHOD, data.c_str());
 
         if (!result) {

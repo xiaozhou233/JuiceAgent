@@ -38,7 +38,7 @@ namespace JuiceAgent {
         } else {
             JuiceAgent::Config::Config cfg(runtime_dir);
             setConfig(cfg);
-            if(!getConfig().is_valid()) {
+            if(!getConfig().isValid()) {
                 spdlog::warn("[JuiceAgent] Config is not valid!");
                 spdlog::warn("[JuiceAgent] No config provided, Modules will not be loaded!");
             }

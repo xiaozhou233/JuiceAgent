@@ -1,21 +1,18 @@
-[JuiceAgent]
-Version = 1
+# See config.md for more information https://github.com/xiaozhou233/JuiceAgent/blob/main/docs/config.md
 
-[JuiceAgent.Loader]
-# Path to JuiceAgent-API jar, leave empty to use the built-in API
-JuiceAgentAPIJarPath = ""
-# Path to libagent.dll, default is "./libagent.dll"
+[JuiceAgent]
+Version = 2
 JuiceAgentNativeLibraryPath = ""
 
-[JuiceAgent.Modules]
+[JarLoader]
+# Mode: BuiltIn, CustomJar
+# BuiltIn: Use the built-in jar loader (recommended, support JuiceAgent-API ( https://github.com/xiaozhou233/JuiceAgent#juiceagent-api ))
+# CustomJar: Load the Jar directly, without using JuiceAgent-API
+# For more information, please refer to the documentation: https://github.com/xiaozhou233/JuiceAgent/blob/main/docs/advanced.md#load-custom-api--directly-load-jar
+Mode = "BuiltIn"
 
-[JuiceAgent.Modules.JarLoader]
-Enabled = true
-# Directory containing dependency JARs to load into the JVM (put your deps here)
+# InjectionDir only works when Mode is BuiltIn
 InjectionDir = "./injection"
-# Path to the injection JAR to be loaded
 JarPath = "./demo.jar"
-# Entry class to be executed after loading the JAR
 EntryClass = "Example.Main"
-# Entry method, must be: public static void run()
 EntryMethod = "run"
