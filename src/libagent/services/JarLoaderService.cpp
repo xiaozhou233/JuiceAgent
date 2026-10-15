@@ -13,7 +13,6 @@ public:
 
     bool onInitialize() override {
         listen<JarLoaderService, EventLoaded>(
-            EventId::Loaded,
             &JarLoaderService::onLoaded
         );
 

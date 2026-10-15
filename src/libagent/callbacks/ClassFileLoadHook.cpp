@@ -1,5 +1,6 @@
 #include <jni_common.hpp>
 #include <eventbus.hpp>
+#include <event/event_type.hpp>
 
 void JNICALL ClassFileLoadHook(
         jvmtiEnv* jvmti_env,
@@ -30,5 +31,5 @@ void JNICALL ClassFileLoadHook(
                 new_classbytes
             };
 
-            EventBus::getInstance().post(EventId::ClassFileLoadHook, &event);
+            EventBus::getInstance().post(event);
         }

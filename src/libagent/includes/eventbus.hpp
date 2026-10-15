@@ -1,19 +1,28 @@
 #pragma once
 
-#include <eventpp/eventdispatcher.h>
-#include <event/event_type.hpp>
+#include <cstddef>
+#include <functional>
+#include <mutex>
+#include <typeinfo>
+#include <typeindex>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
-enum class EventId {
-    ClassFileLoadHook,
-    MethodEntry,
-    MethodExit,
-    PreLoad,
-    Loaded
-};
-
+// A small type-safe event bus.
+//
+// Listeners subscribe to a concrete event type and are invoked with that type,
+// so there is no `void*` casting at the API boundary:
+//
+//     auto handle = EventBus::getInstance().subscribe<MyEvent>(
+//         [](const MyEvent& e) { ... });
+//     EventBus::getInstance().post(myEvent);
+//
+// Listeners are copied before dispatch, so a handler may safely subscribe or
+// unsubscribe (including itself) without invalidating the iteration.
 class EventBus {
 public:
-    using Dispatcher = eventpp::EventDispatcher<EventId, void(const void*)>;
+    using Handle = std::size_t;
 
     static EventBus& getInstance() {
         static EventBus instance;
@@ -23,25 +32,74 @@ public:
     EventBus(const EventBus&) = delete;
     EventBus& operator=(const EventBus&) = delete;
 
-    void post(EventId id, const void* event) {
-        dispatcher.dispatch(id, event);
+    template <typename EventT>
+    void post(const EventT& event) {
+        std::vector<std::function<void(const void*)>> callbacks;
+
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            auto it = listeners_.find(std::type_index(typeid(EventT)));
+            if (it == listeners_.end()) {
+                return;
+            }
+            callbacks.reserve(it->second.size());
+            for (const auto& listener : it->second) {
+                callbacks.push_back(listener.callback);
+            }
+        }
+
+        for (auto& callback : callbacks) {
+            callback(&event);
+        }
     }
 
-    template <typename C>
-    auto appendListener(EventId id, const C& callback) {
-        return dispatcher.appendListener(id, callback);
+    template <typename EventT>
+    Handle subscribe(std::function<void(const EventT&)> callback) {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        const Handle handle = next_handle_++;
+        listeners_[std::type_index(typeid(EventT))].push_back({
+            handle,
+            [callback](const void* data) {
+                callback(*static_cast<const EventT*>(data));
+            }
+        });
+        return handle;
     }
 
-    template <typename C>
-    auto prependListener(EventId id, const C& callback) {
-        return dispatcher.prependListener(id, callback);
+    template <typename EventT>
+    bool unsubscribe(Handle handle) {
+        return unsubscribe(std::type_index(typeid(EventT)), handle);
     }
 
-    bool removeListener(EventId id, Dispatcher::Handle handle) {
-        return dispatcher.removeListener(id, handle);
+    // Type-erased overload, for owners that track listeners across event types.
+    bool unsubscribe(std::type_index type, Handle handle) {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        auto it = listeners_.find(type);
+        if (it == listeners_.end()) {
+            return false;
+        }
+
+        auto& list = it->second;
+        for (auto e = list.begin(); e != list.end(); ++e) {
+            if (e->handle == handle) {
+                list.erase(e);
+                return true;
+            }
+        }
+        return false;
     }
 
 private:
     EventBus() = default;
-    Dispatcher dispatcher;
+
+    struct Listener {
+        Handle handle;
+        std::function<void(const void*)> callback;
+    };
+
+    std::mutex mutex_;
+    std::unordered_map<std::type_index, std::vector<Listener>> listeners_;
+    Handle next_handle_ = 1;
 };

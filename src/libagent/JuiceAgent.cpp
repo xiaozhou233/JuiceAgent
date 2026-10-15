@@ -5,6 +5,7 @@
 #include <jni_common.hpp>
 #include <services.hpp>
 #include <eventbus.hpp>
+#include <event/event_type.hpp>
 
 namespace JuiceAgent {
     // Singleton
@@ -59,7 +60,7 @@ namespace JuiceAgent {
         // Post preload event (after environment is set so listeners
         // can access the agent state via Agent::getInstance())
         EventPreLoad preloadEvent{ jvm, env, jvmti };
-        EventBus::getInstance().post(EventId::PreLoad, &preloadEvent);
+        EventBus::getInstance().post(preloadEvent);
 
         return true;
     }
@@ -112,7 +113,7 @@ namespace JuiceAgent {
 
         // Post loaded event
         EventLoaded loadedEvent{ getJavaVM(), getJNIEnv(), getJVMTI() };
-        EventBus::getInstance().post(EventId::Loaded, &loadedEvent);
+        EventBus::getInstance().post(loadedEvent);
 
         
         return true;

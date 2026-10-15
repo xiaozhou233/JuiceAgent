@@ -15,12 +15,10 @@ public:
 
     bool onInitialize() override {
         listen<BytecodeService, EventClassFileLoadHook>(
-            EventId::ClassFileLoadHook,
             &BytecodeService::captureBytecodes
         );
 
         listen<BytecodeService, EventClassFileLoadHook>(
-            EventId::ClassFileLoadHook,
             &BytecodeService::patchBytecodes
         );
 

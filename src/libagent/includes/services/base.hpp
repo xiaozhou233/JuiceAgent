@@ -1,8 +1,10 @@
 #pragma once
 
-#include <vector>
-#include <utility>
 #include <type_traits>
+#include <typeindex>
+#include <utility>
+#include <vector>
+
 #include <JuiceAgent/Logger.hpp>
 #include <eventbus.hpp>
 
@@ -21,35 +23,30 @@ public:
 
 protected:
     template <typename ServiceT, typename EventT>
-    void listen(EventId id, void (ServiceT::*handler)(const EventT&)) {
+    void listen(void (ServiceT::*handler)(const EventT&)) {
         static_assert(std::is_base_of<IService, ServiceT>::value,
                       "ServiceT must derive from IService");
         auto* self = static_cast<ServiceT*>(this);
-        handles_.push_back({
-            id,
-            EventBus::getInstance().appendListener(
-                id,
-                [self, handler](const void* data) {
-                    if (data) {
-                        (self->*handler)(*static_cast<const EventT*>(data));
-                    }
-                }
-            )
-        });
+        const EventBus::Handle handle =
+            EventBus::getInstance().subscribe<EventT>(
+                [self, handler](const EventT& event) {
+                    (self->*handler)(event);
+                });
+        handles_.push_back({std::type_index(typeid(EventT)), handle});
     }
 
     // Remove all listeners registered by this service. Call it in onShutdown()
     // so no callback outlives the service instance.
     void unlistenAll() {
         auto& bus = EventBus::getInstance();
-        for (auto& [id, handle] : handles_) {
-            bus.removeListener(id, handle);
+        for (auto& [type, handle] : handles_) {
+            bus.unsubscribe(type, handle);
         }
         handles_.clear();
     }
 
 private:
-    std::vector<std::pair<EventId, EventBus::Dispatcher::Handle>> handles_;
+    std::vector<std::pair<std::type_index, EventBus::Handle>> handles_;
 };
 
 }
