@@ -67,6 +67,23 @@ public:
         return handle;
     }
 
+    // Like subscribe(), but inserts the listener at the front so it runs
+    // before previously registered listeners for the same event.
+    template <typename EventT>
+    Handle subscribeFront(std::function<void(const EventT&)> callback) {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        const Handle handle = next_handle_++;
+        auto& list = listeners_[std::type_index(typeid(EventT))];
+        list.insert(list.begin(), Listener{
+            handle,
+            [callback](const void* data) {
+                callback(*static_cast<const EventT*>(data));
+            }
+        });
+        return handle;
+    }
+
     template <typename EventT>
     bool unsubscribe(Handle handle) {
         return unsubscribe(std::type_index(typeid(EventT)), handle);
