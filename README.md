@@ -120,17 +120,15 @@ Extract the ZIP file to a directory:
 
 ```toml
 [JuiceAgent]
-Version = 1
-
-[JuiceAgent.Loader]
-# Path to libagent.dll, default is "./libagent.dll"
+Version = 2
+# Path to libagent.dll, default is "./libagent.dll" (relative to the runtime directory)
 JuiceAgentNativeLibraryPath = ""
 
-[JuiceAgent.Modules]
-
-[JuiceAgent.Modules.JarLoader]
+[JarLoader]
 Enabled = true
-# Directory containing dependency JARs to load first
+# Mode: BuiltIn | CustomJar
+Mode = "BuiltIn"
+# Directory containing dependency JARs to load first (BuiltIn mode)
 InjectionDir = "./injection"
 # Path to the JAR file to be loaded
 JarPath = "./MyCustomJar.jar"
@@ -140,7 +138,7 @@ EntryClass = "Example.Main"
 EntryMethod = "run"
 ```
 
-Save the file as `config.toml` in the same directory (the runtime directory). Relative paths are resolved against the runtime directory.
+Save the file as `config.toml` in the same directory (the runtime directory). Relative paths are resolved against the runtime directory. See [Configuration](docs/config.md) for the complete reference.
 
 - YourDir
   - **config.toml**
@@ -196,6 +194,7 @@ The following native functions are exposed to Java through the `cn.xiaozhou233.j
 
 ## Examples
 
+- `examples/inject-via-java-api` — injects JuiceAgent into a running JVM through the Java API (JNI), without needing `injector.exe`.
 - `examples/load-via-injector-exe` — loads a JAR into a target JVM via `injector.exe` and runs an entry point.
 - `examples/retransform-class` — demonstrates class retransformation with a target JVM and a modified copy of the class.
 

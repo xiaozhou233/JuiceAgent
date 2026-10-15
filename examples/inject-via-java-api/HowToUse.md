@@ -64,15 +64,12 @@ in `config.toml` and execute its entry method.
 
 ```toml
 [JuiceAgent]
-Version = 1
-
-[JuiceAgent.Loader]
+Version = 2
 JuiceAgentNativeLibraryPath = ""
 
-[JuiceAgent.Modules]
-
-[JuiceAgent.Modules.JarLoader]
+[JarLoader]
 Enabled = true
+Mode = "BuiltIn"
 InjectionDir = "./injection"
 JarPath = "./demo.jar"
 EntryClass = "Example.Main"

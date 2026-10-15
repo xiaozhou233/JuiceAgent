@@ -121,17 +121,15 @@ JuiceAgent 是 [JuiceAgent-API](https://github.com/xiaozhou233/JuiceAgent-API) �
 
 ```toml
 [JuiceAgent]
-Version = 1
-
-[JuiceAgent.Loader]
-# libagent.dll 的路径，默认是 "./libagent.dll"
+Version = 2
+# libagent.dll 的路径，默认是 "./libagent.dll"（相对于运行时目录）
 JuiceAgentNativeLibraryPath = ""
 
-[JuiceAgent.Modules]
-
-[JuiceAgent.Modules.JarLoader]
+[JarLoader]
 Enabled = true
-# 需要优先加载的依赖 JAR 所在目录
+# Mode：BuiltIn | CustomJar
+Mode = "BuiltIn"
+# 需要优先加载的依赖 JAR 所在目录（BuiltIn 模式）
 InjectionDir = "./injection"
 # 要加载的 JAR 文件路径
 JarPath = "./MyCustomJar.jar"
@@ -141,7 +139,7 @@ EntryClass = "Example.Main"
 EntryMethod = "run"
 ```
 
-将文件保存为 `config.toml` 并放在同一目录（运行时目录）中。相对路径以运行时目录为基准解析。
+将文件保存为 `config.toml` 并放在同一目录（运行时目录）中。相对路径以运行时目录为基准解析。完整配置说明见 [Configuration](docs/config.md)。
 
 - YourDir
   - **config.toml**
@@ -197,6 +195,7 @@ Input PID:
 
 ## 示例
 
+- `examples/inject-via-java-api` — 通过 Java API（JNI）将 JuiceAgent 注入到正在运行的 JVM，无需 `injector.exe`。
 - `examples/load-via-injector-exe` — 通过 `injector.exe` 将 JAR 加载到目标 JVM 并运行入口点。
 - `examples/retransform-class` — 演示使用目标 JVM 和修改后的类副本进行类重变换。
 

@@ -1,24 +1,34 @@
 # Advanced
 
 ## Load Custom API / Directly Load Jar
-WARN: This feature didn't implement yet.
 
-### Describe
-JuiceAgent loads custom JARs through the following workflow:
+JuiceAgent runs in **BuiltIn** mode by default: `libloader` registers the embedded
+JuiceAgent-API jar, the agent bootstraps it, and the JarLoader module loads your JAR
+and invokes its entry method.
 
-1. Inject `libloader` into the target process.
-2. Load **JuiceAgent-API** and execute its initialization entry point.
-3. Invoke the `JarLoader` from **JuiceAgent-API** to load the specified JAR into the JVM.
+If you don't need JuiceAgent-API — for example you want to provide your own bootstrap
+and call an arbitrary class/method — set `JarLoader.Mode` to **`CustomJar`**:
 
-The second step is fully customizable. You can replace **JuiceAgent-API** with your own JAR and call any class method you specify.
+```toml
+[JuiceAgent]
+Version = 2
 
-### Configuration
-
-Set the following environment variables before launching `libloader`:
-
-```bat
-set JUICEAGENT_API_ENABLED=true
-set JUICEAGENT_API_JAR=<path-to-your-jar>
-set JUICEAGENT_API_CLASS=<target-class-name>
-set JUICEAGENT_API_METHOD=<target-method-name>
+[JarLoader]
+Mode = "CustomJar"
+JarPath = "./my-agent.jar"
+EntryClass = "com.example.MyBootstrap"
+EntryMethod = "start"
 ```
+
+Workflow in `CustomJar` mode:
+
+1. `libloader` attaches to the target JVM and reads `config.toml`.
+2. It adds `JarPath` to the system class loader search path. JuiceAgent-API is **not** loaded.
+3. It invokes `EntryClass.EntryMethod`.
+
+`EntryMethod` must be a `public static void` method that takes no arguments.
+
+> `JarLoader.Enabled` and `JarLoader.InjectionDir` only apply to `BuiltIn` mode; they are
+> ignored in `CustomJar` mode.
+
+See [Configuration](config.md) for the complete list of keys.
