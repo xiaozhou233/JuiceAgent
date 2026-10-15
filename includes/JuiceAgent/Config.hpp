@@ -8,8 +8,6 @@
 #include <vector>
 #include <cstddef>
 #include <JuiceAgent/Logger.hpp>
-#include <JuiceAgent/Utils.hpp>
-#include <JuiceAgent/ConfigStruct.hpp>
 
 namespace JuiceAgent::Config {
 
@@ -232,25 +230,5 @@ public:
         return _valid;
     }
 };
-
-namespace Utils {
-    inline LoaderConfig get_loader_config(const Config& config)
-    {
-        LoaderConfig loader_config;
-        loader_config.JuiceAgentNativeLibraryPath = config.getPath(
-            "JuiceAgent.Loader.JuiceAgentNativeLibraryPath",
-            (config.getRuntimeDir() / "libagent.dll").string()
-        );
-        loader_config.RuntimeDir = config.getRuntimeDir().string();
-
-        return loader_config;
-    }
-
-    inline void print_loader_config(const LoaderConfig& config)
-    {
-        spdlog::info("JuiceAgentNativeLibraryPath: {}", config.JuiceAgentNativeLibraryPath);
-        spdlog::info("RuntimeDir: {}", config.RuntimeDir);
-    }
-}
 
 } // namespace JuiceAgent::Config

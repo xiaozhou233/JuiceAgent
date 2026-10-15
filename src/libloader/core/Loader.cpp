@@ -3,7 +3,6 @@
 #include <filesystem>
 #include <JuiceAgent/Logger.hpp>
 #include <JuiceAgent/Config.hpp>
-#include <JuiceAgent/ConfigStruct.hpp>
 #include <JuiceAgent/Utils.hpp>
 #include <JuiceAgent/JuiceAgent.hpp>
 #include <vector>
