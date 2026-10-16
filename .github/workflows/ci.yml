@@ -81,3 +81,15 @@ jobs:
           # Fallback for any remaining runtime DLLs.
           $env:PATH = "C:\msys64\mingw64\bin;$env:PATH"
           ./tests/run-tests.ps1
+
+      - name: Package release zip
+        shell: msys2 {0}
+        run: cmake -P script/package.cmake
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: JuiceAgent-windows-x64
+          path: dist/JuiceAgent_*.zip
+          if-no-files-found: error
+          retention-days: 14
