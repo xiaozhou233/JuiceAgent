@@ -16,6 +16,9 @@ JuiceAgent 是一个基于 JVMTI 的高级注入框架，用于运行时 JAR 加
 - Discord：[JuiceDev](https://discord.gg/AQTnUyWNNJ)
 - QQ 群：1103504356
 
+> **不知道该怎么用？** 不必手动折腾注入流程：用支持读写文件和执行命令的 AI Agent（例如 OpenCode）即可。在本仓库中打开 Agent，让它先阅读 [`QuickStartForAgents.md`](QuickStartForAgents.md) 并照着执行——该文档覆盖了完整流程（环境检查、需求确认、`config.toml`、注入与验证），并且是专门写给 Agent 执行的。你只需要告诉它：
+> "请阅读 `QuickStartForAgents.md`，并照着里面的步骤把我的 JAR 注入到目标 JVM。"
+
 ![License](https://img.shields.io/github/license/xiaozhou233/JuiceAgent)
 ![Release](https://img.shields.io/github/v/release/xiaozhou233/JuiceAgent)
 ![GitHub last commit](https://img.shields.io/github/last-commit/xiaozhou233/JuiceAgent)

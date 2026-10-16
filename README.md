@@ -14,6 +14,13 @@ Welcome to join our QQ/Discord group for more information and support:
 - Discord: [JuiceDev](https://discord.gg/AQTnUyWNNJ)
 - QQ Group: 1103504356
 
+> **New to JuiceAgent?** You do not have to wire up the injection by hand. A
+> coding agent such as OpenCode can do it for you: open this repository in the
+> agent and ask it to read [`QuickStartForAgents.md`](QuickStartForAgents.md) and
+> follow it. That guide covers the whole process — environment check, requirement
+> gathering, `config.toml`, injection and verification — and is written to be
+> executed by an agent. Simply tell the agent:
+> "Read `QuickStartForAgents.md` and follow it to inject my JAR."
 
 ![License](https://img.shields.io/github/license/xiaozhou233/JuiceAgent)
 ![Release](https://img.shields.io/github/v/release/xiaozhou233/JuiceAgent)
