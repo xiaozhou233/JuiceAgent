@@ -37,11 +37,24 @@ jobs:
 
       - name: Build
         shell: msys2 {0}
-        run: cmake --build build
+        run: |
+          cmake --build build
+
+          # Bundle the MinGW runtime DLLs next to the binaries. The integration
+          # tests load libagent.dll through System.load, and its dependencies
+          # (libstdc++/libgcc/libwinpthread) are otherwise only found via PATH.
+          # copy-bin.bat then carries them into tests/resources as well.
+          for dll in libstdc++-6.dll libgcc_s_seh-1.dll libwinpthread-1.dll; do
+            if [ -f "/mingw64/bin/$dll" ]; then
+              cp -f "/mingw64/bin/$dll" build/bin/
+            fi
+          done
+          echo "--- build/bin ---"
+          ls -1 build/bin
 
       - name: Run integration tests
         shell: pwsh
         run: |
-          # libagent.dll links against the MinGW runtime DLLs from this toolchain.
+          # Prepend the toolchain bin as a fallback for the runtime DLLs.
           $env:PATH = "C:\msys64\mingw64\bin;$env:PATH"
           ./tests/run-tests.ps1

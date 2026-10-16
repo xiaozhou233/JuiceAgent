@@ -143,6 +143,15 @@ try {
             Write-Host ("  [PASS] {0}" -f $case.Name) -ForegroundColor Green
         } else {
             Write-Host ("  [FAIL] {0} (expected /{1}/)" -f $case.Name, $case.Expect) -ForegroundColor Red
+            # Show what the test actually printed so failures are diagnosable
+            # (the test programs exit 0 even when a step fails).
+            $lines = @($output -split "`r?`n" | Where-Object { $_.Trim() })
+            foreach ($line in ($lines | Select-Object -First 25)) {
+                Write-Host ("         | " + $line.TrimEnd()) -ForegroundColor DarkGray
+            }
+            if ($lines.Count -gt 25) {
+                Write-Host ("         | ... ({0} more lines)" -f ($lines.Count - 25)) -ForegroundColor DarkGray
+            }
             $failed += $case.Name
         }
     }
