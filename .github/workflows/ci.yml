@@ -28,33 +28,56 @@ jobs:
           update: false
           install: >-
             mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-binutils
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-ninja
 
       - name: Configure
         shell: msys2 {0}
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        run: |
+          # Link the C/C++ runtime statically, like w64devkit (the toolchain the
+          # project is built with locally). Without this the DLLs depend on
+          # libstdc++-6/libgcc_s_seh-1, which can be shadowed by a different
+          # version elsewhere on the machine and fail to load.
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++" \
+            -DCMAKE_SHARED_LINKER_FLAGS="-static-libgcc -static-libstdc++"
 
       - name: Build
         shell: msys2 {0}
         run: |
           cmake --build build
 
-          # Bundle the MinGW runtime DLLs next to the binaries. The integration
-          # tests load libagent.dll through System.load, and its dependencies
-          # (libstdc++/libgcc/libwinpthread) are otherwise only found via PATH.
-          # copy-bin.bat then carries them into tests/resources as well.
-          for dll in libstdc++-6.dll libgcc_s_seh-1.dll libwinpthread-1.dll; do
-            if [ -f "/mingw64/bin/$dll" ]; then
-              cp -f "/mingw64/bin/$dll" build/bin/
+          echo "compiler: $(command -v g++)"
+          echo "target:   $(gcc -dumpmachine)"
+
+          echo "--- imports (non-system DLLs) ---"
+          objdump -p build/bin/libagent.dll build/bin/libloader.dll build/bin/libinject.dll \
+            | grep 'DLL Name:' | sed 's/.*DLL Name:[[:space:]]*//' | sort -u
+
+          # Bundle whatever non-system DLLs are still imported, taken from the
+          # toolchain that built them, so the tests can load libagent.dll
+          # without depending on PATH.
+          GCC_BIN="$(dirname "$(command -v gcc)")"
+          deps="$(objdump -p build/bin/libagent.dll build/bin/libloader.dll build/bin/libinject.dll \
+                  | grep 'DLL Name:' | sed 's/.*DLL Name:[[:space:]]*//' | sort -u \
+                  | grep -viE '^(kernel32|user32|advapi32|ws2_32|shell32|ole32|gdi32|msvcrt|ucrtbase|ntdll|comdlg32|comctl32|psapi|version|iphlpapi|bcrypt|secur32|crypt32|winmm|imm32|netapi32|userenv|rpcrt4|setupapi|mswsock|dnsapi|normaliz)[.]dll$' \
+                  | grep -viE '^api-ms-win-')"
+          for dll in $deps; do
+            if [ -f "$GCC_BIN/$dll" ]; then
+              cp -f "$GCC_BIN/$dll" build/bin/
+              echo "bundled $dll"
+            else
+              echo "MISSING $dll (not found in $GCC_BIN)"
             fi
           done
+
           echo "--- build/bin ---"
           ls -1 build/bin
 
       - name: Run integration tests
         shell: pwsh
         run: |
-          # Prepend the toolchain bin as a fallback for the runtime DLLs.
+          # Fallback for any remaining runtime DLLs.
           $env:PATH = "C:\msys64\mingw64\bin;$env:PATH"
           ./tests/run-tests.ps1
