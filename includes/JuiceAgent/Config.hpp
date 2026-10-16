@@ -3,7 +3,6 @@
 #include <filesystem>
 #include <optional>
 #include <toml++/toml.h>
-#include <stdexcept>
 #include <string>
 #include <vector>
 #include <cstddef>
@@ -33,40 +32,36 @@ public:
 
         _config_path = _runtime_dir / "config.toml";
 
-        // Load the config file
+        // Load the config file.
+        //
+        // This must never throw: when libloader runs from the reflectively
+        // loaded DLL its unwind tables are not registered, so a C++ exception
+        // raised here could not be caught and would crash the target process.
+        // toml++ switches to non-throwing mode (parse_result) automatically
+        // when exceptions are disabled.
+#if TOML_EXCEPTIONS
         try {
             _config = toml::parse_file(_config_path.string());
             _valid = true;
         } catch (const toml::parse_error& e) {
-            spdlog::error("Failed to parse config file: {}", e.what());
+            spdlog::error("Failed to parse config file: {}", e.description());
             _last_error = e;
         }
+#else
+        toml::parse_result result = toml::parse_file(_config_path.string());
+        if (result.succeeded()) {
+            _config = std::move(result).table();
+            _valid = true;
+        } else {
+            spdlog::error("Failed to parse config file: {}", result.error().description());
+            _last_error = result.error();
+        }
+#endif
     }
 
-
-    template<typename T>
-    T get(const std::string& path) const {
-        const auto* node = _config.at_path(path).node();
-
-        if (!node) {
-            spdlog::error("Configuration key not found: {}", path);
-            throw std::runtime_error(
-                "Configuration key not found: " + path
-            );
-        }
-
-        auto value = node->value<T>();
-
-        if (!value) {
-            spdlog::error("Configuration type mismatch: {}", path);
-            throw std::runtime_error(
-                "Configuration type mismatch: " + path
-            );
-        }
-
-        return *value;
-    }
-
+    // Non-throwing lookup: returns defaultValue when the key is missing or has
+    // the wrong type. There is deliberately no throwing overload - callers that
+    // require a key must check contains() first.
     template<typename T>
     T get(const std::string& path, T defaultValue) const {
         const auto* node = _config.at_path(path).node();
@@ -86,16 +81,6 @@ public:
         }
 
         return *value;
-    }
-
-    std::string getPath(const std::string& key) const {
-        const std::string value = get<std::string>(key);
-
-        if (value.empty()) {
-            return {};
-        }
-
-        return getPath(key, value);
     }
 
     std::string getPath(
@@ -126,83 +111,6 @@ public:
         }
 
         return value.lexically_normal().string();
-    }
-
-    template<typename T>
-    std::vector<T> getArray(const std::string& path) const {
-        const auto* node = _config.at_path(path).node();
-
-        if (!node) {
-            throw std::runtime_error(
-                "Configuration key not found: " + path
-            );
-        }
-
-        const auto* array = node->as_array();
-
-        if (!array) {
-            throw std::runtime_error(
-                "Configuration type mismatch: expected array: " + path
-            );
-        }
-
-        std::vector<T> result;
-        result.reserve(array->size());
-
-        for (std::size_t i = 0; i < array->size(); ++i) {
-            const auto& element = (*array)[i];
-            auto value = element.value<T>();
-
-            if (!value) {
-                throw std::runtime_error(
-                    "Configuration array element type mismatch: "
-                    + path + "[" + std::to_string(i) + "]"
-                );
-            }
-
-            result.push_back(*value);
-        }
-
-        return result;
-    }
-
-    template<typename T>
-    std::vector<T> getArray(
-        const std::string& path,
-        std::vector<T> defaultValue
-    ) const {
-        const auto* node = _config.at_path(path).node();
-
-        if (!node) {
-            return defaultValue;
-        }
-
-        const auto* array = node->as_array();
-
-        if (!array) {
-            throw std::runtime_error(
-                "Configuration type mismatch: expected array: " + path
-            );
-        }
-
-        std::vector<T> result;
-        result.reserve(array->size());
-
-        for (std::size_t i = 0; i < array->size(); ++i) {
-            const auto& element = (*array)[i];
-            auto value = element.value<T>();
-
-            if (!value) {
-                throw std::runtime_error(
-                    "Configuration array element type mismatch: "
-                    + path + "[" + std::to_string(i) + "]"
-                );
-            }
-
-            result.push_back(*value);
-        }
-
-        return result;
     }
 
     bool contains(const std::string& path) const {

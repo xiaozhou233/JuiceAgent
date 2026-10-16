@@ -9,6 +9,11 @@
 
 // Preload section
 // Check parameters and load the runtime
+//
+// NOTE: libloader is reflectively loaded, so its unwind tables are never
+// registered with the OS - a C++ exception thrown here could not be caught and
+// would crash the target process. Everything below must stay exception-free and
+// report problems with spdlog plus an early return.
 void JuiceAgent::Loader::preload(const char* runtime_dir, JNIEnv* env, jvmtiEnv* jvmti) {
     std::string runtime_dir_new;
 
@@ -33,27 +38,42 @@ void JuiceAgent::Loader::preload(const char* runtime_dir, JNIEnv* env, jvmtiEnv*
     }
 
     // Check config version
-    int version = cfg.get<int>("JuiceAgent.Version");
+    if(!cfg.contains("JuiceAgent.Version")) {
+        spdlog::error("[PreLoad] Missing required config key: JuiceAgent.Version");
+        return;
+    }
+    const int version = cfg.get<int>("JuiceAgent.Version", -1);
     if(version != CONFIG_VERSION) {
         spdlog::error("[PreLoad] Config version mismatch! Expected: {}, Got: {}, Please update your config!", CONFIG_VERSION, version);
         return;
     }
 
     // JarLoader mode check and load jars
-    std::string jar_loader_mode = cfg.get<std::string>("JarLoader.Mode");
+    if(!cfg.contains("JarLoader.Mode")) {
+        spdlog::error("[PreLoad] Missing required config key: JarLoader.Mode");
+        return;
+    }
+    const std::string jar_loader_mode = cfg.get<std::string>("JarLoader.Mode", "");
+
     if(jar_loader_mode == "BuiltIn") {
         spdlog::info("[PreLoad] JarLoader mode: BuiltIn");
 
         if(!load_builtin(jvmti)) {
             spdlog::error("[PreLoad] Failed to load built-in jars!");
+            return;
         }
     } else if(jar_loader_mode == "CustomJar") {
         spdlog::info("[PreLoad] JarLoader mode: CustomJar");
 
-        std::string jar_path = cfg.getPath("JarLoader.JarPath");
-        
+        const std::string jar_path = cfg.getPath("JarLoader.JarPath", "");
+        if(jar_path.empty()) {
+            spdlog::error("[PreLoad] Missing required config key: JarLoader.JarPath (CustomJar mode)");
+            return;
+        }
+
         if(!load_custom(jvmti, jar_path.c_str())) {
             spdlog::error("[PreLoad] Failed to load custom jar: {}", jar_path);
+            return;
         }
     } else {
         spdlog::error("[PreLoad] Invalid JarLoader mode: {}", jar_loader_mode);
@@ -64,7 +84,7 @@ void JuiceAgent::Loader::preload(const char* runtime_dir, JNIEnv* env, jvmtiEnv*
 }
 
 void JuiceAgent::Loader::initialize(const char* runtime_dir, JNIEnv* env, jvmtiEnv* jvmti, JuiceAgent::Config::Config& cfg) {
-    std::string jar_loader_mode = cfg.get<std::string>("JarLoader.Mode");
+    const std::string jar_loader_mode = cfg.get<std::string>("JarLoader.Mode", "");
 
     if(jar_loader_mode == "BuiltIn") {
         const char* bootstrap_class = "cn/xiaozhou233/juiceagent/api/JuiceAgentBootstrap";
@@ -74,7 +94,7 @@ void JuiceAgent::Loader::initialize(const char* runtime_dir, JNIEnv* env, jvmtiE
         ser.add_kv("Version", cfg.get<int>("JuiceAgent.Version", -1));
         ser.add_kv("JuiceAgentNativeLibraryPath", cfg.getPath("JuiceAgent.JuiceAgentNativeLibraryPath", (cfg.getRuntimeDir()/"libagent.dll").string()));
         ser.add_kv("RuntimeDir", cfg.getRuntimeDir().string());
-        
+
         std::string args = ser.serialize(); 
         spdlog::debug("Serialized config: {}", args);
 
@@ -86,8 +106,13 @@ void JuiceAgent::Loader::initialize(const char* runtime_dir, JNIEnv* env, jvmtiE
     } else if(jar_loader_mode == "CustomJar") {
         spdlog::info("[Initialize] JarLoader mode: CustomJar");
 
-        std::string entry_class = cfg.get<std::string>("JarLoader.EntryClass");
-        std::string entry_method = cfg.get<std::string>("JarLoader.EntryMethod");
+        const std::string entry_class = cfg.get<std::string>("JarLoader.EntryClass", "");
+        const std::string entry_method = cfg.get<std::string>("JarLoader.EntryMethod", "");
+        if(entry_class.empty() || entry_method.empty()) {
+            spdlog::error("[Initialize] Missing required config key: JarLoader.EntryClass / JarLoader.EntryMethod (CustomJar mode)");
+            return;
+        }
+
         spdlog::debug("[Initialize] Entry class: {}, Entry method: {}", entry_class, entry_method);
         bool result = JuiceAgent::Utils::call_static_java_method(env, entry_class.c_str(), entry_method.c_str());
         if (!result) {
