@@ -6,6 +6,30 @@ This file records notable changes to JuiceAgent. For older releases, see [GitHub
 
 ## 中文
 
+### [5.0.1] - 2026-10-16
+
+#### 🐛 修复
+
+- 修复配置错误导致目标 JVM 崩溃：`libloader.dll` 是反射加载的，其展开表未被登记，C++ 异常在其中既无法 unwind 也无法捕获。现改为配置读取非抛出 + 解析走无异常模式，并以 `-fno-exceptions` 编译 libloader，任何会抛异常的代码在编译期即失败。
+
+#### ✨ 新功能
+
+- 事件总线新增 `subscribeFront` / `listenFront`（监听者顺序能力）。
+
+#### 🔧 内部改动
+
+- 用约 60 行类型安全事件总线替换 `eventpp`（移除 23 个 in-tree 头文件，约 144 KB）。
+- 移除无引用的 `MethodEntry` / `MethodExit` 事件定义。
+
+#### 📝 文档
+
+- 新增 `docs/config.md` 与 `docs/update/`；重写 `docs/advanced.md`；README 配置示例升级到 v2。
+
+#### 🔁 CI
+
+- 新增 GitHub Actions 工作流（构建 + 集成测试 + 打包 + 上传 artifact）与 `tests/run-tests.ps1`。
+- 构建改为静态链接 C/C++ 运行时。
+
 ### [5.0.0] - 2026-10-15
 
 #### ⚠️ 破坏性变更
@@ -50,6 +74,30 @@ This file records notable changes to JuiceAgent. For older releases, see [GitHub
 - 新增 `docs/Inject.md`；修正文档路径。
 
 ## English
+
+### [5.0.1] - 2026-10-16
+
+#### 🐛 Fixes
+
+- Fix a config error crashing the target JVM: `libloader.dll` is reflectively loaded, so its unwind tables are never registered and a C++ exception cannot be unwound or caught there. Config reads are now non-throwing, parsing runs in non-throwing mode, and libloader is compiled with `-fno-exceptions` so exception-capable code fails the build.
+
+#### ✨ Features
+
+- New `subscribeFront` / `listenFront` listener-ordering support on the event bus.
+
+#### 🔧 Internal
+
+- Replace `eventpp` with a ~60-line type-safe event bus (removes 23 in-tree headers, ~144 KB).
+- Remove the unreferenced `MethodEntry` / `MethodExit` event definitions.
+
+#### 📝 Docs
+
+- Add `docs/config.md` and `docs/update/`; rewrite `docs/advanced.md`; update the README config examples to v2.
+
+#### 🔁 CI
+
+- Add a GitHub Actions workflow (build + integration tests + package + artifact upload) and `tests/run-tests.ps1`.
+- Link the C/C++ runtime statically.
 
 ### [5.0.0] - 2026-10-15
 
