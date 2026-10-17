@@ -9,10 +9,10 @@ Directory Files:
   config.toml                                           - injection config
   build.bat                                             - build script
   run.bat                                               - run target JVM
-  playload.jar                                          - JAR to inject (built by build.bat)
+  payload.jar                                          - JAR to inject (built by build.bat)
   target.jar                                            - target JVM program (built by build.bat)
   new_target.class                                      - retransformed bytecode (built by build.bat)
-  playload/                                             - payload source
+  payload/                                             - payload source
   target/                                               - target source
   new_target/                                           - modified copy of target source
 
@@ -26,7 +26,7 @@ The target class "target" has a method say() that prints:
 new_target/target.java is a modified copy that also prints:
     Retransformed!
 
-This example injects playload.jar into a running JVM. The payload reads
+This example injects payload.jar into a running JVM. The payload reads
 new_target.class from its own JAR and calls
 JuiceAgent.retransformClassByName("target", ...) to swap the already-loaded
 "target" class on the fly. After that, say() starts printing the new message
@@ -37,10 +37,10 @@ without restarting the JVM.
 ============================================
 
 1. Build (optional)
-   playload.jar and target.jar are already included by default.
-   If you modified playload/, target/ or new_target/, run:
+   payload.jar and target.jar are already included by default.
+   If you modified payload/, target/ or new_target/, run:
        build.bat
-   to regenerate playload.jar, target.jar and new_target.class.
+   to regenerate payload.jar, target.jar and new_target.class.
 
 2. Run the target JVM
    Double-click run.bat (or run: java -jar target.jar). A black window
@@ -57,8 +57,8 @@ without restarting the JVM.
 
 4. Verify
    Go back to the target window. Injection succeeded if you see:
-       Playload loaded!
-       Playload executed!
+       Payload loaded!
+       Payload executed!
    and the output of say() changes from "Hello!" to:
        Hello!
        Retransformed!
@@ -67,8 +67,8 @@ without restarting the JVM.
   Config / config.toml
 ============================================
 
-  JarPath      - JAR path to inject (default: ./playload.jar)
-  EntryClass   - Entry class (default: playload)
+  JarPath      - JAR path to inject (default: ./payload.jar)
+  EntryClass   - Entry class (default: payload)
   EntryMethod  - Entry method, must be public static void entry()
 
 ============================================
@@ -79,8 +79,8 @@ without restarting the JVM.
   Install a JDK and add its bin directory to PATH.
 - injector.exe reports injection failure:
   Make sure the target JVM is running and the PID is correct.
-- No "Playload loaded!" output appears:
+- No "Payload loaded!" output appears:
   Check libagent.log and libloader.log in this directory for the cause.
 - say() output does not change:
   Make sure build.bat was run after editing new_target/, and that
-  new_target.class inside playload.jar is up to date.
+  new_target.class inside payload.jar is up to date.

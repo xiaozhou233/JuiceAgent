@@ -14,6 +14,6 @@ Mode = "BuiltIn"
 
 # InjectionDir only works when Mode is BuiltIn
 InjectionDir = "./injection"
-JarPath = "./playload.jar"
-EntryClass = "playload"
+JarPath = "./payload.jar"
+EntryClass = "payload"
 EntryMethod = "entry"

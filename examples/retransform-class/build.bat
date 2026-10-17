@@ -1,13 +1,13 @@
 @echo off
 setlocal
 
-set "API_JAR=playload\JuiceAgent-API-1.4.1+build.1.jar"
-set "PAYLOAD_JAR=playload.jar"
+set "API_JAR=payload\JuiceAgent-API-1.4.1+build.1.jar"
+set "PAYLOAD_JAR=payload.jar"
 set "TARGET_JAR=target.jar"
 
 set "OUT=out"
 set "OUT_NT=%OUT%\new_target"
-set "OUT_PL=%OUT%\playload"
+set "OUT_PL=%OUT%\payload"
 set "OUT_TG=%OUT%\target"
 
 set "NEW_TARGET_CLASS=new_target.class"
@@ -29,8 +29,8 @@ if errorlevel 1 goto :error
 copy /y "%OUT_NT%\new_target.class" "%NEW_TARGET_CLASS%"
 if errorlevel 1 goto :error
 
-echo === Compiling playload ===
-javac -encoding UTF-8 --release 8 -cp "%API_JAR%" -d "%OUT_PL%" playload\playload.java
+echo === Compiling payload ===
+javac -encoding UTF-8 --release 8 -cp "%API_JAR%" -d "%OUT_PL%" payload\payload.java
 if errorlevel 1 goto :error
 
 echo === Compiling target ===
@@ -38,7 +38,7 @@ javac -encoding UTF-8 --release 8 -d "%OUT_TG%" target\target.java
 if errorlevel 1 goto :error
 
 echo === Packaging payload jar ===
-jar --create --file "%PAYLOAD_JAR%" -C "%OUT_PL%" playload.class
+jar --create --file "%PAYLOAD_JAR%" -C "%OUT_PL%" payload.class
 if errorlevel 1 goto :error
 
 echo === Packaging target jar ===
