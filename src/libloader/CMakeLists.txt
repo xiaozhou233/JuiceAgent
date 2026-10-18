@@ -44,7 +44,7 @@ if(WIN32)
         ${CMAKE_SOURCE_DIR}/includes/jvm/win32
     )
 
-    target_link_libraries(loader PRIVATE jvm)
+    target_link_libraries(loader PRIVATE jvm ReflectiveDLLInjection)
 else()
     target_include_directories(loader PRIVATE
         ${CMAKE_SOURCE_DIR}/includes/jvm/linux
