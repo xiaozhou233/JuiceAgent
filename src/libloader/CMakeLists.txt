@@ -12,6 +12,15 @@ if (WIN32)
     )
 
     list(APPEND loader_sources ${windows_sources})
+else()
+    message(STATUS "Detected System: Linux or Other")
+
+    file(GLOB_RECURSE linux_sources CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/*.c
+    )
+
+    list(APPEND loader_sources ${linux_sources})
 endif()
 
 add_library(loader SHARED ${loader_sources})
@@ -27,11 +36,17 @@ endif()
 target_include_directories(loader PRIVATE
     ${CMAKE_SOURCE_DIR}/includes
     ${CMAKE_SOURCE_DIR}/includes/jvm
-    ${CMAKE_SOURCE_DIR}/includes/jvm/win32
     ${CMAKE_CURRENT_SOURCE_DIR}/includes
 )
 
-target_link_libraries(loader PRIVATE
-    jvm
-    ReflectiveDLLInjection
-)
+if(WIN32)
+    target_include_directories(loader PRIVATE
+        ${CMAKE_SOURCE_DIR}/includes/jvm/win32
+    )
+
+    target_link_libraries(loader PRIVATE jvm)
+else()
+    target_include_directories(loader PRIVATE
+        ${CMAKE_SOURCE_DIR}/includes/jvm/linux
+    )
+endif()
