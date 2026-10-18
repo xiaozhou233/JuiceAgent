@@ -92,7 +92,14 @@ void JuiceAgent::Loader::initialize(const char* runtime_dir, JNIEnv* env, jvmtiE
 
         JuiceAgent::Utils::Serializer ser;
         ser.add_kv("Version", cfg.get<int>("JuiceAgent.Version", -1));
-        ser.add_kv("JuiceAgentNativeLibraryPath", cfg.getPath("JuiceAgent.JuiceAgentNativeLibraryPath", (cfg.getRuntimeDir()/"libagent.dll").string()));
+        
+        #ifdef _WIN32
+        std::string default_libagent_path = (cfg.getRuntimeDir()/"libagent.dll").string();
+        #else
+        std::string default_libagent_path = (cfg.getRuntimeDir()/"libagent.so").string();
+        #endif
+
+        ser.add_kv("JuiceAgentNativeLibraryPath", cfg.getPath("JuiceAgent.JuiceAgentNativeLibraryPath", default_libagent_path));
         ser.add_kv("RuntimeDir", cfg.getRuntimeDir().string());
 
         std::string args = ser.serialize(); 
