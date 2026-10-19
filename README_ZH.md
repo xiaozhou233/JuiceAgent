@@ -108,6 +108,10 @@ Linux 上的流程与此相同，只有注入这一步不同。注入器通过 `
 
 从 [releases](https://github.com/xiaozhou233/JuiceAgent/releases) 页面下载 `JuiceAgent_vx.x.x_x64.zip`。
 
+> **Linux 用户注意**：Linux 构建**不会**发布在 GitHub Release 上，请从
+> [Jenkins](https://jenkins.xiaozhou233.cn/job/JuiceAgent/) 下载，详见
+> [Linux 支持](#linux-支持)。
+
 解压 ZIP 到一个目录：
 
 - YourDir
@@ -189,6 +193,17 @@ Input PID:
 ## Linux 支持
 
 JuiceAgent 同样支持 Linux x64。与反射式 DLL 注入不同，Linux 注入器使用 `ptrace` 附加目标进程，然后执行一次**远程 `dlopen`**：保存线程状态，让目标进程调用 `dlopen("libloader.so", RTLD_NOW)`，恢复状态并 detach。这样由 JVM 自己加载加载器——无需 `LD_PRELOAD`，也无需 `-javaagent`——其后的流程与 Windows 完全一致。
+
+### 下载
+
+Linux 构建**不会**发布在 GitHub Release 上，请从 Jenkins 任务下载最新一次成功的构建：
+
+```text
+https://jenkins.xiaozhou233.cn/job/JuiceAgent/
+```
+
+选择最近一次成功的构建，下载其产物（`JuiceAgent_vX.Y.Z_x64_linux.tar.gz`），从中解出
+`injector`、`libloader.so` 和 `libagent.so`。
 
 ### 组件
 

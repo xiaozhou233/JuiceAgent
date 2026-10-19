@@ -117,6 +117,10 @@ and drives the agent exactly like the Windows loader. See
 
 Download `JuiceAgent_vx.x.x_x64.zip` from the [releases](https://github.com/xiaozhou233/JuiceAgent/releases) page.
 
+> **Linux users**: Linux builds are **not** attached to GitHub Releases. Download
+> them from the [Jenkins job](https://jenkins.xiaozhou233.cn/job/JuiceAgent/)
+> instead — see [Linux Support](#linux-support).
+
 Extract the ZIP file to a directory:
 
 - YourDir
@@ -203,6 +207,19 @@ Linux injector uses `ptrace` to attach to the target process and then performs a
 `dlopen("libloader.so", RTLD_NOW)`, restores the state and detaches. The JVM
 therefore loads the loader itself — no `LD_PRELOAD` and no `-javaagent` — and the
 rest of the pipeline is identical to Windows.
+
+### Download
+
+Linux builds are **not** published on GitHub Releases. Download the latest
+successful build from the Jenkins job:
+
+```text
+https://jenkins.xiaozhou233.cn/job/JuiceAgent/
+```
+
+Grab the build artifact (`JuiceAgent_vX.Y.Z_x64_linux.tar.gz`) from the most
+recent successful build, then extract `injector`, `libloader.so` and
+`libagent.so` from it.
 
 ### Components
 
