@@ -77,8 +77,15 @@ The runner compiles the modules, refreshes `tests/resources` from `build/bin`
 
    (`script/package.bat` wraps this but ends with `pause`.)
 
-`tests/`, `build/`, `dist/` and `*.log` are gitignored; `dist/*.zip` is **not**
-committed.
+   On Linux, `script/package.sh` packs `injector`, `libloader.so` and
+   `libagent.so` into `dist/JuiceAgent_vX.Y.Z_x64_linux.tar.gz`:
+
+   ```bash
+   ./script/package.sh
+   ```
+
+`tests/`, `build/`, `dist/` and `*.log` are gitignored; `dist/*.zip` and
+`dist/*.tar.gz` are **not** committed.
 
 ## Hard rules (each of these was learned by breaking the build or a target JVM)
 
