@@ -6,6 +6,11 @@
 
 JuiceAgent 是一个基于 JVMTI 的高级注入框架，用于运行时 JAR 加载、字节码变换和运行时 JVM 插桩。它可以在 `DisableAttachMechanism=true` 的情况下注入到正在运行的 JVM 进程中，无需 `-javaagent` 启动参数，也无需使用 attach 机制。
 
+目前支持两个平台：
+
+- **Windows x64**——反射式 DLL 注入（`injector.exe` + `libinject.dll`）。
+- **Linux x64**——通过 `ptrace` 附加目标进程，再用一次远程 `dlopen` 让目标 JVM 自己加载 `libloader.so`。
+
 **警告**：本项目仍处于实验阶段，不建议用于生产环境。使用风险自负。
 
 > **提示**：部分杀毒软件可能将 JuiceAgent 误报为恶意软件。详情见[杀毒软件误报说明](docs/Antivirus-False-Positive.md)。
@@ -29,7 +34,7 @@ JuiceAgent 是一个基于 JVMTI 的高级注入框架，用于运行时 JAR 加
 ![C++](https://img.shields.io/badge/C++-20-blue)
 ![JNI](https://img.shields.io/badge/JNI-Native-green)
 ![CMake](https://img.shields.io/badge/CMake-Build-red)
-![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey)
 
 ![JVMTI](https://img.shields.io/badge/JVMTI-Agent-success)
 ![Injection](https://img.shields.io/badge/Runtime-Injection-blueviolet)
@@ -44,6 +49,7 @@ JuiceAgent 是一个基于 JVMTI 的高级注入框架，用于运行时 JAR 加
   - [特性](#特性)
   - [项目结构](#项目结构)
   - [快速开始](#快速开始)
+  - [Linux 支持](#linux-支持)
   - [JuiceAgent API](#juiceagent-api)
   - [示例](#示例)
   - [如何构建](#如何构建)
@@ -73,6 +79,8 @@ JuiceAgent 是 [JuiceAgent-API](https://github.com/xiaozhou233/JuiceAgent-API) �
 
 `JuiceAgent-API` jar 内嵌于原生二进制中，无需单独下载。
 
+Linux 上的流程与此相同，只有注入这一步不同。注入器通过 `ptrace` 附加到目标进程，保存线程状态，发起一次远程 `dlopen` 让 JVM 在自身进程内加载 `libloader.so`（无需 `LD_PRELOAD`，也无需 `-javaagent`）。随后 `libloader.so` 从 ELF constructor 启动，解析运行时目录（`JuiceAgent_ConfigPath`，默认 `$HOME/.juiceagent`），之后与 Windows 加载器完全一致地驱动 agent。详见 [Linux 支持](#linux-支持)。
+
 ## 特性
 
 - 将外部 JAR 加载到 Bootstrap 或 System ClassLoader
@@ -87,10 +95,10 @@ JuiceAgent 是 [JuiceAgent-API](https://github.com/xiaozhou233/JuiceAgent-API) �
 
 ## 项目结构
 
-- `src/libloader` — `libloader.dll`。注入到目标 JVM，附加 JVM、解析 `config.toml`、注入内嵌的 `JuiceAgent-API` 并引导 agent。
-- `src/libagent` — `libagent.dll`。JVMTI agent。注册回调（例如 `ClassFileLoadHook`）并实现 `JuiceAgent-API` 的原生侧。
-- `src/injector` — `injector.exe`。命令行驱动，加载 `libinject.dll` 并将 `libloader.dll` 注入到目标进程。
-- `src/libinject` — `libinject.dll`。反射式 DLL 注入器，导出原生 `inject` 函数并提供 JNI 绑定（`cn.xiaozhou233.juiceagent.injector.InjectorNative`）。
+- `src/libloader` — `libloader.dll`（Windows）/ `libloader.so`（Linux）。注入到目标 JVM，附加 JVM、解析 `config.toml`、注入内嵌的 `JuiceAgent-API` 并引导 agent。
+- `src/libagent` — `libagent.dll`（Windows）/ `libagent.so`（Linux）。JVMTI agent。注册回调（例如 `ClassFileLoadHook`）并实现 `JuiceAgent-API` 的原生侧。
+- `src/injector` — `injector.exe`（Windows）/ `injector`（Linux）。命令行驱动，将加载器注入到目标进程。
+- `src/libinject` — `libinject.dll`（仅 Windows）。反射式 DLL 注入器，导出原生 `inject` 函数并提供 JNI 绑定（`cn.xiaozhou233.juiceagent.injector.InjectorNative`）。
 
 ## 快速开始
 
@@ -178,6 +186,46 @@ Input PID:
 
 目标 JVM 将加载指定的 JAR 并执行指定的入口类和入口方法。
 
+## Linux 支持
+
+JuiceAgent 同样支持 Linux x64。与反射式 DLL 注入不同，Linux 注入器使用 `ptrace` 附加目标进程，然后执行一次**远程 `dlopen`**：保存线程状态，让目标进程调用 `dlopen("libloader.so", RTLD_NOW)`，恢复状态并 detach。这样由 JVM 自己加载加载器——无需 `LD_PRELOAD`，也无需 `-javaagent`——其后的流程与 Windows 完全一致。
+
+### 组件
+
+- `libloader.so` —— 加载进目标 JVM，从 ELF constructor 启动。
+- `libagent.so` —— JVMTI agent。在 Linux 上它是 `JuiceAgentNativeLibraryPath` 的默认值（而不是 `libagent.dll`）。
+- `injector` —— 附加到目标 PID 并执行远程 `dlopen`。
+
+### 配置位置
+
+Linux 上加载器**不会**在当前工作目录中查找配置，而是按以下顺序确定运行时目录：
+
+1. `JuiceAgent_ConfigPath` —— 环境变量存在且非空时直接使用。
+2. `$HOME/.juiceagent` —— 默认值，目录不存在时会自动创建。
+
+`config.toml` 从该目录读取，配置结构（schema）与 Windows 完全一致，相对路径（`JarPath`、`InjectionDir` 等）也以该目录为基准解析。典型目录结构：
+
+```text
+~/.juiceagent/
+├── config.toml
+├── MyCustomJar.jar
+└── injection/
+    └── Dependencies.jar
+```
+
+如需指定其他目录：
+
+```bash
+export JuiceAgent_ConfigPath=/opt/juiceagent
+```
+
+### 环境要求
+
+- 以与目标 JVM 相同的用户（或 `root`）运行注入器，并确保允许 `ptrace`。如果注入失败并返回 `EPERM`，请检查 `/proc/sys/kernel/yama/ptrace_scope`。
+- 目标 JVM 与加载器都必须是 x64。
+
+> **注意**：Linux 注入器二进制目前尚未开源。本仓库中的 `injector` 目标只是一个占位程序，仅打印提示信息；加载器与 agent 完全开源，可直接从本仓库构建。
+
 ## JuiceAgent API
 
 以下原生函数通过 `cn.xiaozhou233.juiceagent.api.JuiceAgent` 类暴露给 Java（Java API 定义见 [JuiceAgent-API](https://github.com/xiaozhou233/JuiceAgent-API) 项目）：
@@ -207,7 +255,7 @@ Input PID:
 ### 环境要求
 
 - Java 8+
-- MinGW
+- MinGW-w64（Windows）或 GCC/Clang（Linux）
 - CMake 3.15+
 - Ninja
 
@@ -231,7 +279,7 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-生成的二进制文件将放在 `build/bin` 中。
+生成的二进制文件将放在 `build/bin` 中。Linux 下会生成 `libloader.so`、`libagent.so` 和 `injector`；Windows 下为对应的 `.dll` / `.exe`。
 
 ## 完整免责声明
 
