@@ -93,3 +93,42 @@ jobs:
           path: dist/JuiceAgent_*.zip
           if-no-files-found: error
           retention-days: 14
+
+  build-linux:
+    name: Build (Linux, GCC)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: |
+          cmake --build build
+
+          echo "compiler: $(command -v g++)"
+          echo "target:   $(gcc -dumpmachine)"
+
+          echo "--- build/bin ---"
+          ls -1 build/bin
+
+      - name: Package release tarball
+        run: ./script/package.sh
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: JuiceAgent-linux-x64
+          path: dist/JuiceAgent_*.tar.gz
+          if-no-files-found: error
+          retention-days: 14

@@ -204,9 +204,14 @@ Tracked text files are **LF in the index, CRLF in the working tree** (no
 
 ## CI
 
-`.github/workflows/ci.yml` runs on `windows-latest`: JDK 25 (Temurin) +
-MinGW-w64 (MSYS2) + Ninja, then `configure -> build -> tests -> package`, and
-uploads `dist/JuiceAgent_*.zip` as an artifact (14-day retention).
+`.github/workflows/ci.yml` has two jobs:
+
+- `build-and-test` on `windows-latest`: JDK 25 (Temurin) + MinGW-w64 (MSYS2) +
+  Ninja, then `configure -> build -> tests -> package`, uploading
+  `dist/JuiceAgent_*.zip` as an artifact (14-day retention).
+- `build-linux` on `ubuntu-latest`: GCC + Ninja, then
+  `configure -> build -> package` only — the integration tests are Windows-only —
+  uploading `dist/JuiceAgent_*.tar.gz`.
 
 CI-specific notes:
 
