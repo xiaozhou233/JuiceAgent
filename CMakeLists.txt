@@ -18,6 +18,11 @@ endif()
 # libraries
 if (WIN32)
     add_subdirectory(${CMAKE_SOURCE_DIR}/includes/ReflectiveDLLInjection)
+else()
+    set(PTRACE_INJECT_BUILD_CLI OFF CACHE BOOL "" FORCE)
+    set(PTRACE_INJECT_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+
+    add_subdirectory(ptrace-inject-cpp)
 endif()
 
 # modules
