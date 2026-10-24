@@ -159,6 +159,7 @@ src/libagent        libagent.dll (JVMTI agent)
 includes/JuiceAgent Config.hpp / Logger.hpp / Utils.hpp / JuiceAgent.hpp (CONFIG_VERSION)
 includes/toml++     vendored
 includes/spdlog     vendored
+includes/ptrace-inject-cpp  vendored Linux injector library (libptrace_inject.a)
 tests/              integration tests + run-tests.ps1 + copy-bin.bat
 docs/               config.md, advanced.md, Inject.md, update/ (release notes + changelog)
 examples/           runnable end-to-end examples (each has config.toml + HowToUse)

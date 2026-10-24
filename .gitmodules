@@ -1,3 +1,0 @@
-[submodule "ptrace-inject-cpp"]
-	path = ptrace-inject-cpp
-	url = https://github.com/xiaozhou233/ptrace-inject-cpp
