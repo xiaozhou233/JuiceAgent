@@ -1,0 +1,14 @@
+# Integration test programs, one per line. Blank lines and # comments are ignored.
+# Shared by run-tests.ps1 (Windows) and run-tests.sh (Linux).
+GetClassByName
+GetLoadedClasses
+GetClassBytes
+GetClassBytesByName
+DefineClass
+RedefineClass
+RedefineClassByName
+RetransformClass
+RetransformClassByName
+AddToClassLoader
+AddToSystemClassLoaderSearch
+AddToBootstrapClassLoaderSearch

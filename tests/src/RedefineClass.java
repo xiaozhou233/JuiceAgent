@@ -1,20 +1,18 @@
 import cn.xiaozhou233.juiceagent.api.JuiceAgent;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-
 public class RedefineClass {
-    public static void main(String[] args) throws IOException {
-        System.load(new File("resources/libagent.dll").getAbsolutePath());
-        JuiceAgent.init("");
+    public static void main(String[] args) {
+        TestSupport.run("RedefineClass", () -> {
+            TestSupport.bootstrap();
 
-        Target.targetTest();
+            Target.targetTest();
 
-        byte[] bytes = Files.readAllBytes(new File("out/production/injection/Target.class").toPath());
-        JuiceAgent.redefineClass(Target.class, bytes, bytes.length);
+            byte[] bytes = TestSupport.readClass("Target");
+            TestSupport.require(JuiceAgent.redefineClass(Target.class, bytes, bytes.length),
+                    "redefineClass returned false");
 
-        Target.targetTest();
-
+            String out = TestSupport.capture(Target::targetTest);
+            TestSupport.require(out.contains("Modified!"), "redefinition had no effect: " + out);
+        });
     }
 }

@@ -45,20 +45,32 @@ cmake --build build
 ## Test
 
 Integration tests live in `tests/`. They are plain `main()` programs (not JUnit)
-that `System.load("resources/libagent.dll")` and call `JuiceAgent.init("")`.
-Two of them need the `injection` module compiled into `out/production/injection`.
+that load the native agent (`resources/libagent.dll` on Windows,
+`resources/libagent.so` on Linux) and call `JuiceAgent.init("")`. The shared
+`tests/src/TestSupport.java` performs that bootstrap and prints the single verdict
+line each test is judged on (`RESULT: PASS <name>` / `RESULT: FAIL <name>: ...`).
+Some tests also need the `injection` module compiled into
+`out/production/injection`.
 
 Build first, then:
 
 ```powershell
+# Windows
 pwsh tests/run-tests.ps1
 # or point it at a specific JDK:
 pwsh tests/run-tests.ps1 -JdkHome "C:\Program Files\Zulu\zulu-25"
 ```
 
-The runner compiles the modules, refreshes `tests/resources` from `build/bin`
-(via `tests/copy-bin.bat`), compiles the tests, then runs every test and
-**asserts on its output**.
+```bash
+# Linux
+bash tests/run-tests.sh
+# or: JAVA_HOME=/path/to/jdk bash tests/run-tests.sh
+```
+
+Both runners compile the modules, refresh `tests/resources` from `build/bin`
+(`tests/copy-bin.bat` / `tests/copy-bin.sh`), compile the tests, then run every
+case listed in `tests/cases.txt` and **assert on its verdict output**. `Loop.java`
+is a manual demo (infinite loop) and is not compiled into the test output.
 
 > Running the tests rebuilds the tracked file `tests/injection.jar`. After a local
 > run, restore it with `git checkout -- tests/injection.jar` before committing.
@@ -136,9 +148,11 @@ CI passes `-static-libgcc -static-libstdc++` to match.
 
 ### 5. Tests assert on output, not exit codes
 
-The test programs print diagnostics and **still exit 0** when a step fails. Match
-an expected marker (e.g. `Bytes: 399`, `Modified!`, `Injection Invoked!`) -
-checking `$LASTEXITCODE` alone will silently pass broken builds.
+The test programs print diagnostics and **still exit 0** when a step fails. Each
+one ends by printing a single verdict line - `RESULT: PASS <name>` or
+`RESULT: FAIL <name>: <reason>` - and the runners match `RESULT: PASS <name>`
+(and reject any `RESULT: FAIL`) instead of trusting the exit code, which would
+silently pass broken builds.
 
 Notes when adding tests:
 
@@ -160,7 +174,7 @@ includes/JuiceAgent Config.hpp / Logger.hpp / Utils.hpp / JuiceAgent.hpp (CONFIG
 includes/toml++     vendored
 includes/spdlog     vendored
 includes/ptrace-inject-cpp  vendored Linux injector library (libptrace_inject.a)
-tests/              integration tests + run-tests.ps1 + copy-bin.bat
+tests/              integration tests + run-tests.{ps1,sh} + copy-bin.{bat,sh} + cases.txt
 docs/               config.md, advanced.md, Inject.md, update/ (release notes + changelog)
 examples/           runnable end-to-end examples (each has config.toml + HowToUse)
 script/             package.cmake / package.bat
@@ -210,9 +224,9 @@ Tracked text files are **LF in the index, CRLF in the working tree** (no
 - `build-and-test` on `windows-latest`: JDK 25 (Temurin) + MinGW-w64 (MSYS2) +
   Ninja, then `configure -> build -> tests -> package`, uploading
   `dist/JuiceAgent_*.zip` as an artifact (14-day retention).
-- `build-linux` on `ubuntu-latest`: GCC + Ninja, then
-  `configure -> build -> package` only — the integration tests are Windows-only —
-  uploading `dist/JuiceAgent_*.tar.gz`.
+- `build-linux` on `ubuntu-latest`: JDK 25 (Temurin) + GCC + Ninja, then
+  `configure -> build -> tests -> package`, uploading
+  `dist/JuiceAgent_*.tar.gz`.
 
 CI-specific notes:
 

@@ -1,34 +1,19 @@
-import java.io.File;
 import cn.xiaozhou233.juiceagent.api.JuiceAgent;
 
 public class AddToSystemClassLoaderSearch {
     public static void main(String[] args) {
-        System.load(new File("resources/libagent.dll").getAbsolutePath());
-        JuiceAgent.init("");
+        TestSupport.run("AddToSystemClassLoaderSearch", () -> {
+            TestSupport.bootstrap();
 
-        System.out.println("========= Before =========");
-        invokeTest();
-        System.out.println("========= After =========");
-        JuiceAgent.addToSystemClassLoaderSearch(new File("Injection.jar").getAbsolutePath());
-        invokeTest();
-        System.out.println("========= Done =========");
+            TestSupport.require(JuiceAgent.addToSystemClassLoaderSearch(TestSupport.injectionJar()),
+                    "addToSystemClassLoaderSearch returned false");
 
-    }
-
-    public static void invokeTest() {
-        try {
             Class<?> clazz = Class.forName("Injection");
-            ClassLoader loader = clazz.getClassLoader();
-            System.out.println("ClassLoader: " + loader);
-            clazz.getMethod("test").invoke(null);
-        } catch (ClassNotFoundException e) {
-            System.err.println("Injection class not found: " + e.getMessage());
+            String out = TestSupport.capture(() -> TestSupport.invokeStatic(clazz, "test"));
+            TestSupport.require(out.contains("Injection Invoked!"),
+                    "Injection.test() did not run: " + out);
 
-        } catch (ReflectiveOperationException e) {
-            System.err.println("Invoke failed: " + e.getMessage());
-            e.printStackTrace();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            System.out.println("ClassLoader: " + clazz.getClassLoader());
+        });
     }
 }

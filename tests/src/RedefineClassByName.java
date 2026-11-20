@@ -1,20 +1,18 @@
 import cn.xiaozhou233.juiceagent.api.JuiceAgent;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-
 public class RedefineClassByName {
-    public static void main(String[] args) throws IOException {
-        System.load(new File("resources/libagent.dll").getAbsolutePath());
-        JuiceAgent.init("");
+    public static void main(String[] args) {
+        TestSupport.run("RedefineClassByName", () -> {
+            TestSupport.bootstrap();
 
-        Target.targetTest();
+            Target.targetTest();
 
-        byte[] bytes = Files.readAllBytes(new File("out/production/injection/Target.class").toPath());
-        JuiceAgent.redefineClassByName("Target", bytes, bytes.length);
+            byte[] bytes = TestSupport.readClass("Target");
+            TestSupport.require(JuiceAgent.redefineClassByName("Target", bytes, bytes.length),
+                    "redefineClassByName returned false");
 
-        Target.targetTest();
-
+            String out = TestSupport.capture(Target::targetTest);
+            TestSupport.require(out.contains("Modified!"), "redefinition had no effect: " + out);
+        });
     }
 }

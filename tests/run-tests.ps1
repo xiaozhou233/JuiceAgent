@@ -8,7 +8,10 @@
 
     The test programs always exit 0, even when a step fails (e.g. a bad config
     or a missing class is printed but the process still returns 0), so exit
-    codes alone are not enough - we match an expected marker per test.
+    codes alone are not enough. Instead every test prints a single verdict line
+    ("RESULT: PASS <name>" / "RESULT: FAIL <name>: ...") and we match that.
+
+    The case list lives in tests/cases.txt and is shared with run-tests.sh.
 
     Requires the native binaries in build/bin; run `cmake --build build` first.
 
@@ -113,36 +116,29 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "copy-bin.bat failed." }
 
     # --- 4. Compile the tests ---------------------------------------------
+    # Loop.java is a manual demo (infinite loop), not a test case.
     $testsOut = "out\production\tests"
     New-Item -ItemType Directory -Force -Path $testsOut | Out-Null
-    $testSources = (Get-ChildItem "src" -Filter *.java).FullName
+    $testSources = (Get-ChildItem "src" -Filter *.java |
+        Where-Object { $_.Name -ne "Loop.java" }).FullName
     & $javac -cp $apiJar -d $testsOut $testSources
     if ($LASTEXITCODE -ne 0) { throw "Compiling the tests failed." }
 
-    # --- 5. Run every test and assert on a marker -------------------------
+    # --- 5. Run every test and assert on its verdict ----------------------
     $classpath = "$testsOut;$apiJar"
-    $cases = @(
-        @{ Name = "GetClassByName";                  Expect = "class java\.lang\.String" },
-        @{ Name = "GetLoadedClasses";                Expect = "class " },
-        @{ Name = "GetClassBytes";                   Expect = "Bytes: 399" },
-        @{ Name = "GetClassBytesByName";             Expect = "Bytes: 399" },
-        @{ Name = "DefineClass";                     Expect = "Injection Invoked!" },
-        @{ Name = "RedefineClass";                   Expect = "Modified!" },
-        @{ Name = "RedefineClassByName";             Expect = "Modified!" },
-        @{ Name = "RetransformClass";                Expect = "Modified!" },
-        @{ Name = "RetransformClassByName";          Expect = "Modified!" },
-        @{ Name = "AddToClassLoader";                Expect = "Injection Invoked!" },
-        @{ Name = "AddToSystemClassLoaderSearch";    Expect = "Injection Invoked!" },
-        @{ Name = "AddToBootstrapClassLoaderSearch"; Expect = "Injection Invoked!" }
-    )
+    $cases = Get-Content (Join-Path $TestsDir "cases.txt") |
+        ForEach-Object { $_.Split('#')[0].Trim() } |
+        Where-Object { $_ -ne "" }
+    if ($cases.Count -eq 0) { throw "No test cases found in tests/cases.txt." }
 
     $failed = @()
     foreach ($case in $cases) {
-        $output = (& $java @nativeAccessArgs -cp $classpath $case.Name 2>&1 | Out-String)
-        if ($output -match $case.Expect) {
-            Write-Host ("  [PASS] {0}" -f $case.Name) -ForegroundColor Green
+        $output = (& $java @nativeAccessArgs -cp $classpath $case 2>&1 | Out-String)
+        $verdict = "RESULT: PASS $case"
+        if ($output -match [regex]::Escape($verdict) -and $output -notmatch "RESULT: FAIL") {
+            Write-Host ("  [PASS] {0}" -f $case) -ForegroundColor Green
         } else {
-            Write-Host ("  [FAIL] {0} (expected /{1}/)" -f $case.Name, $case.Expect) -ForegroundColor Red
+            Write-Host ("  [FAIL] {0} (expected `"$verdict`")" -f $case) -ForegroundColor Red
             # Show what the test actually printed so failures are diagnosable
             # (the test programs exit 0 even when a step fails).
             $lines = @($output -split "`r?`n" | Where-Object { $_.Trim() })
@@ -152,7 +148,7 @@ try {
             if ($lines.Count -gt 25) {
                 Write-Host ("         | ... ({0} more lines)" -f ($lines.Count - 25)) -ForegroundColor DarkGray
             }
-            $failed += $case.Name
+            $failed += $case
         }
     }
 

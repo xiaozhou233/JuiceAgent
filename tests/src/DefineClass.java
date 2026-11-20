@@ -1,34 +1,24 @@
 import cn.xiaozhou233.juiceagent.api.JuiceAgent;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-
 public class DefineClass {
-    public static void main(String[] args) throws IOException {
-        System.load(new File("resources/libagent.dll").getAbsolutePath());
-        JuiceAgent.init("");
+    public static void main(String[] args) {
+        TestSupport.run("DefineClass", () -> {
+            TestSupport.bootstrap();
 
-        ClassLoader cl = new ClassLoader() {};
+            ClassLoader cl = new ClassLoader() {};
 
-        invokeTest(cl);
+            byte[] bytes = TestSupport.readClass("Injection");
+            System.out.println("Read bytes: " + bytes.length);
 
-        byte[] bytes = Files.readAllBytes(new File("out/production/injection/Injection.class").toPath());
-        System.out.println("Read bytes: " + bytes.length);
+            Class<?> clazz = JuiceAgent.defineClass(cl, bytes);
+            TestSupport.require(clazz != null, "defineClass returned null");
+            TestSupport.require(clazz.getClassLoader() == cl, "defined class has the wrong class loader");
 
-        JuiceAgent.defineClass(cl, bytes);
+            String out = TestSupport.capture(() -> TestSupport.invokeStatic(clazz, "test"));
+            TestSupport.require(out.contains("Injection Invoked!"),
+                    "Injection.test() did not run: " + out);
 
-        invokeTest(cl);
-
-    }
-
-    public static void invokeTest(ClassLoader cl) {
-        try {
-            Class<?> clazz = cl.loadClass("Injection");
-            clazz.getMethod("test").invoke(null);
-            System.out.println("ClassLoader: " + clazz.getClassLoader().toString());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            System.out.println("ClassLoader: " + clazz.getClassLoader());
+        });
     }
 }

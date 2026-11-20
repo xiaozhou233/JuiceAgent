@@ -1,13 +1,18 @@
 import cn.xiaozhou233.juiceagent.api.JuiceAgent;
 
-import java.io.File;
 import java.util.Arrays;
 
 public class GetLoadedClasses {
     public static void main(String[] args) {
-        System.load(new File("resources/libagent.dll").getAbsolutePath());
-        JuiceAgent.init("");
+        TestSupport.run("GetLoadedClasses", () -> {
+            TestSupport.bootstrap();
 
-        System.out.println(Arrays.toString(JuiceAgent.getLoadedClasses()));
+            Class<?>[] classes = JuiceAgent.getLoadedClasses();
+            TestSupport.require(classes != null && classes.length > 0, "getLoadedClasses returned nothing");
+            TestSupport.require(Arrays.asList(classes).contains(String.class),
+                    "java.lang.String is not among the loaded classes");
+
+            System.out.println("Loaded: " + classes.length + " classes");
+        });
     }
 }

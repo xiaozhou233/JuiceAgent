@@ -1,30 +1,23 @@
 import cn.xiaozhou233.juiceagent.api.JuiceAgent;
 
-import java.io.File;
-import java.lang.reflect.InvocationTargetException;
-
 public class AddToClassLoader {
-    public static void main(String[] args) throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        System.load(new File("resources/libagent.dll").getAbsolutePath());
-        JuiceAgent.init("");
+    public static void main(String[] args) {
+        TestSupport.run("AddToClassLoader", () -> {
+            TestSupport.bootstrap();
 
-        ClassLoader cl = new ClassLoader(){};
+            ClassLoader cl = new ClassLoader() {};
 
-        invokeTest(cl);
+            TestSupport.require(JuiceAgent.addToClassLoader(TestSupport.injectionJar(), cl),
+                    "addToClassLoader returned false");
 
-        JuiceAgent.addToClassLoader(new File("Injection.jar").getAbsolutePath(), cl);
+            // A plain ClassLoader is not a URLClassLoader, so the API falls back
+            // to appending the jar to the system class loader search path.
+            Class<?> clazz = cl.loadClass("Injection");
+            String out = TestSupport.capture(() -> TestSupport.invokeStatic(clazz, "test"));
+            TestSupport.require(out.contains("Injection Invoked!"),
+                    "Injection.test() did not run: " + out);
 
-        invokeTest(cl);
-
-    }
-
-    public static void invokeTest(ClassLoader cl) {
-        try {
-            Class<?> clz = cl.loadClass("Injection");
-            System.out.println("ClassLoader: " + clz.getClassLoader().toString());
-            clz.getMethod("test").invoke(null);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            System.out.println("ClassLoader: " + clazz.getClassLoader());
+        });
     }
 }

@@ -1,17 +1,16 @@
 import cn.xiaozhou233.juiceagent.api.JuiceAgent;
 
-import java.io.File;
-import java.util.Arrays;
-
 public class GetClassByName {
     public static void main(String[] args) {
-        System.load(new File("resources/libagent.dll").getAbsolutePath());
-        JuiceAgent.init("");
+        TestSupport.run("GetClassByName", () -> {
+            TestSupport.bootstrap();
 
-        Class<?> clazz = JuiceAgent.getClassByName("java.lang.String");
+            Class<?> clazz = JuiceAgent.getClassByName("java.lang.String");
+            TestSupport.require(clazz != null, "getClassByName returned null");
+            TestSupport.require(clazz == String.class, "resolved a different Class instance");
 
-        System.out.println(clazz);
-        System.out.println(clazz.getName());
-        System.out.println(Arrays.toString(clazz.getDeclaredMethods()));
+            System.out.println("Class: " + clazz);
+            System.out.println("Name:  " + clazz.getName());
+        });
     }
 }

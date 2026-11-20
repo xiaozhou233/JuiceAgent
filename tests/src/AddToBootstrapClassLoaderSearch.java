@@ -1,34 +1,22 @@
-import java.io.File;
 import cn.xiaozhou233.juiceagent.api.JuiceAgent;
 
 public class AddToBootstrapClassLoaderSearch {
     public static void main(String[] args) {
-        System.load(new File("resources/libagent.dll").getAbsolutePath());
-        JuiceAgent.init("");
+        TestSupport.run("AddToBootstrapClassLoaderSearch", () -> {
+            TestSupport.bootstrap();
 
-        System.out.println("========= Before =========");
-        invokeTest();
-        System.out.println("========= After =========");
-        JuiceAgent.addToBootstrapClassLoaderSearch(new File("Injection.jar").getAbsolutePath());
-        invokeTest();
-        System.out.println("========= Done =========");
+            TestSupport.require(JuiceAgent.addToBootstrapClassLoaderSearch(TestSupport.injectionJar()),
+                    "addToBootstrapClassLoaderSearch returned false");
 
-    }
-
-    public static void invokeTest() {
-        try {
             Class<?> clazz = Class.forName("Injection");
-            ClassLoader loader = clazz.getClassLoader();
-            System.out.println("ClassLoader: " + (loader == null ? "BootstrapClassLoader" : loader));
-            clazz.getMethod("test").invoke(null);
-        } catch (ClassNotFoundException e) {
-            System.err.println("Injection class not found: " + e.getMessage());
+            TestSupport.require(clazz.getClassLoader() == null,
+                    "Injection was not loaded by the bootstrap loader");
 
-        } catch (ReflectiveOperationException e) {
-            System.err.println("Invoke failed: " + e.getMessage());
-            e.printStackTrace();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            String out = TestSupport.capture(() -> TestSupport.invokeStatic(clazz, "test"));
+            TestSupport.require(out.contains("Injection Invoked!"),
+                    "Injection.test() did not run: " + out);
+
+            System.out.println("ClassLoader: BootstrapClassLoader");
+        });
     }
 }
